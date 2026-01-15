@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFC - Sistema Financeiro</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body>
+
+    <div id="loader" class="loader-overlay hidden">
+        <div class="spinner"></div><p>Carregando...</p>
+    </div>
+
+    <div id="modal-reset" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <i class="fa-solid fa-lock" style="font-size: 40px; color: #2563eb;"></i>
+                <h2 style="margin-top: 10px;">Redefinir Senha</h2>
+                <p style="color: #6b7280; font-size: 13px;">Sua senha é provisória. Por favor, crie uma nova senha.</p>
+            </div>
+            <form id="form-reset">
+                <div class="input-wrapper">
+                    <label>Nova Senha</label>
+                    <input type="password" id="nova-senha" required minlength="4">
+                </div>
+                <div class="input-wrapper">
+                    <label>Confirmar Nova Senha</label>
+                    <input type="password" id="confirma-senha" required minlength="4">
+                </div>
+                <button type="submit" class="btn-primary">Confirmar Alteração</button>
+                <p id="msg-reset" class="error-text" style="text-align: center;"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="view-login" class="view-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                     alt="Logotipo" 
+                     class="login-brand-logo">
+                
+                <h2>Acesso Corporativo</h2>
+                <p>Fluxo de Caixa</p>
+            </div>
+            <form id="loginForm">
+                <div class="input-wrapper">
+                    <label>E-mail</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="input-wrapper">
+                    <label>Senha</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn-primary">Entrar</button>
+                <p id="msg-error" class="error-text"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="view-app" class="view-container hidden">
+        <aside class="sidebar">
+            <div class="brand"><i class="fa-solid fa-layer-group"></i></div>
+            <nav>
+                <button class="nav-btn active" data-target="dashboard">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="tooltip">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-target="reports">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="tooltip">Orçamento</span>
+                </button>
+                <button class="nav-btn restricted" data-target="settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="tooltip">Configurações</span>
+                </button>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar" id="user-avatar">U</div>
+            </div>
+            <button id="btn-logout" class="logout-btn">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </aside>
+
+        <main class="main-content">
+            
+            <section id="page-dashboard" class="page-section active">
+                <header class="top-bar">
+                    <div class="titles">
+                        <h1>Fluxo de Caixa</h1>
+                        <p>Bem-vindo, <span id="user-info" style="font-weight:600;">...</span></p>
+                    </div>
+                    <div class="actions" style="display: flex; gap: 15px; align-items: center;">
+                        <div class="search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
+                            <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
+                        </div>
+
+                        <select id="dashboard-view-type" class="select-ano">
+                            <option value="mensal" selected>Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="anual">Anual</option>
+                        </select>
+
+                        <select id="ano-dashboard" class="select-ano">
+                        </select>
+                        
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                             alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
+                    </div>
+                </header>
+                
+                <div class="kpi-grid" id="kpi-container"></div>
+                
+                <div class="dashboard-split">
+                    <div class="panel table-panel">
+                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa Realizado</h3></div>
+                        <div class="table-wrapper">
+                            <table id="finance-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel chart-panel">
+                        <div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
+                        <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-reports" class="page-section">
+                <header class="top-bar">
+                    <div class="titles">
+                        <h1>Orçamento vs Realizado</h1>
+                        <p>Acompanhamento detalhado por Departamento</p>
+                        <p style="margin-top: 4px; font-size: 14px; color: #4b5563;">
+                            Responsável: <span id="user-info-orcamento" style="font-weight:600;">...</span>
+                        </p>
+                    </div>
+                    <div class="actions" style="display: flex; gap: 15px; align-items: center;">
+                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+                            <option value="">Todos Departamentos</option>
+                        </select>
+
+                        <select id="ano-orcamento" class="select-ano">
+                        </select>
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                             alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
+                    </div>
+                </header>
+
+                <div class="kpi-grid" id="kpi-orcamento-container" style="margin-bottom: 20px;"></div>
+
+                <div class="panel table-panel" style="border:none; background: transparent; margin-bottom: 30px;">
+                    
+                    <div style="display: flex; gap: 20px; justify-content: flex-end; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #4b5563;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%;"></span>
+                            <span>Negativo (Estouro)</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="width: 10px; height: 10px; background-color: #10b981; border-radius: 50%;"></span>
+                            <span>Positivo (Dentro da Meta)</span>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper-orcamento">
+                        <table id="orcamento-table">
+                            <thead>
+                                <tr class="header-months">
+                                    <th rowspan="2" class="sticky-col">Departamento</th>
+                                    <th colspan="4">Janeiro</th>
+                                    <th colspan="4">Fevereiro</th>
+                                    <th colspan="4">Março</th>
+                                    <th colspan="4">Abril</th>
+                                    <th colspan="4">Maio</th>
+                                    <th colspan="4">Junho</th>
+                                    <th colspan="4">Julho</th>
+                                    <th colspan="4">Agosto</th>
+                                    <th colspan="4">Setembro</th>
+                                    <th colspan="4">Outubro</th>
+                                    <th colspan="4">Novembro</th>
+                                    <th colspan="4">Dezembro</th>
+                                </tr>
+                                <tr class="header-sub"><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel chart-panel" style="margin-bottom: 40px;">
+                    <div class="panel-head">
+                        <h3><i class="fa-solid fa-chart-line"></i> Evolução Orçamentária & Projeção Mensal</h3>
+                    </div>
+                    <div class="chart-row">
+                        <div class="chart-main">
+                            <div class="chart-wrapper">
+                                <canvas id="orcamentoChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="thermometer-section">
+                            <h4 id="thermometer-goal-title" style="margin-bottom: 15px; color: #1f2937; font-weight: 800; font-size: 16px;">
+                                FinanCheck: R$ 0,00
+                            </h4>
+                        
+                            <div class="flat-thermometer-container">
+                                <div id="tooltip-left" class="thermometer-tooltip tooltip-left">
+                                    <span id="lbl-porcentagem">0%</span>
+                                    <div class="arrow-right"></div>
+                                </div>
+                        
+                                <div class="thermometer-body">
+                                    <div class="thermometer-tube-border">
+                                        <div class="ticks">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                        <div class="thermometer-liquid" id="thermometer-fill" style="height: 0%;"></div>
+                                    </div>
+                                    <div class="thermometer-bulb-border">
+                                        <div class="thermometer-bulb-fill" id="thermometer-bulb-color"></div>
+                                    </div>
+                                </div>
+                        
+                                <div id="tooltip-right" class="thermometer-tooltip tooltip-right">
+                                    <div class="arrow-left"></div>
+                                    <span id="lbl-valor">R$ 0</span>
+                                </div>
+                            </div>
+                        
+                            <div class="thermometer-legend flat-legend">
+                                <div class="legend-item"><span class="dot dot-blue"></span> Abaixo (-80%)</div>
+                                <div class="legend-item"><span class="dot dot-green"></span> Ideal (80-95%)</div>
+                                <div class="legend-item"><span class="dot dot-yellow"></span> Alerta (95-100%)</div>
+                                <div class="legend-item"><span class="dot dot-red"></span> Estouro (>100%)</div>
+                            </div>
+                        </div>
+                        </div>
+                </div>
+            </section>
+
+            <section id="page-settings" class="page-section">
+                <header class="top-bar">
+                    <h1>Configurações e Administração</h1>
+                </header>
+                
+                <div class="panel" style="max-width: 600px; margin: 0 auto; padding: 30px;">
+                    <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 20px;">
+                        <h3 style="font-size: 18px; color: #111827;"><i class="fa-solid fa-user-plus"></i> Gerenciamento de Usuários</h3>
+                    </div>
+                    
+                    <form id="form-cadastro">
+                        <div class="input-wrapper">
+                            <label>Nome Completo</label>
+                            <input type="text" id="cad-nome" required placeholder="Ex: João Silva">
+                        </div>
+
+                        <div class="input-wrapper">
+                            <label>E-mail Corporativo</label>
+                            <div style="display: flex; align-items: center;">
+                                <input type="text" id="cad-email-prefix" required placeholder="nome.sobrenome" 
+                                       style="border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; min-width: 0;">
+                                <span style="background: #f3f4f6; border: 1px solid #e5e7eb; border-left: 0; padding: 10px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; color: #6b7280; font-size: 14px; font-weight: 500; white-space: nowrap;">
+                                    @objetivaatacadista.com.br
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                            <div class="input-wrapper">
+                                <label>Departamento</label>
+                                <select id="cad-departamento" required>
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="input-wrapper">
+                                <label>Tipo Acesso</label>
+                                <select id="cad-role">
+                                    <option value="user">Usuário Comum</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                            <div class="input-wrapper">
+                                <label>Nível</label>
+                                <select id="cad-nivel" required>
+                                    <option value="1">Nível 1</option>
+                                    <option value="2">Nível 2</option>
+                                    <option value="3">Nível 3</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary" style="margin-top:10px;">
+                            <i class="fa-solid fa-check"></i> Salvar Usuário
+                        </button>
+                        <p id="cad-mensagem" style="text-align:center; margin-top:15px; font-size:14px; font-weight:bold;"></p>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Dependências do Node (são instaladas no servidor, não copiada)
+node_modules/
+
+# Arquivos de ambiente com senhas (SEGURANÇA CRÍTICA)
+.env
+
+# Logs e arquivos de sistema
+npm-debug.log
+.DS_Store
+Thumbs.db
