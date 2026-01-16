@@ -332,7 +332,7 @@ const app = {
     // --- FUNÇÃO PARA CONTAR OS 30 SEGUNDOS ---
     startCountdown: () => {
         const err = document.getElementById('msg-error');
-        let timeLeft = 30; // 30 segundos conforme backend
+        let timeLeft = 60; // 30 segundos conforme backend
         
         if (app.timer) clearInterval(app.timer);
         
