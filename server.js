@@ -11,23 +11,47 @@ const app = express();
 // Configurações do Express
 app.use(cors());
 app.use(express.json());
+
+// [CRÍTICO] Serve os arquivos estáticos (CSS, JS, Imagens) da pasta public
+// Isso substitui a função do .htaccess para arquivos
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
 
-// --- NOVO: Configuração do Nodemailer ---
+// --- Configuração do Nodemailer ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.hostinger.com',
     port: 465,
     secure: true,
     auth: {
-        user: 'no-reply@dfc.objetivaatacadista.com.br', // Ajuste para seu email real
-        pass: process.env.EMAIL_PASS // Adicione isso no seu .env
+        user: 'no-reply@dfc.objetivaatacadista.com.br', 
+        pass: process.env.EMAIL_PASS 
     }
 });
 
 // =========================================================================
-// ROTAS DE AUTENTICAÇÃO (ALTERADO PARA 2FA)
+// ROTA DE DIAGNÓSTICO (NOVA LÓGICA)
+// =========================================================================
+// Acesse https://seu-site.com/api/status para testar a conexão com o banco
+app.get('/api/status', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ 
+            status: 'ONLINE', 
+            msg: 'Conexão com banco de dados OK', 
+            host: process.env.DB_HOST // Mostra qual IP o sistema está usando
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'OFFLINE', 
+            erro: error.message,
+            dica: 'Verifique se o DB_HOST no arquivo .env está correto (localhost ou IP).'
+        });
+    }
+});
+
+// =========================================================================
+// ROTAS DE AUTENTICAÇÃO (2FA)
 // =========================================================================
 
 // PASSO 1: Verifica senha e envia token
@@ -90,7 +114,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// PASSO 2: Valida o Token (NOVA ROTA)
+// PASSO 2: Valida o Token
 app.post('/api/validar-token', async (req, res) => {
     const { email, token } = req.body;
 
@@ -331,7 +355,12 @@ app.get('/api/dashboard', async (req, res) => {
     } catch (err) { console.error("ERRO DASHBOARD:", err); res.status(500).json({ error: "Erro interno" }); }
 });
 
+// [CRÍTICO] Fallback para SPA (Single Page Application)
+// Garante que o usuário possa dar F5 em qualquer rota sem quebrar
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📡 Conectando no banco: ${process.env.DB_HOST}`);
+});
