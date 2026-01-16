@@ -52,7 +52,7 @@ app.post('/api/login', async (req, res) => {
             // --- MUDANÇA AQUI: Inserção com tempo do MySQL (30 segundos) ---
             await pool.query(
                 `INSERT INTO tokens_acesso (email, token, expira_em) 
-                 VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 SECOND))`,
+                 VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 60 SECOND))`,
                 [email, token]
             );
 
@@ -67,7 +67,7 @@ app.post('/api/login', async (req, res) => {
                             <h2>Código de Verificação</h2>
                             <p>Seu código de acesso é:</p>
                             <h1 style="color: #2563eb; letter-spacing: 5px;">${token}</h1>
-                            <p>Válido por <strong>30 segundos</strong>.</p>
+                            <p>Válido por <strong>60 segundos</strong>.</p>
                         </div>
                     `
                 });
