@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Redireciona tudo para a porta 3000 do Node.js
+RewriteRule ^$ http://127.0.0.1:3000/ [P,L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
