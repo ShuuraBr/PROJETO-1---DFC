@@ -18,9 +18,6 @@ const app = {
 
     init: () => {
         // --- LÓGICA DE PERSISTÊNCIA DE LOGIN (SESSÃO) ---
-        // Alterado de localStorage para sessionStorage
-        // Isso permite recarregar a página sem perder o login,
-        // mas exige login novamente se a aba for fechada.
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
         
         // Inicia carregando os anos
@@ -350,6 +347,9 @@ const app = {
         finally { app.setLoading(false); }
     },
 
+    // =========================================================
+    // ALTERAÇÃO PRINCIPAL: CONTROLE DE ACESSO POR NÍVEL
+    // =========================================================
     showApp: () => {
         document.getElementById('view-login').classList.add('hidden');
         document.getElementById('modal-reset').classList.add('hidden');
@@ -370,20 +370,36 @@ const app = {
             elOrc.innerText = textoUsuario;
         }
 
-        const isAdmin = (app.user.Role === 'admin');
+        // --- LÓGICA DE PERMISSÕES POR NÍVEL ---
+        const role = app.user.Role; // 'admin' ou 'user'
+        const nivel = parseInt(app.user.Nivel || 0); // 1, 2, 3...
 
+        // Nível 1: Super Admin (Vê Configurações, Dashboard, Orçamento)
+        const isSuperAdmin = (role === 'admin' && nivel === 1);
+
+        // Nível 2 ou 1: Gestão (Vê Dashboard e Orçamento, mas NÃO Configurações)
+        const isGestor = (role === 'admin' && (nivel === 1 || nivel === 2));
+
+        // 1. Controle da aba "Configurações" (.restricted)
+        // Apenas Nível 1 pode ver a engrenagem e acessar configs
         document.querySelectorAll('.restricted').forEach(el => {
-            el.style.setProperty('display', isAdmin ? 'flex' : 'none', 'important');
+            el.style.setProperty('display', isSuperAdmin ? 'flex' : 'none', 'important');
         });
 
+        // 2. Controle do botão "Dashboard"
+        // Nível 1 e 2 podem ver. Usuários comuns ou Nível 3+ não veem o botão na sidebar.
         const btnDashboard = document.querySelector('.nav-btn[data-target="dashboard"]');
         if (btnDashboard) {
-            btnDashboard.style.display = isAdmin ? 'flex' : 'none';
+            btnDashboard.style.display = isGestor ? 'flex' : 'none';
         }
 
-        if(isAdmin) app.loadDepartamentos();
+        // 3. Carregar departamentos (apenas se tiver acesso a configurações)
+        if(isSuperAdmin) app.loadDepartamentos();
         
-        if (isAdmin) {
+        // 4. Redirecionamento Inicial
+        // Se for Gestor (Nível 1 ou 2), vai para Dashboard.
+        // Se for outro, vai direto para Orçamento.
+        if (isGestor) {
             app.switchTab('dashboard');
             setTimeout(() => app.fetchData(), 100);
         } else {

@@ -2,61 +2,65 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const pool = require('./db');
+const pool = require('./db'); // Importa a conexão do db.js
 
 const app = express();
 
+// Configurações do Express
 app.use(cors());
 app.use(express.json());
-// Serve os arquivos do Frontend (garanta que index.html, script.js e styles.css estejam na pasta 'public')
+// Serve os arquivos do site (index.html, css, js) da pasta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
 
 // =========================================================================
-// ROTAS DE AUTENTICAÇÃO E USUÁRIOS
+// ROTAS DE AUTENTICAÇÃO (LOGIN)
 // =========================================================================
 
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log(`[LOGIN] Tentativa para: ${email}`);
+
     try {
-        // MySQL usa '?' para parâmetros substituindo o '@param' do SQL Server
-        const [rows] = await pool.query(
-            `SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
-             FROM Usuarios U 
-             LEFT JOIN Departamentos D ON U.Pk_dep = D.Id_dep 
-             WHERE U.Email = ? AND U.Senha = ?`,
-            [email, password]
-        );
+        const query = `
+            SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
+            FROM usuarios U 
+            LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep 
+            WHERE U.Email = ? AND U.Senha = ?
+        `;
+
+        const [rows] = await pool.query(query, [email, password]);
 
         if (rows.length > 0) {
             const u = rows[0];
+            console.log(`[LOGIN] Sucesso: ${u.Nome}`);
             res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
         } else {
-            res.status(401).json({ success: false, message: 'Usuário ou senha incorretos' });
+            console.warn(`[LOGIN] Falha: Credenciais inválidas para ${email}`);
+            res.status(401).json({ success: false, message: 'E-mail ou senha incorretos' });
         }
     } catch (e) {
-        console.error("Erro no Login:", e);
-        res.status(500).json({ success: false, message: 'Erro interno' });
+        console.error("[LOGIN] Erro Crítico:", e.message);
+        res.status(500).json({ success: false, message: 'Erro ao conectar no banco de dados.' });
     }
 });
 
 app.post('/api/usuarios', async (req, res) => {
     const { nome, email, departamentoId, role, nivel } = req.body;
     try {
-        const [check] = await pool.query('SELECT Email FROM Usuarios WHERE Email = ?', [email]);
+        const [check] = await pool.query('SELECT Email FROM usuarios WHERE Email = ?', [email]);
         if (check.length > 0) return res.status(400).json({ success: false, message: 'Email já existe' });
 
-        // Sintaxe MySQL: IFNULL em vez de ISNULL
         await pool.query(
-            `INSERT INTO Usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
-             VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM Usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
+             VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
             [nome, email, SENHA_PADRAO, SENHA_PADRAO, departamentoId, role, nivel]
         );
 
         res.json({ success: true, message: 'Criado com sucesso' });
     } catch (e) {
-        console.error("Erro cadastro:", e);
+        console.error("[CADASTRO] Erro:", e);
         res.status(500).json({ success: false, message: "Erro ao criar usuário" });
     }
 });
@@ -64,7 +68,7 @@ app.post('/api/usuarios', async (req, res) => {
 app.post('/api/definir-senha', async (req, res) => {
     const { email, novaSenha } = req.body;
     try {
-        await pool.query('UPDATE Usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
+        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ success: false });
@@ -72,32 +76,32 @@ app.post('/api/definir-senha', async (req, res) => {
 });
 
 // =========================================================================
-// DADOS AUXILIARES (Selects)
+// ROTAS DE DADOS AUXILIARES
 // =========================================================================
 
 app.get('/api/departamentos', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM Departamentos');
+        const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
 });
 
 app.get('/api/anos', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT DISTINCT Ano FROM DFC_Analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
+        const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
 });
 
 // =========================================================================
-// ROTA DE ORÇAMENTO (Manteve lógica de mesclagem)
+// ROTA DE ORÇAMENTO
 // =========================================================================
 app.get('/api/orcamento', async (req, res) => {
     const { email, ano } = req.query;
     try {
-        // Verificar usuário
+        // 1. Identificar Usuário e Permissões
         const [users] = await pool.query(
-            'SELECT Role, D.Nome_dep FROM Usuarios U LEFT JOIN Departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
+            'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
             [email]
         );
         
@@ -107,12 +111,12 @@ app.get('/api/orcamento', async (req, res) => {
         const departamentoUsuario = user.Nome_dep || '';
         const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
-        // Busca Orçamento
+        // 2. Buscar Dados de Orçamento
         let queryOrc = `
             SELECT Plano, Nome, Departamento1, 
                    Janeiro, Fevereiro, Marco, Abril, Maio, Junho, 
                    Julho, Agosto, Setembro, Outubro, Novembro, Dezembro 
-            FROM Orcamento WHERE 1=1 `;
+            FROM orcamento WHERE 1=1 `;
         
         const paramsOrc = [];
         if (!isSuperUser) {
@@ -123,10 +127,10 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        // Busca Realizado
+        // 3. Buscar Dados Realizados
         let queryReal = `
             SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado 
-            FROM DFC_Analitica 
+            FROM dfc_analitica 
             WHERE 1=1 `;
         const paramsReal = [];
 
@@ -138,18 +142,16 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [resReal] = await pool.query(queryReal, paramsReal);
 
-        // Mapa de realizado para acesso rápido
+        // 4. Processamento de Dados (Merge)
         const mapRealizado = {};
         resReal.forEach(r => {
             mapRealizado[`${r.Codigo_plano}-${r.Mes}`] = parseFloat(r.ValorRealizado) || 0;
         });
 
-        // Configuração de Colunas
         const colunasBanco = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const grupos = {};
 
-        // Regra de Negócio: Ocultar orçado em 2025 se solicitado (mantido do original)
         const ocultarOrcado = (ano && ano.toString() === '2025');
 
         orcamentoData.forEach(row => {
@@ -177,7 +179,7 @@ app.get('/api/orcamento', async (req, res) => {
 
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
-                // Acumula no grupo pai
+                // Acumula no grupo
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
                 grupos[depto].dados[chaveFront].realizado += valRealizado;
                 grupos[depto].dados[chaveFront].diferenca += diferenca;
@@ -195,13 +197,13 @@ app.get('/api/orcamento', async (req, res) => {
 });
 
 // =========================================================================
-// ROTA DASHBOARD - Lógica de Agregação e Filtros
+// ROTA DASHBOARD (Fluxo de Caixa)
 // =========================================================================
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view } = req.query; // view = 'mensal', 'trimestral', 'anual'
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza FROM DFC_Analitica';
+        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza FROM dfc_analitica';
         const params = [];
 
         if (view !== 'anual' && ano) {
@@ -209,10 +211,9 @@ app.get('/api/dashboard', async (req, res) => {
             params.push(ano);
         }
 
-        // Executa a query no MySQL
         const [rawData] = await pool.query(query, params);
 
-        // --- INÍCIO DA LÓGICA DE DADOS (Mantida Idêntica) ---
+        // Lógica de Processamento do Dashboard
         let colunasKeys = [];
         let colunasLabels = [];
 
@@ -252,8 +253,6 @@ app.get('/api/dashboard', async (req, res) => {
         };
 
         let grupos = {};
-
-        // Acumuladores Globais
         let FluxoGlobal = zerarColunas(); 
         let FluxoOperacional = zerarColunas();
         let totalEntradasGlobal = 0;
@@ -280,7 +279,6 @@ app.get('/api/dashboard', async (req, res) => {
             const natureza = row.Natureza ? row.Natureza.trim().toLowerCase() : '';
             const ehSaida = natureza.includes('saída') || natureza.includes('saida');
             
-            // --- GLOBAL (Tabela e Cards) ---
             if (ehSaida) {
                 FluxoGlobal[chaveColuna] -= valorAbsoluto;
                 totalSaidasGlobal += valorAbsoluto;
@@ -289,7 +287,6 @@ app.get('/api/dashboard', async (req, res) => {
                 totalEntradasGlobal += valorAbsoluto;
             }
 
-            // --- PROCESSAMENTO DETALHADO POR GRUPO ---
             if (row.Origem_DFC) {
                 const chaveBanco = normalizar(row.Origem_DFC);
                 let tituloGrupo = configCategorias[chaveBanco];
@@ -318,7 +315,6 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupo.subgruposMap[nome2].itensMap[itemChave]) grupo.subgruposMap[nome2].itensMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
                     grupo.subgruposMap[nome2].itensMap[itemChave][chaveColuna] += valorParaTabela;
 
-                    // Filtro para Gráfico (Superávit Operacional)
                     const ehEntradaOp = tituloGrupo.includes('01'); 
                     const ehSaidaOp = tituloGrupo.includes('02');
                     
@@ -330,7 +326,6 @@ app.get('/api/dashboard', async (req, res) => {
             }
         });
 
-        // Montagem da Estrutura Final
         const ordemDesejada = [
             '01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras',
             '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'
@@ -352,7 +347,6 @@ app.get('/api/dashboard', async (req, res) => {
             }
         });
 
-        // Rodapé da Tabela e Dados do Gráfico
         const graficoData = [];
         const linhaSaldoFinal = zerarColunas();
 
@@ -362,7 +356,6 @@ app.get('/api/dashboard', async (req, res) => {
         });
 
         tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
-
         const somaObj = (o) => Object.values(o).reduce((a, b) => a + b, 0);
         const totalSuperavitDeficit = somaObj(FluxoOperacional);
 
@@ -374,15 +367,8 @@ app.get('/api/dashboard', async (req, res) => {
                 deficitSuperavit: totalSuperavitDeficit,
                 saldoFinal: valInicial + totalSuperavitDeficit
             },
-            grafico: {
-                labels: colunasLabels,
-                data: graficoData
-            },
-            tabela: {
-                rows: tabelaRows,
-                columns: colunasKeys,
-                headers: colunasLabels
-            }
+            grafico: { labels: colunasLabels, data: graficoData },
+            tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
         });
 
     } catch (err) {
@@ -391,10 +377,10 @@ app.get('/api/dashboard', async (req, res) => {
     }
 });
 
-// Tratamento para SPA (Redireciona para index.html)
-app.get(/.*/, (req, res) => {
+// Tratamento de Rota SPA
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor MySQL rodando na porta  http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor Local rodando em: http://localhost:${PORT}`));
