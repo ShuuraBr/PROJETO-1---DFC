@@ -23,7 +23,6 @@ app.post('/api/login', async (req, res) => {
     console.log(`[LOGIN] Tentativa para: ${email}`);
 
     try {
-        // Tabela 'usuarios' e 'departamentos' em minúsculo
         const query = `
             SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
             FROM usuarios U 
@@ -50,11 +49,9 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/usuarios', async (req, res) => {
     const { nome, email, departamentoId, role, nivel } = req.body;
     try {
-        // Tabela 'usuarios' em minúsculo
         const [check] = await pool.query('SELECT Email FROM usuarios WHERE Email = ?', [email]);
         if (check.length > 0) return res.status(400).json({ success: false, message: 'Email já existe' });
 
-        // Tabela 'usuarios' em minúsculo
         await pool.query(
             `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
              VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
@@ -71,7 +68,6 @@ app.post('/api/usuarios', async (req, res) => {
 app.post('/api/definir-senha', async (req, res) => {
     const { email, novaSenha } = req.body;
     try {
-        // Tabela 'usuarios' em minúsculo
         await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
         res.json({ success: true });
     } catch (e) {
@@ -85,7 +81,6 @@ app.post('/api/definir-senha', async (req, res) => {
 
 app.get('/api/departamentos', async (req, res) => {
     try {
-        // Tabela 'departamentos' em minúsculo
         const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
@@ -93,7 +88,6 @@ app.get('/api/departamentos', async (req, res) => {
 
 app.get('/api/anos', async (req, res) => {
     try {
-        // Tabela 'dfc_analitica' em minúsculo
         const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
@@ -105,7 +99,7 @@ app.get('/api/anos', async (req, res) => {
 app.get('/api/orcamento', async (req, res) => {
     const { email, ano } = req.query;
     try {
-        // 1. Identificar Usuário e Permissões (Tabelas minúsculas)
+        // 1. Identificar Usuário e Permissões
         const [users] = await pool.query(
             'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
             [email]
@@ -117,7 +111,7 @@ app.get('/api/orcamento', async (req, res) => {
         const departamentoUsuario = user.Nome_dep || '';
         const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
-        // 2. Buscar Dados de Orçamento (Tabela 'orcamento' minúscula)
+        // 2. Buscar Dados de Orçamento
         let queryOrc = `
             SELECT Plano, Nome, Departamento1, 
                    Janeiro, Fevereiro, Marco, Abril, Maio, Junho, 
@@ -133,7 +127,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        // 3. Buscar Dados Realizados (Tabela 'dfc_analitica' minúscula)
+        // 3. Buscar Dados Realizados
         let queryReal = `
             SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado 
             FROM dfc_analitica 
@@ -209,7 +203,6 @@ app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view } = req.query; // view = 'mensal', 'trimestral', 'anual'
         
-        // Tabela 'dfc_analitica' em minúsculo
         let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza FROM dfc_analitica';
         const params = [];
 
@@ -384,10 +377,10 @@ app.get('/api/dashboard', async (req, res) => {
     }
 });
 
-// Tratamento de Rota SPA (Tudo que não for /api, manda o index.html)
+// Tratamento de Rota SPA
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor Local rodando em: http://localhost:${PORT}`));
