@@ -146,40 +146,32 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 /* TABELAS */
 
-/* --- ATUALIZAÇÃO DE ROLAGEM AQUI --- */
+/* --- ATUALIZAÇÃO: ROLAGEM VERTICAL E HORIZONTAL --- */
 .table-wrapper { 
-    /* "auto" habilita rolagem vertical E horizontal */
-    overflow: auto; 
-    
-    /* Altura limite para forçar a barra de rolagem vertical */
-    max-height: 60vh; 
-    
+    overflow: auto; /* Habilita rolagem em ambos eixos */
+    max-height: 60vh; /* Altura limite para a tabela */
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
-    scrollbar-width: thin; /* Firefox */
+    scrollbar-width: thin; /* Estilo fino para Firefox */
 }
 /* Estilo Webkit (Chrome/Edge/Safari) */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
 .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-/* ------------------------------------- */
+/* ------------------------------------------------ */
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1200px; }
 
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
-    /* Cabeçalho fixo */
     position: sticky; top: 0; z-index: 10; 
 }
 
 #finance-table th:first-child, 
 #finance-table td:first-child { 
-    text-align: left; 
-    /* Coluna fixa */
-    position: sticky; left: 0; z-index: 20; 
-    background-color: inherit; 
+    text-align: left; position: sticky; left: 0; z-index: 20; background-color: inherit; 
     border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
 }
 #finance-table td:first-child { background-color: #fff; }
