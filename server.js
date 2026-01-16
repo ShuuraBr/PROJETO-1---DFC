@@ -2,28 +2,40 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const pool = require('./db'); // Importa a conexão do db.js
+const pool = require('./db'); 
+const nodemailer = require('nodemailer');
+const crypto = require('crypto'); // Adicionado para gerar o token
 
 const app = express();
 
 // Configurações do Express
 app.use(cors());
 app.use(express.json());
-// Serve os arquivos do site (index.html, css, js) da pasta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
 
+// --- NOVO: Configuração do Nodemailer ---
+const transporter = nodemailer.createTransport({
+    host: 'smtp.hostinger.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: 'no-reply@objetivaatacadista.com.br', // Ajuste para seu email real
+        pass: process.env.EMAIL_PASS // Adicione isso no seu .env
+    }
+});
+
 // =========================================================================
-// ROTAS DE AUTENTICAÇÃO (LOGIN)
+// ROTAS DE AUTENTICAÇÃO (ALTERADO PARA 2FA)
 // =========================================================================
 
+// PASSO 1: Verifica senha e envia token
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    console.log(`[LOGIN] Tentativa para: ${email}`);
+    console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
 
     try {
-        // Tabela 'usuarios' e 'departamentos' em minúsculo
         const query = `
             SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
             FROM usuarios U 
@@ -34,9 +46,42 @@ app.post('/api/login', async (req, res) => {
         const [rows] = await pool.query(query, [email, password]);
 
         if (rows.length > 0) {
-            const u = rows[0];
-            console.log(`[LOGIN] Sucesso: ${u.Nome}`);
-            res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
+            // --- NOVA LÓGICA 2FA ---
+            const token = crypto.randomInt(100000, 999999).toString();
+            const validade = new Date();
+            validade.setMinutes(validade.getMinutes() + 10); // 10 min de validade
+
+            // Salva token
+            await pool.query(
+                'INSERT INTO tokens_acesso (email, token, expira_em) VALUES (?, ?, ?)',
+                [email, token, validade]
+            );
+
+            // Envia Email
+            try {
+                await transporter.sendMail({
+                    from: '"Segurança DFC" <no-reply@objetivaatacadista.com.br>',
+                    to: email,
+                    subject: 'Seu Código de Acesso - DFC',
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2>Código de Verificação</h2>
+                            <p>Seu código de acesso é:</p>
+                            <h1 style="color: #2563eb; letter-spacing: 5px;">${token}</h1>
+                            <p>Válido por 10 minutos.</p>
+                        </div>
+                    `
+                });
+                console.log(`[LOGIN 1/2] Token enviado para ${email}`);
+                
+                // Retorna indicando que precisa do 2FA
+                res.json({ success: true, require2fa: true, email: email });
+
+            } catch (mailErr) {
+                console.error("Erro ao enviar email:", mailErr);
+                res.status(500).json({ success: false, message: 'Senha correta, mas erro ao enviar token por e-mail.' });
+            }
+
         } else {
             console.warn(`[LOGIN] Falha: Credenciais inválidas para ${email}`);
             res.status(401).json({ success: false, message: 'E-mail ou senha incorretos' });
@@ -47,14 +92,52 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// PASSO 2: Valida o Token (NOVA ROTA)
+app.post('/api/validar-token', async (req, res) => {
+    const { email, token } = req.body;
+
+    try {
+        // Busca token válido
+        const [tokens] = await pool.query(
+            'SELECT * FROM tokens_acesso WHERE email = ? AND token = ? AND expira_em > NOW() ORDER BY id DESC LIMIT 1',
+            [email, token]
+        );
+
+        if (tokens.length > 0) {
+            // Token OK, agora recupera os dados do usuário para logar
+            const queryUser = `
+                SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
+                FROM usuarios U 
+                LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep 
+                WHERE U.Email = ?
+            `;
+            const [users] = await pool.query(queryUser, [email]);
+            const u = users[0];
+
+            // Limpa token usado
+            await pool.query('DELETE FROM tokens_acesso WHERE id = ?', [tokens[0].id]);
+
+            console.log(`[LOGIN 2/2] Sucesso final: ${u.Nome}`);
+            res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
+        } else {
+            res.status(401).json({ success: false, message: 'Código inválido ou expirado.' });
+        }
+    } catch (e) {
+        console.error("[VALIDAÇÃO] Erro:", e);
+        res.status(500).json({ success: false, message: 'Erro ao validar token.' });
+    }
+});
+
+// =========================================================================
+// ABAIXO TUDO IGUAL AO ORIGINAL
+// =========================================================================
+
 app.post('/api/usuarios', async (req, res) => {
     const { nome, email, departamentoId, role, nivel } = req.body;
     try {
-        // Tabela 'usuarios' em minúsculo
         const [check] = await pool.query('SELECT Email FROM usuarios WHERE Email = ?', [email]);
         if (check.length > 0) return res.status(400).json({ success: false, message: 'Email já existe' });
 
-        // Tabela 'usuarios' em minúsculo
         await pool.query(
             `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
              VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
@@ -71,7 +154,6 @@ app.post('/api/usuarios', async (req, res) => {
 app.post('/api/definir-senha', async (req, res) => {
     const { email, novaSenha } = req.body;
     try {
-        // Tabela 'usuarios' em minúsculo
         await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
         res.json({ success: true });
     } catch (e) {
@@ -79,13 +161,8 @@ app.post('/api/definir-senha', async (req, res) => {
     }
 });
 
-// =========================================================================
-// ROTAS DE DADOS AUXILIARES
-// =========================================================================
-
 app.get('/api/departamentos', async (req, res) => {
     try {
-        // Tabela 'departamentos' em minúsculo
         const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
@@ -93,19 +170,14 @@ app.get('/api/departamentos', async (req, res) => {
 
 app.get('/api/anos', async (req, res) => {
     try {
-        // Tabela 'dfc_analitica' em minúsculo
         const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
         res.json(rows);
     } catch (e) { res.status(500).json([]); }
 });
 
-// =========================================================================
-// ROTA DE ORÇAMENTO
-// =========================================================================
 app.get('/api/orcamento', async (req, res) => {
     const { email, ano } = req.query;
     try {
-        // 1. Identificar Usuário e Permissões (Tabelas minúsculas)
         const [users] = await pool.query(
             'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
             [email]
@@ -117,7 +189,6 @@ app.get('/api/orcamento', async (req, res) => {
         const departamentoUsuario = user.Nome_dep || '';
         const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
-        // 2. Buscar Dados de Orçamento (Tabela 'orcamento' minúscula)
         let queryOrc = `
             SELECT Plano, Nome, Departamento1, 
                    Janeiro, Fevereiro, Marco, Abril, Maio, Junho, 
@@ -133,7 +204,6 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        // 3. Buscar Dados Realizados (Tabela 'dfc_analitica' minúscula)
         let queryReal = `
             SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado 
             FROM dfc_analitica 
@@ -148,7 +218,6 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [resReal] = await pool.query(queryReal, paramsReal);
 
-        // 4. Processamento de Dados (Merge)
         const mapRealizado = {};
         resReal.forEach(r => {
             mapRealizado[`${r.Codigo_plano}-${r.Mes}`] = parseFloat(r.ValorRealizado) || 0;
@@ -185,7 +254,6 @@ app.get('/api/orcamento', async (req, res) => {
 
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
-                // Acumula no grupo
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
                 grupos[depto].dados[chaveFront].realizado += valRealizado;
                 grupos[depto].dados[chaveFront].diferenca += diferenca;
@@ -202,14 +270,10 @@ app.get('/api/orcamento', async (req, res) => {
     }
 });
 
-// =========================================================================
-// ROTA DASHBOARD (Fluxo de Caixa)
-// =========================================================================
 app.get('/api/dashboard', async (req, res) => {
     try {
-        const { ano, view } = req.query; // view = 'mensal', 'trimestral', 'anual'
+        const { ano, view } = req.query; 
         
-        // Tabela 'dfc_analitica' em minúsculo
         let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza FROM dfc_analitica';
         const params = [];
 
@@ -220,7 +284,6 @@ app.get('/api/dashboard', async (req, res) => {
 
         const [rawData] = await pool.query(query, params);
 
-        // Lógica de Processamento do Dashboard
         let colunasKeys = [];
         let colunasLabels = [];
 
@@ -384,7 +447,6 @@ app.get('/api/dashboard', async (req, res) => {
     }
 });
 
-// Tratamento de Rota SPA (Tudo que não for /api, manda o index.html)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

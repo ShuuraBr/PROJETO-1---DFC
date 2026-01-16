@@ -1,6 +1,5 @@
 // ARQUIVO: public/script.js
 
-// Pega o ano atual do sistema (ex: 2026)
 const ANO_ATUAL = new Date().getFullYear();
 
 const app = {
@@ -8,6 +7,9 @@ const app = {
     chart: null,
     orcamentoChart: null,
     
+    // --- ESTADO 2FA ---
+    emailTemp: null,
+
     // ESTADO INICIAL
     yearDashboard: ANO_ATUAL, 
     yearOrcamento: ANO_ATUAL,
@@ -17,15 +19,21 @@ const app = {
     dadosOrcamentoCache: null,
 
     init: () => {
-        // --- LÓGICA DE PERSISTÊNCIA DE LOGIN (SESSÃO) ---
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
         
-        // Inicia carregando os anos
         app.carregarAnosDisponiveis();
 
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
+
+        // --- LISTENER NOVO PARA TOKEN ---
+        const tokenForm = document.getElementById('tokenForm');
+        if(tokenForm) tokenForm.addEventListener('submit', app.validarToken);
+
+        const btnCancelarToken = document.getElementById('btn-cancelar-token');
+        if(btnCancelarToken) btnCancelarToken.addEventListener('click', app.resetLoginUI);
+        // ---------------------------------
 
         const btnLogout = document.getElementById('btn-logout');
         if(btnLogout) btnLogout.addEventListener('click', app.logout);
@@ -36,7 +44,6 @@ const app = {
         const formReset = document.getElementById('form-reset');
         if(formReset) formReset.addEventListener('submit', app.confirmarResetSenha);
 
-        // Listener Busca Inteligente
         const searchInput = document.getElementById('dashboard-search');
         const clearBtn = document.getElementById('btn-clear-search');
 
@@ -62,7 +69,6 @@ const app = {
             });
         }
 
-        // Listener Tipo de Visão
         const viewSelect = document.getElementById('dashboard-view-type');
         if(viewSelect) {
             viewSelect.addEventListener('change', (e) => {
@@ -72,7 +78,6 @@ const app = {
             });
         }
         
-        // Listener Filtro Departamento
         const filtroDept = document.getElementById('filtro-dep-orcamento');
         if(filtroDept) {
             filtroDept.addEventListener('change', () => {
@@ -88,7 +93,6 @@ const app = {
             });
         });
 
-        // --- VERIFICAÇÃO FINAL DE ESTADO ---
         if (usuarioSalvo) {
             try {
                 app.user = JSON.parse(usuarioSalvo);
@@ -100,7 +104,7 @@ const app = {
                 }
             } catch (e) {
                 console.error("Erro ao restaurar sessão:", e);
-                sessionStorage.removeItem('dfc_user'); // Limpa da sessão se erro
+                sessionStorage.removeItem('dfc_user'); 
                 app.showLogin();
             }
         } else {
@@ -194,7 +198,6 @@ const app = {
             if (res.ok) {
                 const dados = await res.json();
                 if (Array.isArray(dados) && dados.length > 0) {
-                    // Converter para inteiros
                     anos = dados.map(d => parseInt(d.Ano || d));
                 }
             }
@@ -202,17 +205,14 @@ const app = {
             console.log("API de anos offline, usando padrão.");
         }
 
-        // --- GARANTIA ABSOLUTA DO ANO ATUAL ---
         if (!anos.includes(ANO_ATUAL)) {
             anos.push(ANO_ATUAL);
         }
 
-        // Remove duplicatas e ordena
         anos = [...new Set(anos)].sort((a, b) => a - b);
 
         app.setupYearFilters(anos);
         
-        // Se já logado, dispara o fetch inicial com o ano configurado
         if (app.user && !document.getElementById('page-dashboard').classList.contains('hidden')) {
             app.fetchData();
         }
@@ -288,6 +288,7 @@ const app = {
         app.user = null;
     },
 
+    // --- NOVA FUNÇÃO DE LOGIN (PASSO 1) ---
     login: async (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value;
@@ -302,22 +303,71 @@ const app = {
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
+            
+            if (data.success && data.require2fa) {
+                // SUCESSO PASSO 1 - VAI PARA TOKEN
+                app.emailTemp = data.email;
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('tokenForm').classList.remove('hidden');
+                document.getElementById('token-input').value = "";
+                document.getElementById('token-input').focus();
+            } else if (!data.success) { 
+                err.innerText = data.message; 
+            }
+        } catch (e) { err.innerText = "Erro de conexão."; } 
+        finally { app.setLoading(false); }
+    },
+
+    // --- NOVA FUNÇÃO PARA VALIDAR TOKEN (PASSO 2) ---
+    validarToken: async (e) => {
+        e.preventDefault();
+        const token = document.getElementById('token-input').value;
+        const err = document.getElementById('msg-error');
+
+        if(!token || token.length < 6) {
+            err.innerText = "Digite o código completo.";
+            return;
+        }
+
+        app.setLoading(true);
+        err.innerText = "";
+
+        try {
+            const res = await fetch('/api/validar-token', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email: app.emailTemp, token: token })
+            });
+            const data = await res.json();
+
             if (data.success) {
+                // SUCESSO TOTAL
                 app.user = data.user;
-                
-                // USANDO SESSIONSTORAGE (Morre ao fechar a aba)
                 sessionStorage.setItem('dfc_user', JSON.stringify(app.user));
                 
                 document.getElementById('password').value = "";
+                app.resetLoginUI();
+
                 if (app.user.Senha_prov) {
-                    app.setLoading(false);
                     document.getElementById('view-login').classList.add('hidden');
                     document.getElementById('modal-reset').classList.remove('hidden'); 
                 } else { app.showApp(); }
-            } else { err.innerText = data.message; }
-        } catch (e) { err.innerText = "Erro de conexão."; } 
-        finally { if (!app.user || !app.user.Senha_prov) app.setLoading(false); }
+            } else {
+                err.innerText = data.message;
+            }
+        } catch (e) {
+            err.innerText = "Erro ao validar token.";
+        } finally {
+            app.setLoading(false);
+        }
     },
+
+    resetLoginUI: () => {
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('tokenForm').classList.add('hidden');
+        document.getElementById('msg-error').innerText = "";
+        app.emailTemp = null;
+    },
+    // -----------------------------------------------------
 
     confirmarResetSenha: async (e) => {
         e.preventDefault();
@@ -337,19 +387,13 @@ const app = {
                 alert("Senha atualizada!");
                 document.getElementById('modal-reset').classList.add('hidden');
                 app.user.Senha_prov = null; 
-                
-                // Atualiza no SessionStorage
                 sessionStorage.setItem('dfc_user', JSON.stringify(app.user));
-                
                 app.showApp();
             } else { msg.innerText = data.message; }
         } catch (err) { msg.innerText = "Erro ao atualizar senha."; } 
         finally { app.setLoading(false); }
     },
 
-    // =========================================================
-    // ALTERAÇÃO PRINCIPAL: CONTROLE DE ACESSO POR NÍVEL
-    // =========================================================
     showApp: () => {
         document.getElementById('view-login').classList.add('hidden');
         document.getElementById('modal-reset').classList.add('hidden');
@@ -370,35 +414,23 @@ const app = {
             elOrc.innerText = textoUsuario;
         }
 
-        // --- LÓGICA DE PERMISSÕES POR NÍVEL ---
-        const role = app.user.Role; // 'admin' ou 'user'
-        const nivel = parseInt(app.user.Nivel || 0); // 1, 2, 3...
+        const role = app.user.Role; 
+        const nivel = parseInt(app.user.Nivel || 0);
 
-        // Nível 1: Super Admin (Vê Configurações, Dashboard, Orçamento)
         const isSuperAdmin = (role === 'admin' && nivel === 1);
-
-        // Nível 2 ou 1: Gestão (Vê Dashboard e Orçamento, mas NÃO Configurações)
         const isGestor = (role === 'admin' && (nivel === 1 || nivel === 2));
 
-        // 1. Controle da aba "Configurações" (.restricted)
-        // Apenas Nível 1 pode ver a engrenagem e acessar configs
         document.querySelectorAll('.restricted').forEach(el => {
             el.style.setProperty('display', isSuperAdmin ? 'flex' : 'none', 'important');
         });
 
-        // 2. Controle do botão "Dashboard"
-        // Nível 1 e 2 podem ver. Usuários comuns ou Nível 3+ não veem o botão na sidebar.
         const btnDashboard = document.querySelector('.nav-btn[data-target="dashboard"]');
         if (btnDashboard) {
             btnDashboard.style.display = isGestor ? 'flex' : 'none';
         }
 
-        // 3. Carregar departamentos (apenas se tiver acesso a configurações)
         if(isSuperAdmin) app.loadDepartamentos();
         
-        // 4. Redirecionamento Inicial
-        // Se for Gestor (Nível 1 ou 2), vai para Dashboard.
-        // Se for outro, vai direto para Orçamento.
         if (isGestor) {
             app.switchTab('dashboard');
             setTimeout(() => app.fetchData(), 100);
@@ -409,7 +441,6 @@ const app = {
 
     logout: () => { 
         app.user = null; 
-        // Remove da sessão ao sair
         sessionStorage.removeItem('dfc_user');
         app.showLogin(); 
     },
@@ -722,7 +753,6 @@ const app = {
         if(!canvas) return;
         if (typeof Chart === 'undefined') return;
 
-        // Limpa legenda personalizada se existir (do código anterior)
         const customLegend = document.getElementById('custom-chart-legend');
         if(customLegend) customLegend.remove();
 
@@ -993,7 +1023,7 @@ const app = {
     fetchData: async () => {
         app.setLoading(true);
         try {
-            const anoParam = app.yearDashboard; // Já inicializado com ANO_ATUAL
+            const anoParam = app.yearDashboard; 
             const viewParam = app.viewType || 'mensal';
             
             const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}`);

@@ -50,6 +50,7 @@
                 <h2>Acesso Corporativo</h2>
                 <p>Fluxo de Caixa</p>
             </div>
+            
             <form id="loginForm">
                 <div class="input-wrapper">
                     <label>E-mail</label>
@@ -59,9 +60,32 @@
                     <label>Senha</label>
                     <input type="password" id="password" required>
                 </div>
-                <button type="submit" class="btn-primary">Entrar</button>
-                <p id="msg-error" class="error-text"></p>
+                <button type="submit" class="btn-primary">Continuar</button>
             </form>
+
+            <form id="tokenForm" class="hidden" style="margin-top: 20px;">
+                <div style="background: #eff6ff; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bfdbfe;">
+                    <p style="font-size: 14px; color: #1e40af; line-height: 1.4;">
+                        <i class="fa-solid fa-envelope" style="margin-right: 6px;"></i> 
+                        Enviamos um código para o seu e-mail.
+                    </p>
+                </div>
+
+                <div class="input-wrapper">
+                    <label style="text-align: center;">Código de Verificação</label>
+                    <input type="text" id="token-input" placeholder="000000" maxlength="6" 
+                           style="text-align: center; letter-spacing: 8px; font-size: 24px; font-weight: bold; padding: 15px;">
+                </div>
+                
+                <button type="submit" class="btn-primary">Acessar Sistema</button>
+                
+                <button type="button" id="btn-cancelar-token" 
+                        style="background:none; border:none; color:#6b7280; font-size:13px; margin-top:15px; cursor:pointer; text-decoration:underline;">
+                    Voltar para login
+                </button>
+            </form>
+
+            <p id="msg-error" class="error-text"></p>
         </div>
     </div>
 
