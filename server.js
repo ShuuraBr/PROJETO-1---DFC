@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const pool = require('./db'); 
 const nodemailer = require('nodemailer');
-const crypto = require('crypto'); // Adicionado para gerar o token
+const crypto = require('crypto');
 
 const app = express();
 
@@ -12,8 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// [CRÍTICO] Serve os arquivos estáticos (CSS, JS, Imagens) da pasta public
-// Isso substitui a função do .htaccess para arquivos
+// Serve os arquivos estáticos (CSS, JS, Imagens)
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
@@ -30,31 +29,26 @@ const transporter = nodemailer.createTransport({
 });
 
 // =========================================================================
-// ROTA DE DIAGNÓSTICO (NOVA LÓGICA)
+// ROTA DE DIAGNÓSTICO
 // =========================================================================
-// Acesse https://seu-site.com/api/status para testar a conexão com o banco
 app.get('/api/status', async (req, res) => {
     try {
         await pool.query('SELECT 1');
         res.json({ 
             status: 'ONLINE', 
-            msg: 'Conexão com banco de dados OK', 
-            host: process.env.DB_HOST // Mostra qual IP o sistema está usando
+            msg: 'Conexão com banco de dados OK',
+            timestamp: new Date()
         });
     } catch (error) {
-        res.status(500).json({ 
-            status: 'OFFLINE', 
-            erro: error.message,
-            dica: 'Verifique se o DB_HOST no arquivo .env está correto (localhost ou IP).'
-        });
+        res.status(500).json({ status: 'OFFLINE', erro: error.message });
     }
 });
 
 // =========================================================================
-// ROTAS DE AUTENTICAÇÃO (2FA)
+// ROTAS DE AUTENTICAÇÃO (2FA) - CORRIGIDO
 // =========================================================================
 
-// PASSO 1: Verifica senha e envia token
+// PASSO 1: Verifica senha e envia token (SEM TRAVAR O FRONT)
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
@@ -70,47 +64,43 @@ app.post('/api/login', async (req, res) => {
         const [rows] = await pool.query(query, [email, password]);
 
         if (rows.length > 0) {
-            // --- NOVA LÓGICA 2FA ---
+            // Gera o Token
             const token = crypto.randomInt(100000, 999999).toString();
             
-            // CORREÇÃO: Usamos o horário do MySQL para evitar erro de fuso horário
+            // Salva no banco (validade 30s)
             await pool.query(
                 'INSERT INTO tokens_acesso (email, token, expira_em) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 SECOND))',
                 [email, token]
             );
 
-            // Envia Email
-            try {
-                await transporter.sendMail({
-                    from: '"Segurança DFC" <no-reply@dfc.objetivaatacadista.com.br>',
-                    to: email,
-                    subject: 'Seu Código de Acesso - DFC',
-                    html: `
-                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                            <h2>Código de Verificação</h2>
-                            <p>Seu código de acesso é:</p>
-                            <h1 style="color: #2563eb; letter-spacing: 5px;">${token}</h1>
-                            <p style="color: #dc2626; font-weight: bold;">⚠️ Válido por 30 segundos.</p>
-                        </div>
-                    `
-                });
-                console.log(`[LOGIN 1/2] Token enviado para ${email}`);
-                
-                // Retorna indicando que precisa do 2FA
-                res.json({ success: true, require2fa: true, email: email });
+            // --- CORREÇÃO AQUI: FIRE-AND-FORGET ---
+            // Removemos o 'await' para não travar a resposta esperando o SMTP
+            transporter.sendMail({
+                from: '"Segurança DFC" <no-reply@dfc.objetivaatacadista.com.br>',
+                to: email,
+                subject: 'Seu Código de Acesso - DFC',
+                html: `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                        <h2>Código de Verificação</h2>
+                        <p>Seu código de acesso é:</p>
+                        <h1 style="color: #2563eb; letter-spacing: 5px;">${token}</h1>
+                        <p style="color: #dc2626; font-weight: bold;">⚠️ Válido por 30 segundos.</p>
+                    </div>
+                `
+            }).catch(err => console.error("[EMAIL ERROR] Falha no envio em background:", err));
 
-            } catch (mailErr) {
-                console.error("Erro ao enviar email:", mailErr);
-                res.status(500).json({ success: false, message: 'Senha correta, mas erro ao enviar token por e-mail.' });
-            }
+            console.log(`[LOGIN 1/2] Credenciais OK. Token gerado para ${email}. Respondendo rápido...`);
+            
+            // Responde IMEDIATAMENTE para o frontend
+            return res.json({ success: true, require2fa: true, email: email });
 
         } else {
             console.warn(`[LOGIN] Falha: Credenciais inválidas para ${email}`);
-            res.status(401).json({ success: false, message: 'E-mail ou senha incorretos' });
+            return res.status(401).json({ success: false, message: 'E-mail ou senha incorretos' });
         }
     } catch (e) {
         console.error("[LOGIN] Erro Crítico:", e.message);
-        res.status(500).json({ success: false, message: 'Erro ao conectar no banco de dados.' });
+        return res.status(500).json({ success: false, message: 'Erro interno no servidor.' });
     }
 });
 
@@ -119,14 +109,13 @@ app.post('/api/validar-token', async (req, res) => {
     const { email, token } = req.body;
 
     try {
-        // Busca token válido usando NOW() do banco
+        // Busca token válido
         const [tokens] = await pool.query(
             'SELECT * FROM tokens_acesso WHERE email = ? AND token = ? AND expira_em > NOW() ORDER BY id DESC LIMIT 1',
             [email, token]
         );
 
         if (tokens.length > 0) {
-            // Token OK, agora recupera os dados do usuário para logar
             const queryUser = `
                 SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
                 FROM usuarios U 
@@ -136,7 +125,7 @@ app.post('/api/validar-token', async (req, res) => {
             const [users] = await pool.query(queryUser, [email]);
             const u = users[0];
 
-            // Limpa token usado
+            // Queima o token para não usar de novo
             await pool.query('DELETE FROM tokens_acesso WHERE id = ?', [tokens[0].id]);
 
             console.log(`[LOGIN 2/2] Sucesso final: ${u.Nome}`);
@@ -151,7 +140,7 @@ app.post('/api/validar-token', async (req, res) => {
 });
 
 // =========================================================================
-// ROTAS DE DADOS (MANTIDAS IGUAIS)
+// ROTAS DE DADOS (MANTIDAS)
 // =========================================================================
 
 app.post('/api/usuarios', async (req, res) => {
@@ -355,12 +344,10 @@ app.get('/api/dashboard', async (req, res) => {
     } catch (err) { console.error("ERRO DASHBOARD:", err); res.status(500).json({ error: "Erro interno" }); }
 });
 
-// [CRÍTICO] Fallback para SPA (Single Page Application)
-// Garante que o usuário possa dar F5 em qualquer rota sem quebrar
+// Fallback SPA
 app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📡 Conectando no banco: ${process.env.DB_HOST}`);
 });
