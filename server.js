@@ -49,7 +49,7 @@ app.post('/api/login', async (req, res) => {
             // --- NOVA LÓGICA 2FA ---
             const token = crypto.randomInt(100000, 999999).toString();
             const validade = new Date();
-            validade.setSeconds(validade.getSeconds() + 30); // 10 min de validade
+            validade.setSeconds(validade.getSeconds() + 30);
 
             // Salva token
             await pool.query(
