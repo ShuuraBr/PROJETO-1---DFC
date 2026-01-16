@@ -122,7 +122,7 @@ app.post('/api/validar-token', async (req, res) => {
             console.log(`[LOGIN 2/2] Sucesso final: ${u.Nome}`);
             res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
         } else {
-            res.status(401).json({ success: false, message: 'Código inválido ou expirado (limite de 30s).' });
+            res.status(401).json({ success: false, message: 'Código inválido ou expirado (limite de 60s).' });
         }
     } catch (e) {
         console.error("[VALIDAÇÃO] Erro:", e);
