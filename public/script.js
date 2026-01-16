@@ -7,8 +7,9 @@ const app = {
     chart: null,
     orcamentoChart: null,
     
-    // --- ESTADO NOVO: 2FA ---
+    // --- ESTADO 2FA ---
     emailTemp: null,
+    timer: null, // Novo estado para controlar o relógio
 
     // ESTADO INICIAL
     yearDashboard: ANO_ATUAL, 
@@ -27,13 +28,13 @@ const app = {
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
 
-        // --- NOVOS LISTENERS PARA TOKEN ---
+        // --- LISTENER NOVO PARA TOKEN ---
         const tokenForm = document.getElementById('tokenForm');
         if(tokenForm) tokenForm.addEventListener('submit', app.validarToken);
 
         const btnCancelarToken = document.getElementById('btn-cancelar-token');
         if(btnCancelarToken) btnCancelarToken.addEventListener('click', app.resetLoginUI);
-        // ----------------------------------
+        // ---------------------------------
 
         const btnLogout = document.getElementById('btn-logout');
         if(btnLogout) btnLogout.addEventListener('click', app.logout);
@@ -306,23 +307,52 @@ const app = {
             const data = await res.json();
             
             if (data.success && data.require2fa) {
-                // SUCESSO NO LOGIN DE SENHA -> VAI PARA TOKEN
+                // SUCESSO PASSO 1 - VAI PARA TOKEN
                 app.emailTemp = data.email;
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('tokenForm').classList.remove('hidden');
                 document.getElementById('token-input').value = "";
                 document.getElementById('token-input').focus();
-            } else if (!data.success) {
-                err.innerText = data.message;
+                
+                // INICIA O CRONÔMETRO VISUAL (NOVA LÓGICA DE 30s)
+                app.startCountdown();
+
+            } else if (!data.success) { 
+                err.innerText = data.message; 
+                err.style.color = 'var(--danger)';
             }
         } catch (e) { 
             err.innerText = "Erro de conexão."; 
+            err.style.color = 'var(--danger)';
         } finally { 
             app.setLoading(false); 
         }
     },
 
-    // --- NOVA FUNÇÃO DE VALIDAÇÃO (PASSO 2) ---
+    // --- FUNÇÃO PARA CONTAR OS 30 SEGUNDOS ---
+    startCountdown: () => {
+        const err = document.getElementById('msg-error');
+        let timeLeft = 30; // 30 segundos conforme backend
+        
+        if (app.timer) clearInterval(app.timer);
+        
+        // Define a mensagem inicial
+        err.innerText = `Código enviado! Válido por ${timeLeft}s`;
+        err.style.color = '#2563eb'; // Azul
+
+        app.timer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(app.timer);
+                err.innerText = "Tempo esgotado. Solicite novo código.";
+                err.style.color = '#ef4444'; // Vermelho
+            } else {
+                err.innerText = `Código enviado! Válido por ${timeLeft}s`;
+            }
+        }, 1000);
+    },
+
+    // --- NOVA FUNÇÃO PARA VALIDAR TOKEN (PASSO 2) ---
     validarToken: async (e) => {
         e.preventDefault();
         const token = document.getElementById('token-input').value;
@@ -330,11 +360,11 @@ const app = {
 
         if(!token || token.length < 6) {
             err.innerText = "Digite o código completo.";
+            err.style.color = '#ef4444';
             return;
         }
 
         app.setLoading(true);
-        err.innerText = "";
 
         try {
             const res = await fetch('/api/validar-token', {
@@ -344,37 +374,40 @@ const app = {
             const data = await res.json();
 
             if (data.success) {
-                // SUCESSO FINAL
+                // SUCESSO TOTAL
+                if (app.timer) clearInterval(app.timer); // Para o contador
+                
                 app.user = data.user;
                 sessionStorage.setItem('dfc_user', JSON.stringify(app.user));
                 
                 document.getElementById('password').value = "";
-                app.resetLoginUI(); // Limpa estado temporário
+                app.resetLoginUI();
 
                 if (app.user.Senha_prov) {
                     document.getElementById('view-login').classList.add('hidden');
                     document.getElementById('modal-reset').classList.remove('hidden'); 
-                } else { 
-                    app.showApp(); 
-                }
+                } else { app.showApp(); }
             } else {
-                err.innerText = data.message;
+                err.innerText = data.message; // Mensagem do server (ex: Expirado)
+                err.style.color = '#ef4444';
             }
         } catch (e) {
             err.innerText = "Erro ao validar token.";
+            err.style.color = '#ef4444';
         } finally {
             app.setLoading(false);
         }
     },
 
-    // RESETAR A TELA DE LOGIN PARA O ESTADO INICIAL
     resetLoginUI: () => {
+        if (app.timer) clearInterval(app.timer); // Limpa timer ao voltar
+        
         document.getElementById('loginForm').classList.remove('hidden');
         document.getElementById('tokenForm').classList.add('hidden');
         document.getElementById('msg-error').innerText = "";
         app.emailTemp = null;
     },
-    // ----------------------------------------
+    // -----------------------------------------------------
 
     confirmarResetSenha: async (e) => {
         e.preventDefault();
@@ -447,6 +480,7 @@ const app = {
     },
 
     logout: () => { 
+        if (app.timer) clearInterval(app.timer);
         app.user = null; 
         sessionStorage.removeItem('dfc_user');
         app.showLogin(); 
