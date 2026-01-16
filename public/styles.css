@@ -144,23 +144,27 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
-/* TABELAS */
-
-/* --- ATUALIZAÇÃO: ROLAGEM VERTICAL E HORIZONTAL --- */
+/* TABELAS (DASHBOARD) - MODIFICADO */
 .table-wrapper { 
-    overflow: auto; /* Habilita rolagem em ambos eixos */
-    max-height: 60vh; /* Altura limite para a tabela */
+    /* Habilita rolagem em ambos os eixos */
+    overflow: auto; 
+    
+    /* Define altura máxima para forçar a rolagem vertical */
+    max-height: 60vh; 
+    
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
-    scrollbar-width: thin; /* Estilo fino para Firefox */
+    
+    /* Rolagem suave */
+    scrollbar-width: thin; 
 }
-/* Estilo Webkit (Chrome/Edge/Safari) */
+
+/* Estilização da barra de rolagem (Chrome/Edge/Safari) */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
 .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-/* ------------------------------------------------ */
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1200px; }
 
