@@ -823,6 +823,317 @@ const app = {
                     }
                 ]
             },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true } },
+                    tooltip: { enabled: false }, 
+                    datalabels: {
+                        display: function(context) { return window.innerWidth > 768; },
+                        align: 'top', anchor: 'end', offset: 8, clamp: true,       
+                        color: function(context) { return context.dataset.data[context.dataIndex] >= 0 ? '#059669' : '#dc2626'; },
+                        font: { weight: 'bold', size: 12 },
+                        formatter: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(value); }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, grace: '50%', grid: { borderDash: [5, 5], color: '#f3f4f6' }, ticks: { callback: v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(v) } },
+                    x: { offset: true, grid: { display: false } }
+                }
+            }
+        });
+    },
+
+    renderTable: (data) => {
+        const rows = data.rows;
+        const columns = data.columns; 
+        const headers = data.headers;
+
+        const tbody = document.querySelector('#finance-table tbody');
+        const thead = document.querySelector('#finance-table thead');
+        
+        if(!tbody || !thead) return;
+
+        let thHtml = `<tr>
+            <th>Plano Financeiro</th>`;
+        headers.forEach(h => {
+            thHtml += `<th>${h}</th>`;
+        });
+        thHtml += `</tr>`;
+        thead.innerHTML = thHtml;
+
+        if(!rows || rows.length===0) { tbody.innerHTML='<tr><td colspan="15">Sem dados</td></tr>'; return; }
+
+        const fmt = v => v ? new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v) : '-';
+
+        let html = '';
+        rows.forEach((row, idx1) => {
+            const idNivel1 = `L1-${idx1}`; 
+            let trStyle = ''; 
+            let tdClass = ''; 
+            let icon = '';
+            let clickAction = '';
+            let rowClass = '';
+
+            if (row.tipo === 'saldo' || row.tipo === 'info') {
+                trStyle = 'background-color: #eff6ff; font-weight: 800; color: #1e3a8a; border-top: 2px solid #bfdbfe;';
+            } else if (row.tipo === 'grupo') {
+                rowClass = 'hover-row';
+                trStyle = 'font-weight: 600; cursor: pointer; background-color: #fff;'; 
+                icon = '<i class="fa-solid fa-chevron-right toggle-icon"></i> ';
+                clickAction = `onclick="app.toggleGroup('${idNivel1}', this)"`;
+                if (row.conta.includes('Entradas')) tdClass = 'text-green';
+                if (row.conta.includes('Saídas')) tdClass = 'text-red';
+            }
+
+            let tdsValores = '';
+            columns.forEach(colKey => {
+                tdsValores += `<td class="${tdClass}">${fmt(row[colKey])}</td>`;
+            });
+
+            html += `<tr style="${trStyle}" class="${rowClass}" ${clickAction}>
+                    <td style="text-align:left; padding-left:10px;">${icon}<span class="${tdClass}">${row.conta}</span></td>
+                    ${tdsValores}
+                </tr>`;
+
+            if (row.detalhes && row.detalhes.length > 0) {
+                row.detalhes.forEach((subgrupo, idx2) => {
+                    const idNivel2 = `L2-${idx1}-${idx2}`; 
+                    
+                    let tdsSub = '';
+                    columns.forEach(colKey => {
+                        tdsSub += `<td>${fmt(subgrupo[colKey])}</td>`;
+                    });
+
+                    html += `<tr class="child-row hidden pai-${idNivel1} hover-row" onclick="app.toggleSubGroup('${idNivel2}', this)" style="cursor: pointer;">
+                            <td style="text-align:left; padding-left: 25px; font-weight: 600;">
+                                <i class="fa-solid fa-chevron-right toggle-icon"></i> ${subgrupo.conta}
+                            </td>
+                            ${tdsSub}
+                        </tr>`;
+                    if (subgrupo.detalhes) {
+                        subgrupo.detalhes.forEach(item => {
+                            let tdsItem = '';
+                            columns.forEach(colKey => {
+                                tdsItem += `<td>${fmt(item[colKey])}</td>`;
+                            });
+
+                            html += `<tr class="child-row hidden pai-${idNivel2} avo-${idNivel1}">
+                                    <td style="text-align:left; padding-left: 50px; color: #555;">${item.conta}</td>
+                                    ${tdsItem}
+                                </tr>`;
+                        });
+                    }
+                });
+            }
+        });
+        tbody.innerHTML = html;
+    },
+
+    renderOrcamentoTable: (data) => {
+        const tbody = document.querySelector('#orcamento-table tbody');
+        if(!tbody) return;
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="49" style="text-align:center; padding:20px;">Nenhum registro encontrado.</td></tr>';
+            return;
+        }
+
+        const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+        const fmtPerc = v => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(v) + '%';
+        const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+        let html = '';
+        data.forEach((grupo, idx) => {
+            const idGrupo = `orc-g-${idx}`;
+            let colsHtmlGrupo = '';
+            meses.forEach(m => {
+                const vals = grupo.dados[m];
+                let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
+                
+                colsHtmlGrupo += `
+                    <td class="col-orc" style="font-weight:bold;">${fmt(vals.orcado)}</td>
+                    <td class="col-real" style="font-weight:bold;">${fmt(vals.realizado)}</td>
+                    <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(vals.diferenca))}</td>
+                    <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+            });
+
+            html += `<tr class="hover-row" onclick="app.toggleGroup('${idGrupo}', this)" style="cursor: pointer; background-color: #f8fafc;">
+                    <td class="sticky-col" style="font-weight: 700; color: #1e3a8a; background-color: #f8fafc !important;"><i class="fa-solid fa-chevron-right toggle-icon"></i> ${grupo.conta}</td>
+                    ${colsHtmlGrupo}
+                </tr>`;
+
+            if(grupo.detalhes) {
+                grupo.detalhes.forEach(item => {
+                    let colsHtmlItem = '';
+                    meses.forEach(m => {
+                        const vals = item.dados[m];
+                        let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                        let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
+                        
+                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(vals.orcado)}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(vals.diferenca))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+                    });
+                    html += `<tr class="child-row hidden pai-${idGrupo}">
+                            <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
+                            ${colsHtmlItem}
+                        </tr>`;
+                });
+            }
+        });
+        tbody.innerHTML = html;
+    },
+
+    loadDepartamentos: async () => {
+        try {
+            const res = await fetch('/api/departamentos');
+            const deps = await res.json();
+            const select = document.getElementById('cad-departamento');
+            if(select) {
+                select.innerHTML = '<option value="">Selecione...</option>';
+                deps.forEach(d => { select.innerHTML += `<option value="${d.Id_dep}">${d.Nome_dep}</option>`; });
+            }
+        } catch (err) { console.error(err); }
+    },
+
+    cadastrarUsuario: async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('cad-mensagem');
+        msg.innerText = "Enviando..."; msg.style.color = "blue";
+        
+        const prefixo = document.getElementById('cad-email-prefix').value.trim();
+        const emailFinal = `${prefixo}@objetivaatacadista.com.br`;
+
+        const dados = {
+            nome: document.getElementById('cad-nome').value,
+            email: emailFinal,
+            departamentoId: document.getElementById('cad-departamento').value,
+            role: document.getElementById('cad-role').value,
+            nivel: document.getElementById('cad-nivel').value 
+        };
+        
+        try {
+            const res = await fetch('/api/usuarios', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+            const result = await res.json();
+            if (result.success) {
+                msg.innerText = "✅ " + result.message; msg.style.color = "green";
+                document.getElementById('form-cadastro').reset();
+                if(document.getElementById('cad-nivel')) document.getElementById('cad-nivel').value = '1';
+            } else { msg.innerText = "❌ " + result.message; msg.style.color = "red"; }
+        } catch (err) { msg.innerText = "Erro ao conectar."; msg.style.color = "red"; }
+    },
+
+    fetchData: async () => {
+        app.setLoading(true);
+        try {
+            const anoParam = app.yearDashboard; 
+            const viewParam = app.viewType || 'mensal';
+            
+            const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}`);
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
+            
+            app.renderKPIs(data.cards);
+            app.renderTable(data.tabela); 
+            setTimeout(() => app.renderChart(data.grafico), 50);
+        } catch (err) { console.error(err); } 
+        finally { app.setLoading(false); }
+    },
+
+    renderKPIs: (c) => {
+        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
+        const ct = document.getElementById('kpi-container');
+        if(!ct) return;
+        const mk = (l, v, cl) => `<div class="card"><div class="card-title">${l}</div><div class="card-value ${cl}">${fmt(v)}</div></div>`;
+        const labelResultado = c.deficitSuperavit >= 0 ? 'Superávit' : 'Déficit';
+        ct.innerHTML = mk('Saldo Inicial',c.saldoInicial,'') + 
+                       mk('Entradas',c.entrada,'text-green') + 
+                       mk('Saídas',c.saida,'text-red') + 
+                       mk(labelResultado, c.deficitSuperavit, c.deficitSuperavit>=0?'text-green':'text-red') + 
+                       mk('Saldo Final',c.saldoFinal,'bold');
+    },
+
+    toggleGroup: (idPai, el) => {
+        const filhos = document.getElementsByClassName(`pai-${idPai}`);
+        if(filhos.length === 0) return;
+        const estaEscondido = filhos[0].classList.contains('hidden');
+        const icon = el.querySelector('.toggle-icon');
+        if(icon) icon.style.transform = estaEscondido ? 'rotate(90deg)' : 'rotate(0deg)';
+        Array.from(filhos).forEach(row => { row.classList.toggle('hidden', !estaEscondido); });
+        
+        if (!estaEscondido) { 
+            const netos = document.getElementsByClassName(`avo-${idPai}`);
+            if (netos.length > 0) {
+                Array.from(netos).forEach(neto => neto.classList.add('hidden'));
+                Array.from(filhos).forEach(rowL2 => {
+                    const iconL2 = rowL2.querySelector('.toggle-icon');
+                    if(iconL2) iconL2.style.transform = 'rotate(0deg)';
+                });
+            }
+        }
+    },
+
+    toggleSubGroup: (idL2, el) => {
+        const filhosNivel3 = document.getElementsByClassName(`pai-${idL2}`);
+        if(filhosNivel3.length === 0) return;
+        const estaEscondido = filhosNivel3[0].classList.contains('hidden');
+        const icon = el.querySelector('.toggle-icon');
+        if(icon) icon.style.transform = estaEscondido ? 'rotate(90deg)' : 'rotate(0deg)';
+        Array.from(filhosNivel3).forEach(row => { row.classList.toggle('hidden', !estaEscondido); });
+    },
+
+    renderChart: (d) => {
+        const canvas = document.getElementById('mainChart');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (typeof Chart === 'undefined') return;
+
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) existingChart.destroy();
+        if (app.chart) { app.chart.destroy(); app.chart = null; }
+
+        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
+
+        function getGradient(context, isBackground) {
+            const chart = context.chart;
+            const {ctx, chartArea, scales} = chart;
+            if (!chartArea) return isBackground ? 'rgba(16, 185, 129, 0.1)' : '#10b981';
+            const yAxis = scales.y;
+            const yZero = yAxis.getPixelForValue(0); 
+            const height = chartArea.bottom - chartArea.top;
+            let offset = (chartArea.bottom - yZero) / height;
+            offset = Math.min(Math.max(offset, 0), 1);
+            const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+            if (isBackground) {
+                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.4)');     
+                gradient.addColorStop(offset, 'rgba(239, 68, 68, 0.05)'); 
+                gradient.addColorStop(offset, 'rgba(16, 185, 129, 0.05)'); 
+                gradient.addColorStop(1, 'rgba(16, 185, 129, 0.4)');    
+            } else {
+                gradient.addColorStop(0, '#ef4444');      
+                gradient.addColorStop(offset, '#ef4444'); 
+                gradient.addColorStop(offset, '#10b981'); 
+                gradient.addColorStop(1, '#10b981');      
+            }
+            return gradient;
+        }
+
+        app.chart = new Chart(ctx, {
+            type: 'line',
+            data: { 
+                labels: d.labels, 
+                datasets: [{
+                    label: 'Fluxo', data: d.data, fill: true, tension: 0.4, borderWidth: 2,
+                    pointBackgroundColor: '#fff', pointBorderWidth: 2, pointRadius: 5, 
+                    borderColor: function(c) { return getGradient(c, false); },
+                    backgroundColor: function(c) { return getGradient(c, true); },
+                    pointBorderColor: function(c) { return c.raw >= 0 ? '#10b981' : '#ef4444'; }
+                }] 
+            },
             options: { 
                 responsive: true, maintainAspectRatio: false, 
                 layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
