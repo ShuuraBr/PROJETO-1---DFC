@@ -21,7 +21,7 @@ const transporter = nodemailer.createTransport({
     port: 465,
     secure: true,
     auth: {
-        user: 'no-reply@objetivaatacadista.com.br', // Ajuste para seu email real
+        user: 'no-reply@dfc.objetivaatacadista.com.br', // Ajuste para seu email real
         pass: process.env.EMAIL_PASS // Adicione isso no seu .env
     }
 });
@@ -60,7 +60,7 @@ app.post('/api/login', async (req, res) => {
             // Envia Email
             try {
                 await transporter.sendMail({
-                    from: '"Segurança DFC" <no-reply@objetivaatacadista.com.br>',
+                    from: '"Segurança DFC" <no-reply@dfc.objetivaatacadista.com.br>',
                     to: email,
                     subject: 'Seu Código de Acesso - DFC',
                     html: `
