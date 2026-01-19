@@ -30,7 +30,6 @@ const transporter = nodemailer.createTransport({
 // ROTAS DE AUTENTICAÇÃO (2FA - 60 Segundos via MySQL)
 // =========================================================================
 
-// PASSO 1: Verifica senha e gera token
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
@@ -46,17 +45,13 @@ app.post('/api/login', async (req, res) => {
         const [rows] = await pool.query(query, [email, password]);
 
         if (rows.length > 0) {
-            // Gera código numérico
             const token = crypto.randomInt(100000, 999999).toString();
-
-            // Inserção com tempo do MySQL (60 segundos de validade)
             await pool.query(
                 `INSERT INTO tokens_acesso (email, token, expira_em) 
                  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 60 SECOND))`,
                 [email, token]
             );
 
-            // Envia Email
             try {
                 await transporter.sendMail({
                     from: '"Segurança DFC" <no-reply@dfc.objetivaatacadista.com.br>',
@@ -71,62 +66,43 @@ app.post('/api/login', async (req, res) => {
                         </div>
                     `
                 });
-                console.log(`[LOGIN 1/2] Token enviado para ${email}`);
-                
                 res.json({ success: true, require2fa: true, email: email });
 
             } catch (mailErr) {
                 console.error("Erro ao enviar email:", mailErr);
-                res.status(500).json({ success: false, message: 'Senha correta, mas erro ao enviar token por e-mail.' });
+                res.status(500).json({ success: false, message: 'Erro envio email.' });
             }
 
         } else {
-            console.warn(`[LOGIN] Falha: Credenciais inválidas para ${email}`);
-            res.status(401).json({ success: false, message: 'E-mail ou senha incorretos' });
+            res.status(401).json({ success: false, message: 'Credenciais inválidas' });
         }
     } catch (e) {
-        console.error("[LOGIN] Erro Crítico:", e.message);
-        res.status(500).json({ success: false, message: 'Erro ao conectar no banco de dados.' });
+        console.error("[LOGIN] Erro:", e.message);
+        res.status(500).json({ success: false, message: 'Erro BD.' });
     }
 });
 
-// PASSO 2: Valida o Token usando o relógio do MySQL
 app.post('/api/validar-token', async (req, res) => {
     const { email, token } = req.body;
-
     try {
-        // Validação usando NOW() do banco
         const [tokens] = await pool.query(
-            `SELECT * FROM tokens_acesso 
-             WHERE email = ? 
-             AND token = ? 
-             AND expira_em > NOW() 
-             ORDER BY id DESC LIMIT 1`,
+            `SELECT * FROM tokens_acesso WHERE email = ? AND token = ? AND expira_em > NOW() ORDER BY id DESC LIMIT 1`,
             [email, token]
         );
 
         if (tokens.length > 0) {
             const queryUser = `
                 SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
-                FROM usuarios U 
-                LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep 
-                WHERE U.Email = ?
+                FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE U.Email = ?
             `;
             const [users] = await pool.query(queryUser, [email]);
             const u = users[0];
-
-            // Limpa o token usado
             await pool.query('DELETE FROM tokens_acesso WHERE id = ?', [tokens[0].id]);
-
-            console.log(`[LOGIN 2/2] Sucesso final: ${u.Nome}`);
             res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
         } else {
-            res.status(401).json({ success: false, message: 'Código inválido ou expirado.' });
+            res.status(401).json({ success: false, message: 'Token inválido/expirado.' });
         }
-    } catch (e) {
-        console.error("[VALIDAÇÃO] Erro:", e);
-        res.status(500).json({ success: false, message: 'Erro ao validar token.' });
-    }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 // =========================================================================
@@ -138,18 +114,14 @@ app.post('/api/usuarios', async (req, res) => {
     try {
         const [check] = await pool.query('SELECT Email FROM usuarios WHERE Email = ?', [email]);
         if (check.length > 0) return res.status(400).json({ success: false, message: 'Email já existe' });
-
+        
         await pool.query(
             `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
              VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
             [nome, email, SENHA_PADRAO, SENHA_PADRAO, departamentoId, role, nivel]
         );
-
         res.json({ success: true, message: 'Criado com sucesso' });
-    } catch (e) {
-        console.error("[CADASTRO] Erro:", e);
-        res.status(500).json({ success: false, message: "Erro ao criar usuário" });
-    }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 app.post('/api/definir-senha', async (req, res) => {
@@ -157,9 +129,7 @@ app.post('/api/definir-senha', async (req, res) => {
     try {
         await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
         res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ success: false });
-    }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 app.get('/api/departamentos', async (req, res) => {
@@ -183,51 +153,31 @@ app.get('/api/orcamento', async (req, res) => {
             'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
             [email]
         );
-        
         if (users.length === 0) return res.status(401).json({ error: 'Usuário não encontrado' });
         
         const user = users[0];
         const departamentoUsuario = user.Nome_dep || '';
         const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
-        let queryOrc = `
-            SELECT Plano, Nome, Departamento1, 
-                   Janeiro, Fevereiro, Marco, Abril, Maio, Junho, 
-                   Julho, Agosto, Setembro, Outubro, Novembro, Dezembro 
-            FROM orcamento WHERE 1=1 `;
-        
+        let queryOrc = `SELECT Plano, Nome, Departamento1, Janeiro, Fevereiro, Marco, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro, Dezembro FROM orcamento WHERE 1=1 `;
         const paramsOrc = [];
-        if (!isSuperUser) {
-            queryOrc += ' AND Departamento1 = ?';
-            paramsOrc.push(departamentoUsuario);
-        }
+        if (!isSuperUser) { queryOrc += ' AND Departamento1 = ?'; paramsOrc.push(departamentoUsuario); }
         queryOrc += ' ORDER BY Departamento1, Plano';
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `
-            SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado 
-            FROM dfc_analitica 
-            WHERE 1=1 `;
+        let queryReal = `SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
-
-        if (ano) {
-            queryReal += ' AND Ano = ?';
-            paramsReal.push(ano);
-        }
+        if (ano) { queryReal += ' AND Ano = ?'; paramsReal.push(ano); }
         queryReal += ' GROUP BY Codigo_plano, Mes';
 
         const [resReal] = await pool.query(queryReal, paramsReal);
-
         const mapRealizado = {};
-        resReal.forEach(r => {
-            mapRealizado[`${r.Codigo_plano}-${r.Mes}`] = parseFloat(r.ValorRealizado) || 0;
-        });
+        resReal.forEach(r => { mapRealizado[`${r.Codigo_plano}-${r.Mes}`] = parseFloat(r.ValorRealizado) || 0; });
 
         const colunasBanco = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const grupos = {};
-
         const ocultarOrcado = (ano && ano.toString() === '2025');
 
         orcamentoData.forEach(row => {
@@ -240,35 +190,24 @@ app.get('/api/orcamento', async (req, res) => {
                 grupos[depto] = { conta: depto, tipo: 'grupo', dados: {}, detalhes: [] };
                 chavesFrontend.forEach(k => grupos[depto].dados[k] = { orcado: 0, realizado: 0, diferenca: 0 });
             }
-
             const dadosMesesItem = {};
-
             chavesFrontend.forEach((chaveFront, index) => {
                 const nomeColunaBanco = colunasBanco[index];
                 const mesNumero = index + 1;
-
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
-
                 const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
                 const diferenca = valOrcado - valRealizado;
-
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
                 grupos[depto].dados[chaveFront].realizado += valRealizado;
                 grupos[depto].dados[chaveFront].diferenca += diferenca;
             });
-
             grupos[depto].detalhes.push({ conta: contaFormatada, tipo: 'item', dados: dadosMesesItem });
         });
-
         res.json(Object.values(grupos));
-
-    } catch (e) {
-        console.error("Erro Orçamento:", e);
-        res.status(500).json({ error: 'Erro ao processar orçamento' });
-    }
+    } catch (e) { res.status(500).json({ error: 'Erro ao processar orçamento' }); }
 });
 
 app.get('/api/dashboard', async (req, res) => {
@@ -326,13 +265,9 @@ app.get('/api/dashboard', async (req, res) => {
         let grupos = {};
         let FluxoGlobal = zerarColunas(); 
         let FluxoOperacional = zerarColunas();
-        let totalEntradasGlobal = 0; // Usado para cálculo interno se necessário, mas não no card
-        let totalSaidasGlobal = 0;   // Usado para cálculo interno se necessário, mas não no card
+        let totalEntradasGlobal = 0;
+        let totalSaidasGlobal = 0;
         
-        // --- KPI VARIÁVEIS (CORRIGIDO PARA ENTRADA E SAÍDA) ---
-        let totalEntradasOperacionais = 0;
-        let totalSaidasOperacionais = 0;
-
         rawData.forEach(row => {
             const numMes = row.Mes;
             const numAno = row.Ano;
@@ -380,6 +315,7 @@ app.get('/api/dashboard', async (req, res) => {
                     const nom = row.Nome || '';
                     const itemChave = `${cod} - ${nom}`;
                     
+                    // LÓGICA DA TABELA
                     let valorParaTabela = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
 
                     grupo.total[chaveColuna] += valorParaTabela;
@@ -396,14 +332,6 @@ app.get('/api/dashboard', async (req, res) => {
                     if (ehEntradaOp || ehSaidaOp) {
                         if (ehSaida) FluxoOperacional[chaveColuna] -= valorAbsoluto;
                         else FluxoOperacional[chaveColuna] += valorAbsoluto;
-                    }
-
-                    // --- SOMA DE KPIS (APENAS OPERACIONAIS 01 e 02) ---
-                    if (ehEntradaOp) {
-                        totalEntradasOperacionais += Math.abs(valorAbsoluto);
-                    }
-                    if (ehSaidaOp) {
-                        totalSaidasOperacionais += Math.abs(valorAbsoluto);
                     }
                 }
             }
@@ -430,6 +358,26 @@ app.get('/api/dashboard', async (req, res) => {
             }
         });
 
+        // --- CÁLCULO DOS KPIS BASEADO NOS TOTAIS DA TABELA ---
+        let totalEntradasOperacionais = 0;
+        let totalSaidasOperacionais = 0;
+
+        // 1. Busca o grupo exato "01- Entradas..." da estrutura agrupada
+        const grupoEntradas = grupos['01- Entradas Operacionais'];
+        if (grupoEntradas) {
+            // Soma os valores das colunas (ex: jan+fev+mar...)
+            totalEntradasOperacionais = Object.values(grupoEntradas.total).reduce((acc, v) => acc + v, 0);
+        }
+
+        // 2. Busca o grupo exato "02- Saídas..." da estrutura agrupada
+        const grupoSaidas = grupos['02- Saídas Operacionais'];
+        if (grupoSaidas) {
+            // Soma os valores das colunas (serão negativos pois a tabela exibe negativo)
+            const somaNegativa = Object.values(grupoSaidas.total).reduce((acc, v) => acc + v, 0);
+            // Converte para absoluto para exibir no card (Ex: "R$ 33.000,00" e não "-R$ 33.000,00")
+            totalSaidasOperacionais = Math.abs(somaNegativa);
+        }
+
         const graficoData = [];
         const linhaSaldoFinal = zerarColunas();
 
@@ -445,7 +393,7 @@ app.get('/api/dashboard', async (req, res) => {
         res.json({
             cards: {
                 saldoInicial: valInicial, 
-                // Alterado para usar apenas as somas operacionais
+                // KPIs usando os valores derivados da tabela
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
