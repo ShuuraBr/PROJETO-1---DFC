@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" href="assets/Favicon.png" type="image/png">
+    <link rel="icon" href="assets/Favicon.png" type="image/png"
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -48,18 +48,18 @@
                      alt="Logotipo" 
                      class="login-brand-logo">
                 
-                <h2 style="margin-top: 10px;">Acesso Corporativo</h2>
-                <p style="color: #6b7280; font-size: 14px;">Fluxo de Caixa</p>
+                <h2>Acesso Corporativo</h2>
+                <p>Fluxo de Caixa</p>
             </div>
             
             <form id="loginForm">
                 <div class="input-wrapper">
                     <label>E-mail</label>
-                    <input type="email" id="email" required placeholder="seu.nome@empresa.com.br">
+                    <input type="email" id="email" required>
                 </div>
                 <div class="input-wrapper">
                     <label>Senha</label>
-                    <input type="password" id="password" required placeholder="********">
+                    <input type="password" id="password" required>
                 </div>
                 <button type="submit" class="btn-primary">Continuar</button>
             </form>
@@ -91,19 +91,18 @@
     </div>
 
     <div id="view-app" class="view-container hidden">
-        
         <aside class="sidebar">
             <div class="brand"><i class="fa-solid fa-layer-group"></i></div>
             <nav>
-                <button class="nav-btn active" data-target="dashboard" id="btn-dash">
+                <button class="nav-btn active" data-target="dashboard">
                     <i class="fa-solid fa-house"></i>
                     <span class="tooltip">Dashboard</span>
                 </button>
-                <button class="nav-btn" data-target="reports" id="btn-orc">
+                <button class="nav-btn" data-target="reports">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="tooltip">Orçamento</span>
                 </button>
-                <button class="nav-btn restricted" data-target="settings" id="btn-config">
+                <button class="nav-btn restricted" data-target="settings">
                     <i class="fa-solid fa-gear"></i>
                     <span class="tooltip">Configurações</span>
                 </button>
@@ -125,7 +124,6 @@
                         <p>Bem-vindo, <span id="user-info" style="font-weight:600;">...</span></p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                        
                         <div class="search-wrapper">
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>
                             <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
@@ -138,7 +136,8 @@
                             <option value="anual">Anual</option>
                         </select>
 
-                        <select id="ano-dashboard" class="select-ano"></select>
+                        <select id="ano-dashboard" class="select-ano">
+                        </select>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
@@ -148,30 +147,18 @@
                 <div class="kpi-grid" id="kpi-container"></div>
                 
                 <div class="dashboard-split">
-                    
                     <div class="panel table-panel">
-    <div class="panel-head">
-        <h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa Realizado</h3>
-    </div>
-
-    <div class="dashboard-scroll-box"> 
-        <table id="finance-table">
-            <thead>
-                </thead>
-            <tbody>
-                </tbody>
-        </table>
-    </div> 
-
-</div>
-
+                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa Realizado</h3></div>
+                        <div class="table-wrapper">
+                            <table id="finance-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                     <div class="panel chart-panel">
-                        <div class="panel-head">
-                            <h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3>
-                        </div>
-                        <div class="chart-wrapper">
-                            <canvas id="mainChart"></canvas>
-                        </div>
+                        <div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
+                        <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
                     </div>
                 </div>
             </section>
@@ -189,7 +176,9 @@
                         <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
                             <option value="">Todos Departamentos</option>
                         </select>
-                        <select id="ano-orcamento" class="select-ano"></select>
+
+                        <select id="ano-orcamento" class="select-ano">
+                        </select>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
@@ -198,6 +187,7 @@
                 <div class="kpi-grid" id="kpi-orcamento-container" style="margin-bottom: 20px;"></div>
 
                 <div class="panel table-panel" style="border:none; background: transparent; margin-bottom: 30px;">
+                    
                     <div style="display: flex; gap: 20px; justify-content: flex-end; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #4b5563;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%;"></span>
@@ -227,20 +217,7 @@
                                     <th colspan="4">Novembro</th>
                                     <th colspan="4">Dezembro</th>
                                 </tr>
-                                <tr class="header-sub">
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
-                                </tr>
+                                <tr class="header-sub"><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th></tr>
                             </thead>
                             <tbody></tbody>
                         </table>
@@ -262,11 +239,13 @@
                             <h4 id="thermometer-goal-title" style="margin-bottom: 15px; color: #1f2937; font-weight: 800; font-size: 16px;">
                                 FinanCheck: R$ 0,00
                             </h4>
+                        
                             <div class="flat-thermometer-container">
                                 <div id="tooltip-left" class="thermometer-tooltip tooltip-left">
                                     <span id="lbl-porcentagem">0%</span>
                                     <div class="arrow-right"></div>
                                 </div>
+                        
                                 <div class="thermometer-body">
                                     <div class="thermometer-tube-border">
                                         <div class="ticks">
@@ -279,11 +258,13 @@
                                         <div class="thermometer-bulb-fill" id="thermometer-bulb-color"></div>
                                     </div>
                                 </div>
+                        
                                 <div id="tooltip-right" class="thermometer-tooltip tooltip-right">
                                     <div class="arrow-left"></div>
                                     <span id="lbl-valor">R$ 0</span>
                                 </div>
                             </div>
+                        
                             <div class="thermometer-legend flat-legend">
                                 <div class="legend-item"><span class="dot dot-blue"></span> Abaixo (-80%)</div>
                                 <div class="legend-item"><span class="dot dot-green"></span> Ideal (80-95%)</div>
@@ -291,7 +272,7 @@
                                 <div class="legend-item"><span class="dot dot-red"></span> Estouro (>100%)</div>
                             </div>
                         </div>
-                    </div>
+                        </div>
                 </div>
             </section>
 
