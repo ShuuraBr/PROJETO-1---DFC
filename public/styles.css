@@ -150,10 +150,12 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     max-height: 500px !important; 
     width: 100% !important;
     display: block !important;
+    position: relative !important;
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
     scrollbar-width: thin; 
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
@@ -162,7 +164,17 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1500px !important; }
+table { 
+    width: max-content !important; 
+    min-width: 100% !important;
+    border-collapse: collapse; 
+    font-size: 13px; 
+    white-space: nowrap !important; 
+}
+
+#finance-table {
+    min-width: 1800px !important;
+}
 
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
