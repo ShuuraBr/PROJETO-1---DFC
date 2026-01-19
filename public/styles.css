@@ -144,19 +144,27 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
-/* TABELAS (DASHBOARD) - MODIFICADO */
+/* ==========================================================================
+   TABELAS (DASHBOARD) - ATUALIZADO
+   ========================================================================== */
+
 .table-wrapper { 
-    /* Habilita rolagem em ambos os eixos */
+    /* Define o container como bloco para respeitar as dimensões */
+    display: block;
+    width: 100%;
+
+    /* Habilita rolagem Vertical E Horizontal automaticamente quando necessário */
     overflow: auto; 
     
-    /* Define altura máxima para forçar a rolagem vertical */
-    max-height: 60vh; 
+    /* Define altura máxima para forçar a rolagem vertical (Igual à aba Orçamento) */
+    max-height: 80vh; 
     
+    /* Estilos visuais do container */
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
     
-    /* Rolagem suave */
+    /* Rolagem suave (Firefox) */
     scrollbar-width: thin; 
 }
 
@@ -166,19 +174,43 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
+/* Configuração específica da Tabela do Dashboard */
 table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1200px; }
+
+#finance-table {
+    width: 100%;
+    /* Reforçando para garantir a rolagem horizontal */
+    min-width: 1200px;
+    white-space: nowrap;
+}
 
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
+    /* Mantém fixo no topo ao rolar verticalmente */
     position: sticky; top: 0; z-index: 10; 
 }
 
+/* Configuração da Primeira Coluna Fixa (Sticky Column) */
 #finance-table th:first-child, 
 #finance-table td:first-child { 
-    text-align: left; position: sticky; left: 0; z-index: 20; background-color: inherit; 
-    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
+    text-align: left; 
+    position: sticky; 
+    left: 0; 
+    z-index: 20; 
+    border-right: 2px solid #e5e7eb; 
+    min-width: 280px; 
+    padding-left: 15px; 
 }
-#finance-table td:first-child { background-color: #fff; }
+
+/* Ajuste de sobreposição para o canto superior esquerdo (Cabeçalho da 1ª Coluna) */
+#finance-table th:first-child {
+    z-index: 30; 
+}
+
+/* Garante fundo branco na primeira coluna das linhas de dados */
+#finance-table td:first-child { 
+    background-color: #fff; 
+}
 
 #finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
