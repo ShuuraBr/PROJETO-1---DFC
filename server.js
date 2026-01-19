@@ -27,10 +27,10 @@ const transporter = nodemailer.createTransport({
 });
 
 // =========================================================================
-// ROTAS DE AUTENTICAÇÃO (2FA - 30 Segundos via MySQL)
+// ROTAS DE AUTENTICAÇÃO (2FA - 60 Segundos via MySQL)
 // =========================================================================
 
-// PASSO 1: Verifica senha e gera token (30s validade no DB)
+// PASSO 1: Verifica senha e gera token
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
@@ -49,7 +49,7 @@ app.post('/api/login', async (req, res) => {
             // Gera código numérico
             const token = crypto.randomInt(100000, 999999).toString();
 
-            // --- MUDANÇA AQUI: Inserção com tempo do MySQL (30 segundos) ---
+            // Inserção com tempo do MySQL (60 segundos de validade)
             await pool.query(
                 `INSERT INTO tokens_acesso (email, token, expira_em) 
                  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 60 SECOND))`,
@@ -95,7 +95,7 @@ app.post('/api/validar-token', async (req, res) => {
     const { email, token } = req.body;
 
     try {
-        // --- MUDANÇA AQUI: Validação usando NOW() do banco ---
+        // Validação usando NOW() do banco
         const [tokens] = await pool.query(
             `SELECT * FROM tokens_acesso 
              WHERE email = ? 
@@ -106,7 +106,6 @@ app.post('/api/validar-token', async (req, res) => {
         );
 
         if (tokens.length > 0) {
-            // Token válido e dentro do prazo
             const queryUser = `
                 SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
                 FROM usuarios U 
@@ -116,13 +115,13 @@ app.post('/api/validar-token', async (req, res) => {
             const [users] = await pool.query(queryUser, [email]);
             const u = users[0];
 
-            // Limpa o token usado para evitar reuso
+            // Limpa o token usado
             await pool.query('DELETE FROM tokens_acesso WHERE id = ?', [tokens[0].id]);
 
             console.log(`[LOGIN 2/2] Sucesso final: ${u.Nome}`);
             res.json({ success: true, user: { ...u, Nome: u.Nome || 'Usuário', Role: u.Role || 'user' } });
         } else {
-            res.status(401).json({ success: false, message: 'Código inválido ou expirado (limite de 60s).' });
+            res.status(401).json({ success: false, message: 'Código inválido ou expirado.' });
         }
     } catch (e) {
         console.error("[VALIDAÇÃO] Erro:", e);
@@ -131,7 +130,7 @@ app.post('/api/validar-token', async (req, res) => {
 });
 
 // =========================================================================
-// ROTAS DO SISTEMA (Mantidas iguais)
+// ROTAS DO SISTEMA
 // =========================================================================
 
 app.post('/api/usuarios', async (req, res) => {
@@ -327,8 +326,12 @@ app.get('/api/dashboard', async (req, res) => {
         let grupos = {};
         let FluxoGlobal = zerarColunas(); 
         let FluxoOperacional = zerarColunas();
-        let totalEntradasGlobal = 0;
-        let totalSaidasGlobal = 0;
+        let totalEntradasGlobal = 0; // Usado para cálculo interno se necessário, mas não no card
+        let totalSaidasGlobal = 0;   // Usado para cálculo interno se necessário, mas não no card
+        
+        // --- KPI VARIÁVEIS (CORRIGIDO PARA ENTRADA E SAÍDA) ---
+        let totalEntradasOperacionais = 0;
+        let totalSaidasOperacionais = 0;
 
         rawData.forEach(row => {
             const numMes = row.Mes;
@@ -394,6 +397,14 @@ app.get('/api/dashboard', async (req, res) => {
                         if (ehSaida) FluxoOperacional[chaveColuna] -= valorAbsoluto;
                         else FluxoOperacional[chaveColuna] += valorAbsoluto;
                     }
+
+                    // --- SOMA DE KPIS (APENAS OPERACIONAIS 01 e 02) ---
+                    if (ehEntradaOp) {
+                        totalEntradasOperacionais += Math.abs(valorAbsoluto);
+                    }
+                    if (ehSaidaOp) {
+                        totalSaidasOperacionais += Math.abs(valorAbsoluto);
+                    }
                 }
             }
         });
@@ -434,8 +445,9 @@ app.get('/api/dashboard', async (req, res) => {
         res.json({
             cards: {
                 saldoInicial: valInicial, 
-                entrada: totalEntradasGlobal, 
-                saida: totalSaidasGlobal,
+                // Alterado para usar apenas as somas operacionais
+                entrada: totalEntradasOperacionais, 
+                saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
                 saldoFinal: valInicial + totalSuperavitDeficit
             },
