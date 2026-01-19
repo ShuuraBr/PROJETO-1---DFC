@@ -131,85 +131,86 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 #kpi-orcamento-container .card-value { font-size: 15px; }
 
 
-/* CONFIGURAÇÃO RÍGIDA PARA DESKTOP (TABELA LARGA, GRÁFICO ESTREITO) */
+/* CONFIGURAÇÃO RÍGIDA PARA DESKTOP */
 .dashboard-split { 
     display: grid; 
     grid-template-columns: 1fr; 
     gap: 30px; 
 }
 
+/* O Painel Geral precisa ter overflow hidden para não esticar a página */
 .panel { 
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* SEGURANÇA CONTRA ESTOURO */
     background: white; border-radius: 10px; border: 1px solid var(--border); 
-    display: flex; flex-direction: column; margin-bottom: 0; 
+    margin-bottom: 0; 
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
 /* ==========================================================================
-   TABELAS (DASHBOARD) - CORRIGIDO
+   TABELAS (DASHBOARD) - CORREÇÃO DEFINITIVA
    ========================================================================== */
 
+/* Wrapper: A Janela de Visualização */
 .table-wrapper { 
     display: block;
     width: 100%;
     
-    /* AQUI ESTÁ A CORREÇÃO:
-       Limitamos a largura máxima do wrapper para caber na tela, 
-       descontando a Sidebar (80px) + Paddings (aprox. 64px) + Margem de segurança.
-       Isso força a tabela de 1200px a criar scroll interno em vez de esticar a página.
-    */
-    max-width: calc(100vw - 150px); 
-
-    /* Altura reduzida para forçar scroll vertical interno */
+    /* LIMITA A ALTURA PARA 55% da TELA (Isso força o scroll vertical) */
     max-height: 55vh; 
+    height: 55vh;
     
-    /* Ativa as barras de rolagem internas */
-    overflow-x: auto; 
-    overflow-y: auto;
+    /* HABILITA AS BARRAS DE ROLAGEM */
+    overflow: auto; 
     
-    /* Estilos visuais */
-    border: 1px solid #e5e7eb; 
     background: #012d5a; 
-    border-radius: 8px; 
-    scrollbar-width: thin; 
+    border-top: 1px solid #e5e7eb;
 }
 
-/* Scrollbar customizada */
-.table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
-.table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-.table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+/* Scrollbar Style */
+.table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
+.table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; }
+.table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 5px; border: 2px solid #f1f1f1; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-/* Configuração da Tabela Interna */
-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1200px; }
 
+/* Tabela Interna: O Conteúdo Gigante */
 #finance-table {
-    width: 100%;
-    /* Força a tabela a ser maior que o wrapper, gerando a rolagem horizontal interna */
-    min-width: 1200px;
+    /* FORÇA A LARGURA PARA ESTOURAR A TELA (Isso cria o scroll horizontal) */
+    min-width: 1500px;
+    width: max-content;
+    
+    border-collapse: collapse; 
+    font-size: 13px; 
     white-space: nowrap;
 }
 
-/* --- CABEÇALHO E COLUNAS FIXAS (STICKY) --- */
+/* --- STICKY HEADERS (CABEÇALHOS FIXOS) --- */
 
-/* Cabeçalho Fixo (Sticky Header) - Topo */
+/* 1. Cabeçalho Superior Fixo */
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
-    position: sticky; top: 0; z-index: 10; 
+    position: sticky; top: 0; z-index: 100; 
 }
 
-/* Primeira Coluna Fixa (Sticky Column) - Esquerda */
+/* 2. Primeira Coluna Fixa */
 #finance-table th:first-child, 
 #finance-table td:first-child { 
     text-align: left; 
-    position: sticky; left: 0; z-index: 20; 
-    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
+    position: sticky; left: 0; z-index: 101; 
+    
+    background-color: #fff; /* Fundo branco para não ver o texto passando por baixo */
+    border-right: 2px solid #e5e7eb; 
+    min-width: 280px; 
+    padding-left: 15px; 
 }
 
-/* Canto Superior Esquerdo (Cruzamento dos Sticky) - Deve ficar acima de tudo */
-#finance-table th:first-child { z-index: 30; }
-
-/* Garante fundo branco na primeira coluna (dados) */
-#finance-table td:first-child { background-color: #fff; }
+/* 3. Cruzamento Superior Esquerdo (Fixo nos 2 eixos) */
+#finance-table th:first-child { 
+    z-index: 105; 
+    background-color: #012d5a;
+}
 
 #finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
@@ -487,11 +488,10 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     .top-bar .actions { width: 100%; display: flex; justify-content: space-between; align-items: center; }
     .header-logo { height: 40px; }
     
-    /* CORREÇÃO DO WRAPPER PARA MOBILE */
+    /* CORREÇÃO MOBILE */
     .table-wrapper { 
         margin: 0; 
         width: 100%; 
-        /* Limita a largura para caber no celular (100% da tela - margens) */
         max-width: calc(100vw - 30px); 
         border-radius: 8px; 
     }

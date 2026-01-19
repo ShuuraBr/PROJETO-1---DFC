@@ -48,18 +48,18 @@
                      alt="Logotipo" 
                      class="login-brand-logo">
                 
-                <h2>Acesso Corporativo</h2>
-                <p>Fluxo de Caixa</p>
+                <h2 style="margin-top: 10px;">Acesso Corporativo</h2>
+                <p style="color: #6b7280; font-size: 14px;">Fluxo de Caixa</p>
             </div>
             
             <form id="loginForm">
                 <div class="input-wrapper">
                     <label>E-mail</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" required placeholder="seu.nome@empresa.com.br">
                 </div>
                 <div class="input-wrapper">
                     <label>Senha</label>
-                    <input type="password" id="password" required>
+                    <input type="password" id="password" required placeholder="********">
                 </div>
                 <button type="submit" class="btn-primary">Continuar</button>
             </form>
@@ -91,18 +91,19 @@
     </div>
 
     <div id="view-app" class="view-container hidden">
+        
         <aside class="sidebar">
             <div class="brand"><i class="fa-solid fa-layer-group"></i></div>
             <nav>
-                <button class="nav-btn active" data-target="dashboard">
+                <button class="nav-btn active" data-target="dashboard" id="btn-dash">
                     <i class="fa-solid fa-house"></i>
                     <span class="tooltip">Dashboard</span>
                 </button>
-                <button class="nav-btn" data-target="reports">
+                <button class="nav-btn" data-target="reports" id="btn-orc">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                     <span class="tooltip">Orçamento</span>
                 </button>
-                <button class="nav-btn restricted" data-target="settings">
+                <button class="nav-btn restricted" data-target="settings" id="btn-config">
                     <i class="fa-solid fa-gear"></i>
                     <span class="tooltip">Configurações</span>
                 </button>
@@ -137,7 +138,7 @@
                         </select>
 
                         <select id="ano-dashboard" class="select-ano">
-                        </select>
+                            </select>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
@@ -147,18 +148,29 @@
                 <div class="kpi-grid" id="kpi-container"></div>
                 
                 <div class="dashboard-split">
+                    
                     <div class="panel table-panel">
-                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa Realizado</h3></div>
+                        <div class="panel-head">
+                            <h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa Realizado</h3>
+                        </div>
+                        
                         <div class="table-wrapper">
                             <table id="finance-table">
-                                <thead></thead>
-                                <tbody></tbody>
+                                <thead>
+                                    </thead>
+                                <tbody>
+                                    </tbody>
                             </table>
                         </div>
                     </div>
+
                     <div class="panel chart-panel">
-                        <div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
-                        <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
+                        <div class="panel-head">
+                            <h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="mainChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -178,7 +190,7 @@
                         </select>
 
                         <select id="ano-orcamento" class="select-ano">
-                        </select>
+                            </select>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
@@ -187,7 +199,6 @@
                 <div class="kpi-grid" id="kpi-orcamento-container" style="margin-bottom: 20px;"></div>
 
                 <div class="panel table-panel" style="border:none; background: transparent; margin-bottom: 30px;">
-                    
                     <div style="display: flex; gap: 20px; justify-content: flex-end; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #4b5563;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%;"></span>
@@ -217,9 +228,23 @@
                                     <th colspan="4">Novembro</th>
                                     <th colspan="4">Dezembro</th>
                                 </tr>
-                                <tr class="header-sub"><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th><th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th></tr>
+                                <tr class="header-sub">
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                    <th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>
+                                </tr>
                             </thead>
-                            <tbody></tbody>
+                            <tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -272,7 +297,7 @@
                                 <div class="legend-item"><span class="dot dot-red"></span> Estouro (>100%)</div>
                             </div>
                         </div>
-                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -308,7 +333,7 @@
                                 <label>Departamento</label>
                                 <select id="cad-departamento" required>
                                     <option value="">Carregando...</option>
-                                </select>
+                                    </select>
                             </div>
                             <div class="input-wrapper">
                                 <label>Tipo Acesso</label>
