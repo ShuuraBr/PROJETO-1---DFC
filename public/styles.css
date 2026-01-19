@@ -51,7 +51,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .select-ano { padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: white; color: var(--text-dark); font-size: 14px; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s; }
 .select-ano:hover { border-color: var(--primary); }
 
-/* --- LAYOUT PADRÃO (DESKTOP) --- */
+/* --- LAYOUT PADRÃO --- */
 #view-app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
 .sidebar { width: 80px; background: var(--bg-sidebar); display: flex; flex-direction: column; align-items: center; padding: 20px 0; flex-shrink: 0; height: 100vh; }
@@ -88,101 +88,100 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 
 /* ==========================================================================
-   TABELAS E PAINÉIS (DASHBOARD & ORÇAMENTO) - LÓGICA UNIFICADA
+   CORREÇÃO DEFINITIVA DA TABELA DASHBOARD
    ========================================================================== */
 
-/* Layout do Dashboard */
+/* 1. LAYOUT GERAL (GRID) */
 .dashboard-split { 
     display: grid; 
     grid-template-columns: 1fr; 
     gap: 30px; 
     
-    /* SEGURANÇA MÁXIMA PARA O GRID NÃO ESTOURAR A LARGURA */
+    /* CRUCIAL: Impede que o Grid estoure a tela se o conteúdo for largo */
     width: 100%;
     min-width: 0; 
 }
 
-/* O Painel Container (Pai) */
-.panel { 
-    background: white; 
-    border-radius: 10px; 
-    border: 1px solid var(--border); 
+/* 2. O PAINEL BRANCO (Pai) */
+.panel {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--border);
     margin-bottom: 0;
-    
-    /* Transforma o painel em uma caixa flexível vertical */
+
+    /* Configuração Flex para organizar Cabeçalho e Corpo */
     display: flex;
     flex-direction: column;
-    
-    /* SEGURANÇA MÁXIMA: Impede o painel de crescer além do pai */
-    min-width: 0; 
+
+    /* CRUCIAL: Trava o painel e esconde o que vazar, obrigando o filho a rolar */
     overflow: hidden; 
+    min-width: 0;
 }
 
-.panel-head { 
-    padding: 15px 20px; 
-    border-bottom: 1px solid var(--border); 
-    background: #f9fafb; 
-    font-weight: 600; 
-    font-size: 14px; 
-    flex-shrink: 0; /* Impede o cabeçalho de encolher */
+.panel-head {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #f9fafb;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0; /* Garante que o cabeçalho não encolha */
 }
 
-/* O Wrapper (Janela de Rolagem da Tabela) */
-.table-wrapper { 
+/* 3. O WRAPPER (Janela de Rolagem) */
+/* Aplica-se tanto ao Dashboard (.table-wrapper) quanto ao Orçamento (.table-wrapper-orcamento) */
+.table-wrapper, .table-wrapper-orcamento {
     display: block;
     width: 100%;
     
-    /* ALTURA MÁXIMA DEFINIDA: Isso força a barra de rolagem vertical */
+    /* CRUCIAL: Altura fixa para gerar rolagem vertical */
     max-height: 60vh; 
-    height: 60vh; 
+    height: 60vh;
     
-    /* Ativa as barras de rolagem */
-    overflow: auto; 
+    /* Ativa barras de rolagem */
+    overflow: auto;
     
-    background: #012d5a; 
+    background: #012d5a;
     border-top: 1px solid #e5e7eb;
 }
 
-/* Scrollbar Style */
+/* Estilo da Scrollbar */
 .table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
 .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; }
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 5px; border: 2px solid #f1f1f1; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
 
-/* A Tabela (Conteúdo Largo) */
-#finance-table {
-    /* Força o conteúdo a se esticar horizontalmente */
+/* 4. A TABELA (Conteúdo que rola) */
+#finance-table, #orcamento-table {
+    /* Força a tabela a esticar para a direita se o conteúdo for longo */
     width: max-content; 
     min-width: 100%; 
     
-    border-collapse: collapse; 
+    border-collapse: collapse;
     font-size: 13px; 
     white-space: nowrap;
 }
 
-/* Cabeçalhos Fixos */
-#finance-table th { 
+/* STICKY HEADERS (Fixar Cabeçalho e Coluna) */
+/* Cabeçalho Topo */
+#finance-table th, #orcamento-table th { 
     position: sticky; top: 0; z-index: 100; 
-    background: #012d5a; color: #ffffff; padding: 10px 8px; 
-    text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
+    background: #012d5a; color: white; border: 1px solid #e5e7eb; padding: 10px 8px; text-align: center; font-weight: 600;
 }
 
-/* Primeira Coluna Fixa */
-#finance-table th:first-child, 
-#finance-table td:first-child { 
+/* Primeira Coluna Esquerda */
+#finance-table th:first-child, #finance-table td:first-child,
+#orcamento-table th:first-child, #orcamento-table td:first-child { 
     position: sticky; left: 0; z-index: 101; 
-    background-color: #fff; border-right: 2px solid #e5e7eb; 
-    min-width: 280px; padding-left: 15px; text-align: left; 
+    background: white; border-right: 2px solid #e5e7eb; min-width: 250px; text-align: left; padding-left: 15px; 
 }
 
-/* Canto Superior Esquerdo */
-#finance-table th:first-child { 
-    z-index: 105; 
-    background-color: #012d5a; 
+/* Canto Superior Esquerdo (Cruzamento) */
+#finance-table th:first-child, #orcamento-table th:first-child { 
+    z-index: 105; background: #012d5a; 
 }
 
-#finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
+#finance-table td, #orcamento-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
 .toggle-icon { display: inline-block; width: 15px; margin-right: 5px; color: #6b7280; font-size: 11px; }
 
@@ -194,7 +193,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 /* GRÁFICO */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
 
-/* --- ABA ORÇAMENTO (ELEMENTOS ESPECÍFICOS) --- */
+/* ABA ORÇAMENTO ESPECÍFICOS */
 .chart-row { display: flex; flex-direction: row; height: 480px; }
 .chart-main { flex: 1; border-right: 1px solid var(--border); }
 .thermometer-section { width: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background-color: #fff; border-left: 1px solid var(--border); }
@@ -221,16 +220,10 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .dot-yellow { background-color: #f59e0b; }
 .dot-red { background-color: #ef4444; }
 
-/* Tabela Orçamento Específica */
-.table-wrapper-orcamento { background: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 80vh; overflow: auto; }
-#orcamento-table { border-collapse: separate; border-spacing: 0; width: auto; font-size: 11px; margin: 0; }
-#orcamento-table th, #orcamento-table td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #f3f4f6; text-align: right; height: 35px; }
-.sticky-col { position: sticky; left: 0; z-index: 20; background-color: #fff !important; border-right: 2px solid #e5e7eb !important; text-align: left !important; width: auto; min-width: 320px; max-width: none; white-space: nowrap; font-weight: 600; color: #1f2937; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-#orcamento-table thead tr th.sticky-col { z-index: 30; top: 0; left: 0; background-color: #012d5a !important; color: white; text-align: center !important; }
-#orcamento-table thead tr th { position: sticky; top: 0; z-index: 10; }
+/* ORÇAMENTO TABLE - MANTÉM COMPATIBILIDADE MAS USA LÓGICA ACIMA */
+#orcamento-table td:nth-child(4n+5) { border-right: 2px solid #9ca3af !important; }
 .header-months th { background-color: #012d5a; color: white; text-align: center !important; border: 1px solid #374151; text-transform: uppercase; font-size: 12px; height: 30px; }
 .header-sub th { top: 30px !important; background-color: #f3f4f6; color: #111827; font-weight: 700; font-size: 10px; border-bottom: 2px solid #d1d5db !important; min-width: 100px; box-sizing: border-box; }
-#orcamento-table td:nth-child(4n+5), .header-sub th:nth-child(4n) { border-right: 2px solid #9ca3af !important; }
 
 /* RESPONSIVIDADE */
 @media (max-width: 1366px) {
@@ -258,7 +251,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     .header-logo { height: 40px; }
     
     /* CORREÇÃO MOBILE */
-    .table-wrapper { margin: 0; width: 100%; max-width: calc(100vw - 30px); border-radius: 8px; }
+    .table-wrapper, .table-wrapper-orcamento { margin: 0; width: 100%; max-width: calc(100vw - 30px); border-radius: 8px; }
     
     th:first-child, td:first-child { min-width: 130px; max-width: 130px; padding-left: 8px !important; font-size: 10px; white-space: normal; line-height: 1.2; }
     .child-row td:first-child { padding-left: 15px !important; }
