@@ -148,15 +148,22 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper { 
     display: block !important;
     width: 100% !important;
-    height: 60vh !important; /* Usa 60% da altura da tela para garantir que caiba e sobre espaço para o gráfico */
-    min-height: 400px !important;
-    overflow-y: scroll !important; /* Força a existência da barra vertical */
+    height: 500px !important; 
+    overflow-y: auto !important;
     overflow-x: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
-    scrollbar-width: thin; 
+    scrollbar-width: thin;
+    contain: content !important; /* Força o navegador a tratar o conteúdo como isolado */
+}
+
+/* Garante que o painel pai não cresça além da conta */
+.table-panel {
+    display: block !important;
+    height: auto !important;
+    max-height: none !important;
 }
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
