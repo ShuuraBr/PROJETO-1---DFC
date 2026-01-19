@@ -149,8 +149,8 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     /* Habilita rolagem em ambos os eixos */
     overflow: auto; 
     
-    /* Define altura máxima para forçar a rolagem vertical */
-    max-height: 60vh; 
+    /* Define altura máxima para forçar a rolagem vertical interna */
+    max-height: 500px; 
     
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
