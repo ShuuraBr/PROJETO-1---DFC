@@ -38,7 +38,6 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 #view-login { display: flex; align-items: center; justify-content: center; height: 100vh; background: #e5e7eb; }
 .login-card { background: white; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
 
-/* CLASSE NOVA DA LOGO DE LOGIN */
 .login-brand-logo {
     max-width: 220px; 
     height: auto;
@@ -136,59 +135,50 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     display: grid; 
     grid-template-columns: 1fr; 
     gap: 30px; 
-    /* Garante que o grid não estoure a largura da página */
     min-width: 0; 
 }
 
-/* O Painel Geral precisa ter overflow hidden para não esticar a página */
+/* Painel Genérico */
 .panel { 
-    display: flex;
-    flex-direction: column;
-    
-    /* SEGURANÇA CONTRA ESTOURO: 
-       Impede que o conteúdo interno force o painel a crescer além do grid 
-    */
-    overflow: hidden; 
-    min-width: 0; /* Ajuda no Flexbox/Grid */
-    
-    background: white; border-radius: 10px; border: 1px solid var(--border); 
+    background: white; 
+    border-radius: 10px; 
+    border: 1px solid var(--border); 
     margin-bottom: 0; 
+    /* REMOVIDO OVERFLOW HIDDEN PARA NÃO CORTAR ROLAGEM */
+    display: block;
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
 /* ==========================================================================
-   TABELAS (DASHBOARD) - CORREÇÃO DEFINITIVA
+   TABELAS (DASHBOARD) - CORRIGIDO (IGUAL ABA ORÇAMENTO)
    ========================================================================== */
 
-/* Wrapper: A Janela de Visualização */
 .table-wrapper { 
     display: block;
-    
-    /* Ocupa 100% do espaço do PAINEL (que está travado pelo overflow:hidden) */
     width: 100%;
+
+    /* --- AQUI ESTÁ A LÓGICA DO ORÇAMENTO --- */
+    /* Define uma altura máxima. O conteúdo que passar disso gera rolagem. */
+    max-height: 60vh; 
     
-    /* LIMITA A ALTURA PARA 55% da TELA (Isso força o scroll vertical) */
-    max-height: 55vh; 
-    height: 55vh;
-    
-    /* HABILITA AS BARRAS DE ROLAGEM DENTRO DESTE CONTAINER */
+    /* Habilita rolagem automática (Vertical e Horizontal) */
     overflow: auto; 
     
     background: #012d5a; 
     border-top: 1px solid #e5e7eb;
 }
 
-/* Scrollbar Style */
+/* Scrollbar Customizada */
 .table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
 .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; }
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 5px; border: 2px solid #f1f1f1; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
 
-/* Tabela Interna: O Conteúdo Gigante */
+/* Tabela Interna */
 #finance-table {
-    /* FORÇA A LARGURA PARA SER GRANDE (Gera o scroll horizontal) */
-    width: max-content; 
+    width: 100%;
+    /* Força largura mínima grande para garantir scroll horizontal */
     min-width: 1500px;
     
     border-collapse: collapse; 
@@ -198,7 +188,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 /* --- STICKY HEADERS (CABEÇALHOS FIXOS) --- */
 
-/* 1. Cabeçalho Superior Fixo */
+/* 1. Cabeçalho Superior */
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
     position: sticky; top: 0; z-index: 100; 
@@ -210,13 +200,13 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     text-align: left; 
     position: sticky; left: 0; z-index: 101; 
     
-    background-color: #fff; /* Fundo branco para não ver o texto passando por baixo */
+    background-color: #fff; 
     border-right: 2px solid #e5e7eb; 
     min-width: 280px; 
     padding-left: 15px; 
 }
 
-/* 3. Cruzamento Superior Esquerdo (Fixo nos 2 eixos) */
+/* 3. Cruzamento Superior Esquerdo */
 #finance-table th:first-child { 
     z-index: 105; 
     background-color: #012d5a;
@@ -233,7 +223,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 /* GRÁFICO */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
 
-/* --- LAYOUT DO CHART + TERMÔMETRO NA ABA ORÇAMENTO --- */
+/* --- ABA ORÇAMENTO --- */
 .chart-row {
     display: flex;
     flex-direction: row;
@@ -244,9 +234,6 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     border-right: 1px solid var(--border);
 }
 
-/* =========================================================================
-   TERMÔMETRO FLAT
-   ========================================================================= */
 .thermometer-section {
     width: 320px; 
     display: flex;
