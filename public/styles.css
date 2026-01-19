@@ -146,16 +146,17 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 /* TABELAS (DASHBOARD) - MODIFICADO */
 .table-wrapper { 
-    overflow: auto !important; 
-    height: 500px !important; /* Mudei de max-height para height para forçar o limite */
-    width: 100% !important;
     display: block !important;
+    width: 100% !important;
+    height: 60vh !important; /* Usa 60% da altura da tela para garantir que caiba e sobre espaço para o gráfico */
+    min-height: 400px !important;
+    overflow-y: scroll !important; /* Força a existência da barra vertical */
+    overflow-x: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
     scrollbar-width: thin; 
-    -webkit-overflow-scrolling: touch;
 }
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
@@ -176,9 +177,16 @@ table {
     min-width: 1800px !important;
 }
 
-#finance-table th { 
-    background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
-    position: sticky; top: 0; z-index: 10; 
+#finance-table thead th { 
+    background: #012d5a !important; 
+    color: #ffffff !important; 
+    padding: 10px 8px; 
+    text-align: center; 
+    border: 1px solid #e5e7eb; 
+    font-weight: 600; 
+    position: sticky !important; 
+    top: 0 !important; 
+    z-index: 100 !important; 
 }
 
 #finance-table th:first-child, 
