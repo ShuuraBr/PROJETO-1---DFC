@@ -145,72 +145,71 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
 /* ==========================================================================
-   TABELAS (DASHBOARD) - ATUALIZADO
+   TABELAS (DASHBOARD) - CORRIGIDO
    ========================================================================== */
 
 .table-wrapper { 
-    /* Define o container como bloco para respeitar as dimensões */
     display: block;
     width: 100%;
+    
+    /* AQUI ESTÁ A CORREÇÃO:
+       Limitamos a largura máxima do wrapper para caber na tela, 
+       descontando a Sidebar (80px) + Paddings (aprox. 64px) + Margem de segurança.
+       Isso força a tabela de 1200px a criar scroll interno em vez de esticar a página.
+    */
+    max-width: calc(100vw - 150px); 
 
-    /* Habilita rolagem Vertical E Horizontal automaticamente quando necessário */
-    overflow: auto; 
+    /* Altura reduzida para forçar scroll vertical interno */
+    max-height: 55vh; 
     
-    /* Define altura máxima para forçar a rolagem vertical (Igual à aba Orçamento) */
-    max-height: 80vh; 
+    /* Ativa as barras de rolagem internas */
+    overflow-x: auto; 
+    overflow-y: auto;
     
-    /* Estilos visuais do container */
+    /* Estilos visuais */
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
-    
-    /* Rolagem suave (Firefox) */
     scrollbar-width: thin; 
 }
 
-/* Estilização da barra de rolagem (Chrome/Edge/Safari) */
+/* Scrollbar customizada */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
 .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-/* Configuração específica da Tabela do Dashboard */
+/* Configuração da Tabela Interna */
 table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; min-width: 1200px; }
 
 #finance-table {
     width: 100%;
-    /* Reforçando para garantir a rolagem horizontal */
+    /* Força a tabela a ser maior que o wrapper, gerando a rolagem horizontal interna */
     min-width: 1200px;
     white-space: nowrap;
 }
 
+/* --- CABEÇALHO E COLUNAS FIXAS (STICKY) --- */
+
+/* Cabeçalho Fixo (Sticky Header) - Topo */
 #finance-table th { 
     background: #012d5a; color: #ffffff; padding: 10px 8px; text-align: center; border: 1px solid #e5e7eb; font-weight: 600; 
-    /* Mantém fixo no topo ao rolar verticalmente */
     position: sticky; top: 0; z-index: 10; 
 }
 
-/* Configuração da Primeira Coluna Fixa (Sticky Column) */
+/* Primeira Coluna Fixa (Sticky Column) - Esquerda */
 #finance-table th:first-child, 
 #finance-table td:first-child { 
     text-align: left; 
-    position: sticky; 
-    left: 0; 
-    z-index: 20; 
-    border-right: 2px solid #e5e7eb; 
-    min-width: 280px; 
-    padding-left: 15px; 
+    position: sticky; left: 0; z-index: 20; 
+    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
 }
 
-/* Ajuste de sobreposição para o canto superior esquerdo (Cabeçalho da 1ª Coluna) */
-#finance-table th:first-child {
-    z-index: 30; 
-}
+/* Canto Superior Esquerdo (Cruzamento dos Sticky) - Deve ficar acima de tudo */
+#finance-table th:first-child { z-index: 30; }
 
-/* Garante fundo branco na primeira coluna das linhas de dados */
-#finance-table td:first-child { 
-    background-color: #fff; 
-}
+/* Garante fundo branco na primeira coluna (dados) */
+#finance-table td:first-child { background-color: #fff; }
 
 #finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
@@ -220,25 +219,25 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
 .child-row td:first-child { padding-left: 35px; border-left: 4px solid #e5e7eb; }
 .child-row td { border-top: 1px dashed #e5e7eb; }
 
-/* GRÁFICO - Altura Ajustada */
+/* GRÁFICO */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
 
 /* --- LAYOUT DO CHART + TERMÔMETRO NA ABA ORÇAMENTO --- */
 .chart-row {
     display: flex;
     flex-direction: row;
-    height: 480px; /* Altura fixa para alinhar */
+    height: 480px;
 }
 .chart-main {
-    flex: 1; /* Ocupa o espaço restante */
+    flex: 1;
     border-right: 1px solid var(--border);
 }
 
 /* =========================================================================
-   NOVO TERMÔMETRO FLAT (SUBSTITUI O 3D)
+   TERMÔMETRO FLAT
    ========================================================================= */
 .thermometer-section {
-    width: 320px; /* Um pouco mais largo para acomodar labels */
+    width: 320px; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -254,11 +253,10 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     height: 300px;
     display: flex;
     justify-content: center;
-    align-items: flex-end; /* Alinha o termômetro na base */
+    align-items: flex-end;
     margin-bottom: 20px;
 }
 
-/* Corpo Central */
 .thermometer-body {
     position: relative;
     display: flex;
@@ -268,20 +266,18 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     width: 60px;
 }
 
-/* O Tubo */
 .thermometer-tube-border {
     width: 40px;
     height: 220px;
-    background-color: #f1f5f9; /* Fundo cinza claro */
-    border: 5px solid #2c3e50; /* Borda grossa escura */
-    border-bottom: none; /* Conecta com o bulbo */
+    background-color: #f1f5f9; 
+    border: 5px solid #2c3e50; 
+    border-bottom: none; 
     border-radius: 20px 20px 0 0;
     position: relative;
-    overflow: hidden; /* Corta o líquido que passar */
+    overflow: hidden; 
     z-index: 2;
 }
 
-/* Marcações (Régua) */
 .ticks {
     position: absolute;
     top: 10px;
@@ -300,7 +296,6 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     display: block;
 }
 
-/* O Líquido (Barra que sobe) */
 .thermometer-liquid {
     position: absolute;
     bottom: 0;
@@ -308,26 +303,24 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     width: 100%;
     background-color: #2563eb; 
     transition: height 1.0s ease-in-out, background-color 0.5s;
-    z-index: 1; /* Fica atrás das réguas */
+    z-index: 1; 
 }
 
-/* O Bulbo (Bola embaixo) */
 .thermometer-bulb-border {
     width: 64px;
     height: 64px;
-    background-color: transparent; /* A cor vem do fill interno */
+    background-color: transparent; 
     border: 5px solid #2c3e50;
     border-radius: 50%;
-    margin-top: -10px; /* Sobe para fundir com o tubo */
+    margin-top: -10px; 
     position: relative;
-    z-index: 1; /* Fica acima do tubo visualmente nas bordas */
+    z-index: 1; 
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Preenchimento do Bulbo */
 .thermometer-bulb-fill {
     width: 100%;
     height: 100%;
@@ -336,7 +329,6 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     transition: background-color 0.5s;
 }
 
-/* Brilho no Bulbo */
 .thermometer-bulb-border::after {
     content: '';
     position: absolute;
@@ -349,10 +341,9 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     transform: rotate(20deg);
 }
 
-/* --- ETIQUETAS LATERAIS (TOOLTIPS) --- */
 .thermometer-tooltip {
     position: absolute;
-    background-color: #2c3e50; /* Fundo escuro */
+    background-color: #2c3e50; 
     color: white;
     padding: 6px 10px;
     border-radius: 6px;
@@ -365,24 +356,15 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.tooltip-left {
-    right: 55%; 
-    margin-right: 35px;
-}
+.tooltip-left { right: 55%; margin-right: 35px; }
+.tooltip-right { left: 55%; margin-left: 35px; }
 
-.tooltip-right {
-    left: 55%; 
-    margin-left: 35px;
-}
-
-/* Setas dos Tooltips */
 .arrow-right {
     position: absolute;
     top: 50%;
     right: -6px;
     transform: translateY(-50%);
-    width: 0; 
-    height: 0; 
+    width: 0; height: 0; 
     border-top: 6px solid transparent;
     border-bottom: 6px solid transparent;
     border-left: 6px solid #2c3e50;
@@ -393,14 +375,12 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     top: 50%;
     left: -6px;
     transform: translateY(-50%);
-    width: 0; 
-    height: 0; 
+    width: 0; height: 0; 
     border-top: 6px solid transparent;
     border-bottom: 6px solid transparent;
     border-right: 6px solid #2c3e50;
 }
 
-/* Legenda Flat */
 .flat-legend {
     width: 100%;
     margin-top: 10px;
@@ -413,24 +393,15 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
 }
 
 .legend-item { 
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
-    font-size: 11px;
-    font-weight: 500;
-    color: #4b5563;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
+    display: flex; align-items: center; gap: 10px; font-size: 11px;
+    font-weight: 500; color: #4b5563; padding: 4px 8px;
+    border-radius: 4px; transition: background-color 0.2s;
 }
 .legend-item:hover { background-color: #f9fafb; }
 
 .dot { 
-    width: 10px; height: 10px; 
-    border-radius: 50%; 
-    display: inline-block; 
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    border: 1px solid rgba(0,0,0,0.05);
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.05);
 }
 .dot-blue { background-color: #3b82f6; }
 .dot-green { background-color: #10b981; }
@@ -469,12 +440,6 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     font-weight: 700; font-size: 10px; border-bottom: 2px solid #d1d5db !important; min-width: 100px; box-sizing: border-box;
 }
 #orcamento-table td:nth-child(4n+5), .header-sub th:nth-child(4n) { border-right: 2px solid #9ca3af !important; }
-
-.col-orc { color: #6b7280; }
-.col-real { color: #111827; } 
-.col-dif { font-weight: 700; background-color: #f9fafb; }
-.col-perc { font-size: 10px; font-weight: 600; } 
-#orcamento-table tbody tr:hover td { background-color: #eff6ff !important; transition: background-color 0.1s; }
 
 /* ==========================================================================
    RESPONSIVIDADE 
@@ -522,7 +487,14 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: no
     .top-bar .actions { width: 100%; display: flex; justify-content: space-between; align-items: center; }
     .header-logo { height: 40px; }
     
-    .table-wrapper { margin: 0 -15px; width: calc(100% + 30px); border-radius: 0; }
+    /* CORREÇÃO DO WRAPPER PARA MOBILE */
+    .table-wrapper { 
+        margin: 0; 
+        width: 100%; 
+        /* Limita a largura para caber no celular (100% da tela - margens) */
+        max-width: calc(100vw - 30px); 
+        border-radius: 8px; 
+    }
     
     th:first-child, td:first-child { min-width: 130px; max-width: 130px; padding-left: 8px !important; font-size: 10px; white-space: normal; line-height: 1.2; }
     .child-row td:first-child { padding-left: 15px !important; }
