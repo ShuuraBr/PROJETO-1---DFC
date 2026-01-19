@@ -147,7 +147,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 /* TABELAS (DASHBOARD) - MODIFICADO */
 .table-wrapper { 
     overflow: auto !important; 
-    max-height: 500px !important; 
+    height: 500px !important; /* Mudei de max-height para height para forçar o limite */
     width: 100% !important;
     display: block !important;
     position: relative !important;
