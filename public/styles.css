@@ -140,7 +140,8 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 .panel { 
     background: white; border-radius: 10px; border: 1px solid var(--border); 
-    display: flex; flex-direction: column; margin-bottom: 0; 
+    display: block !important; /* Removido flex para não interferir na altura dos filhos */
+    margin-bottom: 0; 
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
@@ -149,14 +150,12 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     display: block !important;
     width: 100% !important;
     height: 500px !important; 
-    overflow-y: auto !important;
-    overflow-x: auto !important;
+    overflow: auto !important; /* Habilita ambos os scrolls */
     position: relative !important;
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
     scrollbar-width: thin;
-    contain: content !important; /* Força o navegador a tratar o conteúdo como isolado */
 }
 
 /* Garante que o painel pai não cresça além da conta */
