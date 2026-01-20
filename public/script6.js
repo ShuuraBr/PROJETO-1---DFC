@@ -9,7 +9,7 @@ const app = {
     
     // --- ESTADO 2FA ---
     emailTemp: null,
-    timer: null, 
+    timer: null, // Novo estado para controlar o relógio
 
     // ESTADO INICIAL
     yearDashboard: ANO_ATUAL, 
@@ -24,55 +24,17 @@ const app = {
         
         app.carregarAnosDisponiveis();
 
-        // ==========================================
-        // NOVO: LOGICA DO MODAL DE FILTROS
-        // ==========================================
-        const modalFilters = document.getElementById('modal-filters');
-        const btnCloseFilters = document.getElementById('btn-close-filters');
-        const btnApply = document.getElementById('btn-apply-filters');
-
-        // Gatilhos para abrir o modal (botões nas duas abas)
-        document.querySelectorAll('.open-filters-trigger').forEach(btn => {
-            btn.addEventListener('click', () => {
-                app.updateFilterModalVisibility(); // Ajusta o conteúdo antes de abrir
-                if(modalFilters) modalFilters.classList.remove('hidden');
-            });
-        });
-
-        // Botão Fechar (X)
-        if(btnCloseFilters) {
-            btnCloseFilters.addEventListener('click', () => {
-                if(modalFilters) modalFilters.classList.add('hidden');
-            });
-        }
-
-        // Botão Aplicar (Executa o fetch e fecha)
-        if(btnApply) {
-            btnApply.addEventListener('click', () => {
-                if(modalFilters) modalFilters.classList.add('hidden');
-                // Identifica a aba ativa para recarregar os dados
-                const isDashboard = document.getElementById('page-dashboard').classList.contains('active');
-                isDashboard ? app.fetchData() : app.loadOrcamento();
-            });
-        }
-
-        // Fechar ao clicar fora do card
-        if(modalFilters) {
-            modalFilters.addEventListener('click', (e) => {
-                if(e.target === modalFilters) modalFilters.classList.add('hidden');
-            });
-        }
-        // ==========================================
-
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
 
+        // --- LISTENER NOVO PARA TOKEN ---
         const tokenForm = document.getElementById('tokenForm');
         if(tokenForm) tokenForm.addEventListener('submit', app.validarToken);
 
         const btnCancelarToken = document.getElementById('btn-cancelar-token');
         if(btnCancelarToken) btnCancelarToken.addEventListener('click', app.resetLoginUI);
+        // ---------------------------------
 
         const btnLogout = document.getElementById('btn-logout');
         if(btnLogout) btnLogout.addEventListener('click', app.logout);
@@ -108,27 +70,26 @@ const app = {
             });
         }
 
-        // Listeners movidos para o modal (mantendo a lógica de estado)
         const viewSelect = document.getElementById('dashboard-view-type');
         if(viewSelect) {
             viewSelect.addEventListener('change', (e) => {
                 app.viewType = e.target.value;
                 app.toggleYearFilterVisibility();
-                // O fetch agora ocorre apenas no botão "Aplicar" do modal
+                app.fetchData(); 
             });
         }
 
+        // --- NOVO LISTENER PARA FILTRO DE STATUS (REALIZADO/ABERTO) ---
         const statusSelect = document.getElementById('dashboard-status-view');
         if(statusSelect) {
             statusSelect.addEventListener('change', () => {
-                // Estado atualizado automaticamente pelo elemento select
+                app.fetchData();
             });
         }
         
         const filtroDept = document.getElementById('filtro-dep-orcamento');
         if(filtroDept) {
             filtroDept.addEventListener('change', () => {
-                // Aplicar filtros de orçamento (apenas lógica visual local)
                 app.aplicarFiltrosOrcamento();
             });
         }
@@ -160,25 +121,14 @@ const app = {
         }
     },
 
-    // NOVA FUNÇÃO: Controla quais campos aparecem no modal dependendo da aba
-    updateFilterModalVisibility: () => {
-        const isDashboard = document.getElementById('page-dashboard').classList.contains('active');
-        const dashSection = document.getElementById('filter-section-dashboard');
-        const orcSection = document.getElementById('filter-section-orcamento');
-        
-        if(dashSection) dashSection.style.display = isDashboard ? 'block' : 'none';
-        if(orcSection) orcSection.style.display = isDashboard ? 'none' : 'block';
-    },
-
     toggleYearFilterVisibility: () => {
-        // Ajustado para o ID do container do modal
-        const containerAno = document.getElementById('container-ano-dash');
-        if(!containerAno) return;
+        const anoFilter = document.getElementById('ano-dashboard');
+        if(!anoFilter) return;
 
         if (app.viewType === 'anual') {
-            containerAno.style.display = 'none';
+            anoFilter.classList.add('hidden');
         } else {
-            containerAno.style.display = 'block';
+            anoFilter.classList.remove('hidden');
         }
     },
 
@@ -319,10 +269,13 @@ const app = {
 
                 newEl.addEventListener('change', (e) => {
                     const valor = parseInt(e.target.value);
+                    
                     if (obj.context === 'dashboard') {
                         app.yearDashboard = valor;
+                        app.fetchData(); 
                     } else {
                         app.yearOrcamento = valor;
+                        app.loadOrcamento(); 
                     }
                 });
             }
@@ -841,6 +794,9 @@ const app = {
         if(!canvas) return;
         if (typeof Chart === 'undefined') return;
 
+        const customLegend = document.getElementById('custom-chart-legend');
+        if(customLegend) customLegend.remove();
+
         const existingChart = Chart.getChart(canvas);
         if (existingChart) existingChart.destroy();
         if (app.orcamentoChart) { app.orcamentoChart.destroy(); app.orcamentoChart = null; }
@@ -859,6 +815,8 @@ const app = {
                 }
             });
         });
+
+        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
         const ctx = canvas.getContext('2d');
         const gradientReal = ctx.createLinearGradient(0, 0, 0, 400);
@@ -1108,6 +1066,7 @@ const app = {
         try {
             const anoParam = app.yearDashboard; 
             const viewParam = app.viewType || 'mensal';
+            // --- CAPTURA O VALOR DO NOVO FILTRO DE STATUS ---
             const statusSelect = document.getElementById('dashboard-status-view');
             const statusParam = statusSelect ? statusSelect.value : 'todos';
             
@@ -1173,6 +1132,8 @@ const app = {
         const existingChart = Chart.getChart(canvas);
         if (existingChart) existingChart.destroy();
         if (app.chart) { app.chart.destroy(); app.chart = null; }
+
+        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
         function getGradient(context, isBackground) {
             const chart = context.chart;

@@ -20,58 +20,6 @@
         <div class="spinner"></div><p>Carregando...</p>
     </div>
 
-    <div id="modal-filters" class="modal-overlay hidden">
-        <div class="modal-card filter-modal">
-            <div class="modal-header">
-                <h3><i class="fa-solid fa-sliders"></i> Filtros de Pesquisa</h3>
-                <button id="btn-close-filters" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            
-            <div class="modal-filter-content">
-                <div id="filter-section-dashboard" class="filter-group-section">
-                    <h4>Dashboard Operacional</h4>
-                    <div class="input-wrapper">
-                        <label>Status Financeiro</label>
-                        <select id="dashboard-status-view" class="select-modal">
-                            <option value="todos" selected>Todos os Lançamentos</option>
-                            <option value="realizado">Apenas Realizados</option>
-                        </select>
-                    </div>
-                    <div class="input-wrapper">
-                        <label>Tipo de Agrupamento</label>
-                        <select id="dashboard-view-type" class="select-modal">
-                            <option value="mensal" selected>Visão Mensal</option>
-                            <option value="trimestral">Visão Trimestral</option>
-                            <option value="anual">Visão Anual</option>
-                        </select>
-                    </div>
-                    <div class="input-wrapper" id="container-ano-dash">
-                        <label>Ano de Exercício</label>
-                        <select id="ano-dashboard" class="select-modal"></select>
-                    </div>
-                </div>
-
-                <div id="filter-section-orcamento" class="filter-group-section">
-                    <h4>Gestão Orçamentária</h4>
-                    <div class="input-wrapper">
-                        <label>Departamento Responsável</label>
-                        <select id="filtro-dep-orcamento" class="select-modal">
-                            <option value="">Todos os Departamentos</option>
-                        </select>
-                    </div>
-                    <div class="input-wrapper">
-                        <label>Ano do Orçamento</label>
-                        <select id="ano-orcamento" class="select-modal"></select>
-                    </div>
-                </div>
-
-                <button id="btn-apply-filters" class="btn-primary">
-                    <i class="fa-solid fa-rotate"></i> Atualizar Dados
-                </button>
-            </div>
-        </div>
-    </div>
-
     <div id="modal-reset" class="modal-overlay hidden">
         <div class="modal-card">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -183,9 +131,19 @@
                             <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
                         </div>
 
-                        <button class="btn-filter-menu open-filters-trigger">
-                            <i class="fa-solid fa-filter"></i> Filtros
-                        </button>
+                        <select id="dashboard-status-view" class="select-ano">
+                            <option value="todos" selected>Todos</option>
+                            <option value="realizado">Somente Realizado</option>
+                        </select>
+
+                        <select id="dashboard-view-type" class="select-ano">
+                            <option value="mensal" selected>Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="anual">Anual</option>
+                        </select>
+
+                        <select id="ano-dashboard" class="select-ano">
+                        </select>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
@@ -222,11 +180,12 @@
                         </p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                        
-                        <button class="btn-filter-menu open-filters-trigger">
-                            <i class="fa-solid fa-filter"></i> Filtros
-                        </button>
+                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+                            <option value="">Todos Departamentos</option>
+                        </select>
 
+                        <select id="ano-orcamento" class="select-ano">
+                        </select>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
@@ -385,6 +344,6 @@
         </main>
     </div>
 
-    <script src="script5.js"></script>
+    <script src="script6.js"></script>
 </body>
 </html>
