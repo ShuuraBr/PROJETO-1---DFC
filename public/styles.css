@@ -594,7 +594,7 @@ table {
     background: #ffffff;
     border: 1px solid var(--border);
     padding: 8px 20px;
-    border-radius: 20px; /* Mantém consistência com o campo de busca */
+    border-radius: 20px; /* Igual ao campo de busca */
     cursor: pointer;
     font-weight: 600;
     color: var(--text-dark);
@@ -612,10 +612,10 @@ table {
     color: var(--primary);
 }
 
-/* Modal de Filtros Específico */
+/* Modal de Filtros Personalizado */
 .filter-modal {
     max-width: 450px !important;
-    padding: 0 !important; /* Remove padding para o header ocupar toda a largura */
+    padding: 0 !important; /* Header ocupa toda a largura */
     overflow: hidden;
     border: none;
 }
@@ -693,7 +693,7 @@ table {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* Botão de Aplicar Filtros (Abaixo das seleções) */
+/* Botão de Aplicar dentro do Modal */
 #btn-apply-filters {
     margin-top: 10px;
     height: 45px;
@@ -703,7 +703,7 @@ table {
     gap: 10px;
 }
 
-/* Animação suave para as seções */
+/* Suporte para animação de troca de seções */
 #filter-section-dashboard, 
 #filter-section-orcamento {
     animation: fadeIn 0.3s ease-in-out;

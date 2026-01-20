@@ -21,56 +21,56 @@
     </div>
 
     <div id="modal-filters" class="modal-overlay hidden">
-    <div class="modal-card filter-modal">
-        <div class="modal-header">
-            <h3><i class="fa-solid fa-sliders"></i> Filtros de Pesquisa</h3>
-            <button id="btn-close-filters" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        
-        <div class="modal-filter-content">
-            <div id="filter-section-dashboard" class="filter-group-section">
-                <h4>Dashboard Operacional</h4>
-                <div class="input-wrapper">
-                    <label>Status Financeiro</label>
-                    <select id="dashboard-status-view" class="select-modal">
-                        <option value="todos">Todos os Lançamentos</option>
-                        <option value="realizado">Apenas Realizados</option>
-                    </select>
-                </div>
-                <div class="input-wrapper">
-                    <label>Tipo de Agrupamento</label>
-                    <select id="dashboard-view-type" class="select-modal">
-                        <option value="mensal">Visão Mensal</option>
-                        <option value="trimestral">Visão Trimestral</option>
-                        <option value="anual">Visão Anual</option>
-                    </select>
-                </div>
-                <div class="input-wrapper" id="container-ano-dash">
-                    <label>Ano de Exercício</label>
-                    <select id="ano-dashboard" class="select-modal"></select>
-                </div>
+        <div class="modal-card filter-modal">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-sliders"></i> Filtros de Pesquisa</h3>
+                <button id="btn-close-filters" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
             </div>
+            
+            <div class="modal-filter-content">
+                <div id="filter-section-dashboard" class="filter-group-section">
+                    <h4>Dashboard Operacional</h4>
+                    <div class="input-wrapper">
+                        <label>Status Financeiro</label>
+                        <select id="dashboard-status-view" class="select-modal">
+                            <option value="todos" selected>Todos os Lançamentos</option>
+                            <option value="realizado">Apenas Realizados</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label>Tipo de Agrupamento</label>
+                        <select id="dashboard-view-type" class="select-modal">
+                            <option value="mensal" selected>Visão Mensal</option>
+                            <option value="trimestral">Visão Trimestral</option>
+                            <option value="anual">Visão Anual</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper" id="container-ano-dash">
+                        <label>Ano de Exercício</label>
+                        <select id="ano-dashboard" class="select-modal"></select>
+                    </div>
+                </div>
 
-            <div id="filter-section-orcamento" class="filter-group-section">
-                <h4>Gestão Orçamentária</h4>
-                <div class="input-wrapper">
-                    <label>Departamento Responsável</label>
-                    <select id="filtro-dep-orcamento" class="select-modal">
-                        <option value="">Todos os Departamentos</option>
-                    </select>
+                <div id="filter-section-orcamento" class="filter-group-section">
+                    <h4>Gestão Orçamentária</h4>
+                    <div class="input-wrapper">
+                        <label>Departamento Responsável</label>
+                        <select id="filtro-dep-orcamento" class="select-modal">
+                            <option value="">Todos os Departamentos</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label>Ano do Orçamento</label>
+                        <select id="ano-orcamento" class="select-modal"></select>
+                    </div>
                 </div>
-                <div class="input-wrapper">
-                    <label>Ano do Orçamento</label>
-                    <select id="ano-orcamento" class="select-modal"></select>
-                </div>
+
+                <button id="btn-apply-filters" class="btn-primary">
+                    <i class="fa-solid fa-rotate"></i> Atualizar Dados
+                </button>
             </div>
-
-            <button id="btn-apply-filters" class="btn-primary">
-                <i class="fa-solid fa-rotate"></i> Atualizar Dados
-            </button>
         </div>
     </div>
-</div>
 
     <div id="modal-reset" class="modal-overlay hidden">
         <div class="modal-card">
@@ -178,16 +178,14 @@
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
                         <div class="search-wrapper">
-    <i class="fa-solid fa-magnifying-glass search-icon"></i>
-    <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
-    <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
-</div>
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
+                            <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
+                        </div>
 
-<button class="btn-filter-menu open-filters-trigger">
-    <i class="fa-solid fa-filter"></i> Filtros
-</button>
-
-<img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
+                        <button class="btn-filter-menu open-filters-trigger">
+                            <i class="fa-solid fa-filter"></i> Filtros
+                        </button>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
