@@ -151,27 +151,13 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     display: block !important;
     width: 100% !important;
     height: 500px !important; 
-    overflow-y: scroll !important; /* Força a barra vertical sempre visível para teste */
-    overflow-x: auto !important;
+    overflow: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
     background: #012d5a; 
     border-radius: 8px; 
     scrollbar-width: thin;
-}
-
-/* Ajuste para garantir que o corpo da tabela não force o crescimento do wrapper */
-#finance-table {
-    display: table !important;
-    width: max-content !important;
-    min-width: 1800px !important;
-}
-
-/* Força o cabeçalho a não quebrar o contexto de scroll */
-#finance-table thead {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
+    flex: 1 !important; /* Garante que ocupe o espaço dentro do painel flex */
 }
 
 /* Garante que o painel pai não cresça além da conta */
