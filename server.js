@@ -15,6 +15,42 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
 
+// --- LOGICA DE FERIADOS E DIAS ÚTEIS (NOVA) ---
+const getFeriados = (ano) => {
+    const fixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
+    const moveis = {
+        2024: ['02-13', '03-29', '05-30'],
+        2025: ['03-04', '04-18', '06-19'],
+        2026: ['02-17', '04-03', '06-04'],
+        2027: ['02-09', '03-26', '05-27'],
+        2028: ['02-29', '04-14', '06-15']
+    };
+    return fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
+};
+
+const getProximoDiaUtil = (dataInput) => {
+    let data = new Date(dataInput);
+    // Ajuste para evitar problemas de fuso horário local na conversão
+    if (typeof dataInput === 'string' && !dataInput.includes('T')) {
+        data = new Date(dataInput + 'T12:00:00');
+    }
+
+    const ehDiaUtil = (d) => {
+        const ano = d.getFullYear();
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const dia = String(d.getDate()).padStart(2, '0');
+        const dataFormatada = `${ano}-${mes}-${dia}`;
+        const diaSemana = d.getDay(); // 0 = Domingo, 6 = Sábado
+        const feriados = getFeriados(ano);
+        return diaSemana !== 0 && diaSemana !== 6 && !feriados.includes(dataFormatada);
+    };
+
+    while (!ehDiaUtil(data)) {
+        data.setDate(data.getDate() + 1);
+    }
+    return data;
+};
+
 // --- Configuração do Nodemailer ---
 const transporter = nodemailer.createTransport({
     host: 'smtp.hostinger.com',
@@ -166,14 +202,32 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `SELECT Codigo_plano, Mes, SUM(Valor_mov) as ValorRealizado FROM dfc_analitica WHERE 1=1 `;
+        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
-        if (ano) { queryReal += ' AND Ano = ?'; paramsReal.push(ano); }
-        queryReal += ' GROUP BY Codigo_plano, Mes';
+        // No orçamento, buscamos um range maior para o caso de boletos que viram o ano
+        if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
+        queryReal += ' ORDER BY Dt_mov';
 
-        const [resReal] = await pool.query(queryReal, paramsReal);
+        const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
-        resReal.forEach(r => { mapRealizado[`${r.Codigo_plano}-${r.Mes}`] = parseFloat(r.ValorRealizado) || 0; });
+        
+        resRealRaw.forEach(r => {
+            let mesAlvo = r.Mes;
+            let anoAlvo = r.Ano;
+
+            // Condição para Boletos
+            if (r.Nome && r.Nome.toLowerCase().includes('boleto') && r.Dt_mov) {
+                const dataUtil = getProximoDiaUtil(r.Dt_mov);
+                mesAlvo = dataUtil.getMonth() + 1;
+                anoAlvo = dataUtil.getFullYear();
+            }
+
+            // Apenas contabiliza se após o ajuste de data ainda pertencer ao ano filtrado
+            if (!ano || anoAlvo.toString() === ano.toString()) {
+                const chave = `${r.Codigo_plano}-${mesAlvo}`;
+                mapRealizado[chave] = (mapRealizado[chave] || 0) + (parseFloat(r.Valor_mov) || 0);
+            }
+        });
 
         const colunasBanco = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -206,20 +260,30 @@ app.get('/api/orcamento', async (req, res) => {
             });
             grupos[depto].detalhes.push({ conta: contaFormatada, tipo: 'item', dados: dadosMesesItem });
         });
+
+        // Lógica de Ordenação Crescente Numérica (Aba Orçamento)
+        Object.values(grupos).forEach(grupo => {
+            grupo.detalhes.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
+        });
+
         res.json(Object.values(grupos));
-    } catch (e) { res.status(500).json({ error: 'Erro ao processar orçamento' }); }
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao processar orçamento' }); 
+    }
 });
 
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza FROM dfc_analitica';
+        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov FROM dfc_analitica';
         const params = [];
 
+        // Buscamos um range maior para boletos que podem virar o ano
         if (view !== 'anual' && ano) {
-            query += ' WHERE Ano = ?';
-            params.push(ano);
+            query += ' WHERE (Ano = ? OR Ano = ?)';
+            params.push(parseInt(ano) - 1, ano);
         }
 
         const [rawData] = await pool.query(query, params);
@@ -250,35 +314,36 @@ app.get('/api/dashboard', async (req, res) => {
         const normalizar = (str) => str ? str.trim().toLowerCase().replace(/\s+/g, ' ') : '';
         const configCategorias = {
             '01-entradas operacionais': '01- Entradas Operacionais',
-            '01- entradas operacionais': '01- Entradas Operacionais', 
             '02- saidas operacionais': '02- Saídas Operacionais',
-            '02-saidas operacionais': '02- Saídas Operacionais',
             '03- operações financeiras': '03- Operações Financeiras',
-            '03- operacoes financeiras': '03- Operações Financeiras',
-            '04 - ativo imobilizado': '04- Ativo Imobilizado',
             '04- ativo imobilizado': '04- Ativo Imobilizado',
             '06- movimentações de socios': '06- Movimentações de Sócios',
-            '06- movimentacoes de socios': '06- Movimentações de Sócios',
             '07- caixas da loja': '07- Caixas da Loja'
         };
 
         let grupos = {};
         let FluxoGlobal = zerarColunas(); 
         let FluxoOperacional = zerarColunas();
-        let totalEntradasGlobal = 0;
-        let totalSaidasGlobal = 0;
         
         rawData.forEach(row => {
-            const numMes = row.Mes;
-            const numAno = row.Ano;
-            
+            let numMes = row.Mes;
+            let numAno = row.Ano;
+
+            // Lógica de Boletos: Próximo Dia Útil
+            if (row.Nome && row.Nome.toLowerCase().includes('boleto') && row.Dt_mov) {
+                const dataUtil = getProximoDiaUtil(row.Dt_mov);
+                numMes = dataUtil.getMonth() + 1;
+                numAno = dataUtil.getFullYear();
+            }
+
+            // Filtro de ano após ajuste do boleto
+            if (view !== 'anual' && ano && numAno.toString() !== ano.toString()) return;
+
             let chaveColuna = '';
-            
             if (view === 'anual') {
-                if (numAno) chaveColuna = numAno.toString();
+                chaveColuna = numAno.toString();
             } else if (view === 'trimestral') {
-                const trim = Math.ceil(numMes / 3);
-                chaveColuna = `Q${trim}`;
+                chaveColuna = `Q${Math.ceil(numMes / 3)}`;
             } else {
                 chaveColuna = mapaMeses[numMes];
             }
@@ -288,23 +353,13 @@ app.get('/api/dashboard', async (req, res) => {
             const valorAbsoluto = parseFloat(row.Valor_mov) || 0; 
             const natureza = row.Natureza ? row.Natureza.trim().toLowerCase() : '';
             const ehSaida = natureza.includes('saída') || natureza.includes('saida');
-            
-            if (ehSaida) {
-                FluxoGlobal[chaveColuna] -= valorAbsoluto;
-                totalSaidasGlobal += valorAbsoluto;
-            } else {
-                FluxoGlobal[chaveColuna] += valorAbsoluto;
-                totalEntradasGlobal += valorAbsoluto;
-            }
+            let valorParaTabela = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
+
+            FluxoGlobal[chaveColuna] += valorParaTabela;
 
             if (row.Origem_DFC) {
                 const chaveBanco = normalizar(row.Origem_DFC);
-                let tituloGrupo = configCategorias[chaveBanco];
-
-                if (!tituloGrupo) {
-                    const keyEncontrada = Object.keys(configCategorias).find(k => k.includes(chaveBanco) || chaveBanco.includes(k));
-                    if (keyEncontrada) tituloGrupo = configCategorias[keyEncontrada];
-                }
+                let tituloGrupo = configCategorias[chaveBanco] || Object.values(configCategorias).find(v => normalizar(v).includes(chaveBanco));
 
                 if (tituloGrupo) {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
@@ -314,9 +369,6 @@ app.get('/api/dashboard', async (req, res) => {
                     const cod = row.Codigo_plano || '';
                     const nom = row.Nome || '';
                     const itemChave = `${cod} - ${nom}`;
-                    
-                    // LÓGICA DA TABELA
-                    let valorParaTabela = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
 
                     grupo.total[chaveColuna] += valorParaTabela;
 
@@ -326,85 +378,57 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupo.subgruposMap[nome2].itensMap[itemChave]) grupo.subgruposMap[nome2].itensMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
                     grupo.subgruposMap[nome2].itensMap[itemChave][chaveColuna] += valorParaTabela;
 
-                    const ehEntradaOp = tituloGrupo.includes('01'); 
-                    const ehSaidaOp = tituloGrupo.includes('02');
-                    
-                    if (ehEntradaOp || ehSaidaOp) {
-                        if (ehSaida) FluxoOperacional[chaveColuna] -= valorAbsoluto;
-                        else FluxoOperacional[chaveColuna] += valorAbsoluto;
+                    if (tituloGrupo.includes('01') || tituloGrupo.includes('02')) {
+                        FluxoOperacional[chaveColuna] += valorParaTabela;
                     }
                 }
             }
         });
 
-        const ordemDesejada = [
-            '01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras',
-            '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'
-        ];
+        const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
 
-        let tabelaRows = [];
-        const valInicial = 0; 
-        
-        tabelaRows.push({ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' });
+        let tabelaRows = [{ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' }];
 
         ordemDesejada.forEach(titulo => {
             const g = grupos[titulo];
             if (g) {
                 const arraySubgrupos = Object.values(g.subgruposMap).map(sub => {
                     const arrayItens = Object.values(sub.itensMap);
+                    arrayItens.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
                     return { conta: sub.conta, ...sub, tipo: 'subgrupo', detalhes: arrayItens };
                 });
+                arraySubgrupos.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
                 tabelaRows.push({ conta: g.titulo, ...g.total, tipo: 'grupo', detalhes: arraySubgrupos });
             }
         });
 
-        // --- CÁLCULO DOS KPIS BASEADO NOS TOTAIS DA TABELA ---
-        let totalEntradasOperacionais = 0;
-        let totalSaidasOperacionais = 0;
+        const totalEntradasOperacionais = grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0;
+        const totalSaidasOperacionais = grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0;
 
-        // 1. Busca o grupo exato "01- Entradas..." da estrutura agrupada
-        const grupoEntradas = grupos['01- Entradas Operacionais'];
-        if (grupoEntradas) {
-            // Soma os valores das colunas (ex: jan+fev+mar...)
-            totalEntradasOperacionais = Object.values(grupoEntradas.total).reduce((acc, v) => acc + v, 0);
-        }
-
-        // 2. Busca o grupo exato "02- Saídas..." da estrutura agrupada
-        const grupoSaidas = grupos['02- Saídas Operacionais'];
-        if (grupoSaidas) {
-            // Soma os valores das colunas (serão negativos pois a tabela exibe negativo)
-            const somaNegativa = Object.values(grupoSaidas.total).reduce((acc, v) => acc + v, 0);
-            // Converte para absoluto para exibir no card (Ex: "R$ 33.000,00" e não "-R$ 33.000,00")
-            totalSaidasOperacionais = Math.abs(somaNegativa);
-        }
-
-        const graficoData = [];
         const linhaSaldoFinal = zerarColunas();
-
+        const graficoData = [];
         colunasKeys.forEach(col => {
-            linhaSaldoFinal[col] = valInicial + FluxoGlobal[col];
+            linhaSaldoFinal[col] = FluxoGlobal[col];
             graficoData.push(FluxoOperacional[col]);
         });
 
         tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
-        const somaObj = (o) => Object.values(o).reduce((a, b) => a + b, 0);
-        const totalSuperavitDeficit = somaObj(FluxoOperacional);
+        const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
 
         res.json({
             cards: {
-                saldoInicial: valInicial, 
-                // KPIs usando os valores derivados da tabela
+                saldoInicial: 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: valInicial + totalSuperavitDeficit
+                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
         });
 
     } catch (err) {
-        console.error("ERRO DASHBOARD:", err);
+        console.error(err);
         res.status(500).json({ error: "Erro interno" });
     }
 });
@@ -414,4 +438,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
