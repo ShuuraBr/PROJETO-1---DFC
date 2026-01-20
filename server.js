@@ -204,7 +204,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
-        // No orçamento, buscamos um range maior para o caso de boletos que viram o ano
+        // Busca um range de 2 anos para capturar boletos que podem transbordar o ano
         if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
         queryReal += ' ORDER BY Dt_mov';
 
@@ -215,14 +215,14 @@ app.get('/api/orcamento', async (req, res) => {
             let mesAlvo = r.Mes;
             let anoAlvo = r.Ano;
 
-            // Condição para Boletos
+            // Condição para Boletos - Afeta a competência (mês/ano)
             if (r.Nome && r.Nome.toLowerCase().includes('boleto') && r.Dt_mov) {
                 const dataUtil = getProximoDiaUtil(r.Dt_mov);
                 mesAlvo = dataUtil.getMonth() + 1;
                 anoAlvo = dataUtil.getFullYear();
             }
 
-            // Apenas contabiliza se após o ajuste de data ainda pertencer ao ano filtrado
+            // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
             if (!ano || anoAlvo.toString() === ano.toString()) {
                 const chave = `${r.Codigo_plano}-${mesAlvo}`;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + (parseFloat(r.Valor_mov) || 0);
@@ -275,15 +275,22 @@ app.get('/api/orcamento', async (req, res) => {
 
 app.get('/api/dashboard', async (req, res) => {
     try {
-        const { ano, view } = req.query; 
+        const { ano, view, status } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov FROM dfc_analitica';
+        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
         const params = [];
 
-        // Buscamos um range maior para boletos que podem virar o ano
+        // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
         if (view !== 'anual' && ano) {
-            query += ' WHERE (Ano = ? OR Ano = ?)';
-            params.push(parseInt(ano) - 1, ano);
+            query += ' AND (Ano = ? OR (Nome LIKE "%boleto%" AND Ano = ?))';
+            params.push(ano, parseInt(ano) - 1);
+        }
+
+        // --- FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
+        if (status === 'realizado') {
+            query += ' AND (Nome NOT LIKE "%boleto%" OR Baixa IS NOT NULL)';
+        } else if (status === 'aberto') {
+            query += ' AND (Nome LIKE "%boleto%" AND Baixa IS NULL)';
         }
 
         const [rawData] = await pool.query(query, params);
@@ -329,14 +336,14 @@ app.get('/api/dashboard', async (req, res) => {
             let numMes = row.Mes;
             let numAno = row.Ano;
 
-            // Lógica de Boletos: Próximo Dia Útil
+            // Lógica de Boletos: Próximo Dia Útil (Define a competência do mês/ano)
             if (row.Nome && row.Nome.toLowerCase().includes('boleto') && row.Dt_mov) {
                 const dataUtil = getProximoDiaUtil(row.Dt_mov);
                 numMes = dataUtil.getMonth() + 1;
                 numAno = dataUtil.getFullYear();
             }
 
-            // Filtro de ano após ajuste do boleto
+            // Filtro final: ignora se após postergar o boleto ele saiu do ano selecionado
             if (view !== 'anual' && ano && numAno.toString() !== ano.toString()) return;
 
             let chaveColuna = '';
@@ -438,4 +445,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));

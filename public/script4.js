@@ -78,6 +78,14 @@ const app = {
                 app.fetchData(); 
             });
         }
+
+        // --- NOVO LISTENER PARA FILTRO DE STATUS (REALIZADO/ABERTO) ---
+        const statusSelect = document.getElementById('dashboard-status-view');
+        if(statusSelect) {
+            statusSelect.addEventListener('change', () => {
+                app.fetchData();
+            });
+        }
         
         const filtroDept = document.getElementById('filtro-dep-orcamento');
         if(filtroDept) {
@@ -289,7 +297,6 @@ const app = {
         app.user = null;
     },
 
-    // --- NOVA FUNÇÃO DE LOGIN (PASSO 1) ---
     login: async (e) => {
         e.preventDefault();
         const email = document.getElementById('email').value;
@@ -307,14 +314,12 @@ const app = {
             const data = await res.json();
             
             if (data.success && data.require2fa) {
-                // SUCESSO PASSO 1 - VAI PARA TOKEN
                 app.emailTemp = data.email;
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('tokenForm').classList.remove('hidden');
                 document.getElementById('token-input').value = "";
                 document.getElementById('token-input').focus();
                 
-                // INICIA O CRONÔMETRO VISUAL (NOVA LÓGICA DE 30s)
                 app.startCountdown();
 
             } else if (!data.success) { 
@@ -329,30 +334,27 @@ const app = {
         }
     },
 
-    // --- FUNÇÃO PARA CONTAR OS 30 SEGUNDOS ---
     startCountdown: () => {
         const err = document.getElementById('msg-error');
         let timeLeft = 60;
         
         if (app.timer) clearInterval(app.timer);
         
-        // Define a mensagem inicial
         err.innerText = `Código enviado! Válido por ${timeLeft}s`;
-        err.style.color = '#2563eb'; // Azul
+        err.style.color = '#2563eb'; 
 
         app.timer = setInterval(() => {
             timeLeft--;
             if (timeLeft <= 0) {
                 clearInterval(app.timer);
                 err.innerText = "Tempo esgotado. Solicite novo código.";
-                err.style.color = '#ef4444'; // Vermelho
+                err.style.color = '#ef4444'; 
             } else {
                 err.innerText = `Código enviado! Válido por ${timeLeft}s`;
             }
         }, 1000);
     },
 
-    // --- NOVA FUNÇÃO PARA VALIDAR TOKEN (PASSO 2) ---
     validarToken: async (e) => {
         e.preventDefault();
         const token = document.getElementById('token-input').value;
@@ -374,8 +376,7 @@ const app = {
             const data = await res.json();
 
             if (data.success) {
-                // SUCESSO TOTAL
-                if (app.timer) clearInterval(app.timer); // Para o contador
+                if (app.timer) clearInterval(app.timer); 
                 
                 app.user = data.user;
                 sessionStorage.setItem('dfc_user', JSON.stringify(app.user));
@@ -388,7 +389,7 @@ const app = {
                     document.getElementById('modal-reset').classList.remove('hidden'); 
                 } else { app.showApp(); }
             } else {
-                err.innerText = data.message; // Mensagem do server (ex: Expirado)
+                err.innerText = data.message; 
                 err.style.color = '#ef4444';
             }
         } catch (e) {
@@ -400,14 +401,13 @@ const app = {
     },
 
     resetLoginUI: () => {
-        if (app.timer) clearInterval(app.timer); // Limpa timer ao voltar
+        if (app.timer) clearInterval(app.timer); 
         
         document.getElementById('loginForm').classList.remove('hidden');
         document.getElementById('tokenForm').classList.add('hidden');
         document.getElementById('msg-error').innerText = "";
         app.emailTemp = null;
     },
-    // -----------------------------------------------------
 
     confirmarResetSenha: async (e) => {
         e.preventDefault();
@@ -1066,8 +1066,11 @@ const app = {
         try {
             const anoParam = app.yearDashboard; 
             const viewParam = app.viewType || 'mensal';
+            // --- CAPTURA O VALOR DO NOVO FILTRO DE STATUS ---
+            const statusSelect = document.getElementById('dashboard-status-view');
+            const statusParam = statusSelect ? statusSelect.value : 'todos';
             
-            const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}`);
+            const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`);
             const data = await res.json();
             if(data.error) throw new Error(data.error);
             
