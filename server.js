@@ -28,15 +28,9 @@ const getFeriados = (ano) => {
     return fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
 };
 
-// Função auxiliar para identificar tipos especiais que sofrem postergação
-const ehTipoEspecial = (nome) => {
-    if (!nome) return false;
-    const n = nome.toUpperCase();
-    return n.includes('BOLETO') || n.includes('CARTÕES (DÉBITO E CRÉDITO)');
-};
-
 const getProximoDiaUtil = (dataInput) => {
     let data = new Date(dataInput);
+    // Ajuste para evitar problemas de fuso horário local na conversão
     if (typeof dataInput === 'string' && !dataInput.includes('T')) {
         data = new Date(dataInput + 'T12:00:00');
     }
@@ -151,6 +145,43 @@ app.post('/api/validar-token', async (req, res) => {
 // ROTAS DO SISTEMA
 // =========================================================================
 
+app.post('/api/usuarios', async (req, res) => {
+    const { nome, email, departamentoId, role, nivel } = req.body;
+    try {
+        const [check] = await pool.query('SELECT Email FROM usuarios WHERE Email = ?', [email]);
+        if (check.length > 0) return res.status(400).json({ success: false, message: 'Email já existe' });
+        
+        await pool.query(
+            `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
+             VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
+            [nome, email, SENHA_PADRAO, SENHA_PADRAO, departamentoId, role, nivel]
+        );
+        res.json({ success: true, message: 'Criado com sucesso' });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.post('/api/definir-senha', async (req, res) => {
+    const { email, novaSenha } = req.body;
+    try {
+        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
+        res.json({ success: true });
+    } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.get('/api/departamentos', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
+        res.json(rows);
+    } catch (e) { res.status(500).json([]); }
+});
+
+app.get('/api/anos', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
+        res.json(rows);
+    } catch (e) { res.status(500).json([]); }
+});
+
 app.get('/api/orcamento', async (req, res) => {
     const { email, ano } = req.query;
     try {
@@ -173,6 +204,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
+        // Busca um range de 2 anos para capturar boletos que podem transbordar o ano
         if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
         queryReal += ' ORDER BY Dt_mov';
 
@@ -183,12 +215,14 @@ app.get('/api/orcamento', async (req, res) => {
             let mesAlvo = r.Mes;
             let anoAlvo = r.Ano;
 
-            if (ehTipoEspecial(r.Nome) && r.Dt_mov) {
+            // Condição para Boletos - Afeta a competência (mês/ano)
+            if (r.Nome && r.Nome.toLowerCase().includes('boleto') && r.Dt_mov) {
                 const dataUtil = getProximoDiaUtil(r.Dt_mov);
                 mesAlvo = dataUtil.getMonth() + 1;
                 anoAlvo = dataUtil.getFullYear();
             }
 
+            // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
             if (!ano || anoAlvo.toString() === ano.toString()) {
                 const chave = `${r.Codigo_plano}-${mesAlvo}`;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + (parseFloat(r.Valor_mov) || 0);
@@ -212,18 +246,24 @@ app.get('/api/orcamento', async (req, res) => {
             }
             const dadosMesesItem = {};
             chavesFrontend.forEach((chaveFront, index) => {
-                const orcado = ocultarOrcado ? 0 : parseFloat(row[colunasBanco[index]]) || 0;
-                const realizado = mapRealizado[`${codigo}-${index+1}`] || 0;
-                dadosMesesItem[chaveFront] = { orcado, realizado, diferenca: orcado - realizado };
-                grupos[depto].dados[chaveFront].orcado += orcado;
-                grupos[depto].dados[chaveFront].realizado += realizado;
-                grupos[depto].dados[chaveFront].diferenca += (orcado - realizado);
+                const nomeColunaBanco = colunasBanco[index];
+                const mesNumero = index + 1;
+                let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
+                if (ocultarOrcado) valOrcado = 0;
+                const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
+                const diferenca = valOrcado - valRealizado;
+                dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
+
+                grupos[depto].dados[chaveFront].orcado += valOrcado;
+                grupos[depto].dados[chaveFront].realizado += valRealizado;
+                grupos[depto].dados[chaveFront].diferenca += diferenca;
             });
             grupos[depto].detalhes.push({ conta: contaFormatada, tipo: 'item', dados: dadosMesesItem });
         });
 
+        // Lógica de Ordenação Crescente Numérica (Aba Orçamento)
         Object.values(grupos).forEach(grupo => {
-            grupo.detalhes.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
+            grupo.detalhes.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
         });
 
         res.json(Object.values(grupos));
@@ -240,90 +280,158 @@ app.get('/api/dashboard', async (req, res) => {
         let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
         const params = [];
 
+        // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
         if (view !== 'anual' && ano) {
             query += ' AND (Ano = ? OR ( (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
             params.push(ano, parseInt(ano) - 1);
         }
 
-        // --- LÓGICA DE FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
+        // --- FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
         if (status === 'realizado') {
-            // Traz tudo que NÃO é especial OU itens especiais que possuem data de baixa preenchida
             query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
         } else if (status === 'aberto') {
-            // Traz tudo que NÃO é especial (fluxo normal) + itens especiais SEM baixa
             query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
         }
 
         const [rawData] = await pool.query(query, params);
 
-        let colKeys = (view === 'anual') ? [...new Set(rawData.map(r => r.Ano))].sort() : (view === 'trimestral' ? ['Q1','Q2','Q3','Q4'] : ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']);
+        let colunasKeys = [];
+        let colunasLabels = [];
+
+        if (view === 'anual') {
+            const anosUnicos = [...new Set(rawData.map(r => r.Ano))].sort((a,b) => a - b);
+            colunasKeys = anosUnicos.map(a => a.toString());
+            colunasLabels = colunasKeys;
+        } else if (view === 'trimestral') {
+            colunasKeys = ['Q1', 'Q2', 'Q3', 'Q4'];
+            colunasLabels = ['1º Trim', '2º Trim', '3º Trim', '4º Trim'];
+        } else {
+            colunasKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+            colunasLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        }
+
         const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
         
         const zerarColunas = () => {
             const obj = {};
-            colKeys.forEach(k => obj[k] = 0);
+            colunasKeys.forEach(k => obj[k] = 0);
             return obj;
         };
 
         const normalizar = (str) => str ? str.trim().toLowerCase().replace(/\s+/g, ' ') : '';
-        const configCategorias = { '01-entradas operacionais': '01- Entradas Operacionais', '02- saidas operacionais': '02- Saídas Operacionais', '03- operações financeiras': '03- Operações Financeiras', '04- ativo imobilizado': '04- Ativo Imobilizado', '06- movimentações de socios': '06- Movimentações de Sócios', '07- caixas da loja': '07- Caixas da Loja' };
+        const configCategorias = {
+            '01-entradas operacionais': '01- Entradas Operacionais',
+            '02- saidas operacionais': '02- Saídas Operacionais',
+            '03- operações financeiras': '03- Operações Financeiras',
+            '04- ativo imobilizado': '04- Ativo Imobilizado',
+            '06- movimentações de socios': '06- Movimentações de Sócios',
+            '07- caixas da loja': '07- Caixas da Loja'
+        };
 
         let grupos = {};
         let FluxoGlobal = zerarColunas(); 
         let FluxoOperacional = zerarColunas();
         
         rawData.forEach(row => {
-            let numMes = row.Mes, numAno = row.Ano;
+            let numMes = row.Mes;
+            let numAno = row.Ano;
 
-            if (ehTipoEspecial(row.Nome) && row.Dt_mov) {
+            // Lógica de Boletos: Próximo Dia Útil (Define a competência do mês/ano)
+            if (row.Nome && row.Nome.toLowerCase().includes('boleto') && row.Dt_mov) {
                 const dataUtil = getProximoDiaUtil(row.Dt_mov);
                 numMes = dataUtil.getMonth() + 1;
                 numAno = dataUtil.getFullYear();
             }
 
+            // Filtro final: ignora se após postergar o boleto ele saiu do ano selecionado
             if (view !== 'anual' && ano && numAno.toString() !== ano.toString()) return;
 
-            let col = (view === 'anual') ? numAno.toString() : (view === 'trimestral' ? `Q${Math.ceil(numMes/3)}` : mapaMeses[numMes]);
-            if (!colKeys.includes(col)) return;
+            let chaveColuna = '';
+            if (view === 'anual') {
+                chaveColuna = numAno.toString();
+            } else if (view === 'trimestral') {
+                chaveColuna = `Q${Math.ceil(numMes / 3)}`;
+            } else {
+                chaveColuna = mapaMeses[numMes];
+            }
 
-            const val = parseFloat(row.Valor_mov) || 0;
-            const ehSaida = row.Natureza && row.Natureza.toLowerCase().includes('saida');
-            let valTab = ehSaida ? -val : val;
+            if (!colunasKeys.includes(chaveColuna)) return;
 
-            FluxoGlobal[col] += valTab;
+            const valorAbsoluto = parseFloat(row.Valor_mov) || 0; 
+            const natureza = row.Natureza ? row.Natureza.trim().toLowerCase() : '';
+            const ehSaida = natureza.includes('saída') || natureza.includes('saida');
+            let valorParaTabela = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
+
+            FluxoGlobal[chaveColuna] += valorParaTabela;
 
             if (row.Origem_DFC) {
                 const chaveBanco = normalizar(row.Origem_DFC);
                 let tituloGrupo = configCategorias[chaveBanco] || Object.values(configCategorias).find(v => normalizar(v).includes(chaveBanco));
 
                 if (tituloGrupo) {
-                    if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subMap: {} };
-                    grupos[tituloGrupo].total[col] += valTab;
-                    const n2 = row.Nome_2 || 'Outros', itemChave = `${row.Codigo_plano} - ${row.Nome}`;
-                    if (!grupos[tituloGrupo].subMap[n2]) grupos[tituloGrupo].subMap[n2] = { conta: n2, ...zerarColunas(), itemMap: {} };
-                    grupos[tituloGrupo].subMap[n2][col] += valTab;
-                    if (!grupos[tituloGrupo].subMap[n2].itemMap[itemChave]) grupos[tituloGrupo].subMap[n2].itemMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
-                    grupos[tituloGrupo].subMap[n2].itemMap[itemChave][col] += valTab;
-                    if (tituloGrupo.includes('01') || tituloGrupo.includes('02')) FluxoOperacional[col] += valTab;
+                    if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
+                    const grupo = grupos[tituloGrupo];
+                    
+                    const nome2 = row.Nome_2 ? row.Nome_2.trim() : 'Outros';
+                    const cod = row.Codigo_plano || '';
+                    const nom = row.Nome || '';
+                    const itemChave = `${cod} - ${nom}`;
+
+                    grupo.total[chaveColuna] += valorParaTabela;
+
+                    if (!grupo.subgruposMap[nome2]) grupo.subgruposMap[nome2] = { conta: nome2, ...zerarColunas(), itensMap: {} };
+                    grupo.subgruposMap[nome2][chaveColuna] += valorParaTabela;
+                    
+                    if (!grupo.subgruposMap[nome2].itensMap[itemChave]) grupo.subgruposMap[nome2].itensMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
+                    grupo.subgruposMap[nome2].itensMap[itemChave][chaveColuna] += valorParaTabela;
+
+                    if (tituloGrupo.includes('01') || tituloGrupo.includes('02')) {
+                        FluxoOperacional[chaveColuna] += valorParaTabela;
+                    }
                 }
             }
         });
 
+        const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
+
         let tabelaRows = [{ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' }];
-        ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'].forEach(titulo => {
-            if (grupos[titulo]) {
-                const arraySub = Object.values(grupos[titulo].subMap).map(sub => {
-                    const its = Object.values(sub.itemMap).sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
-                    return { conta: sub.conta, ...sub, detalhes: its };
-                }).sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
-                tabelaRows.push({ conta: titulo, ...grupos[titulo].total, tipo: 'grupo', detalhes: arraySub });
+
+        ordemDesejada.forEach(titulo => {
+            const g = grupos[titulo];
+            if (g) {
+                const arraySubgrupos = Object.values(g.subgruposMap).map(sub => {
+                    const arrayItens = Object.values(sub.itensMap);
+                    arrayItens.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
+                    return { conta: sub.conta, ...sub, tipo: 'subgrupo', detalhes: arrayItens };
+                });
+                arraySubgrupos.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
+                tabelaRows.push({ conta: g.titulo, ...g.total, tipo: 'grupo', detalhes: arraySubgrupos });
             }
         });
 
+        const totalEntradasOperacionais = grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0;
+        const totalSaidasOperacionais = grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0;
+
+        const linhaSaldoFinal = zerarColunas();
+        const graficoData = [];
+        colunasKeys.forEach(col => {
+            linhaSaldoFinal[col] = FluxoGlobal[col];
+            graficoData.push(FluxoOperacional[col]);
+        });
+
+        tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
+        const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
+
         res.json({
-            cards: { saldoInicial: 0, entrada: grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0, saida: grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0, deficitSuperavit: Object.values(FluxoOperacional).reduce((a, b) => a + b, 0), saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0) },
-            grafico: { labels: colKeys, data: Object.values(FluxoOperacional) },
-            tabela: { rows: tabelaRows, columns: colKeys, headers: colKeys }
+            cards: {
+                saldoInicial: 0, 
+                entrada: totalEntradasOperacionais, 
+                saida: totalSaidasOperacionais,
+                deficitSuperavit: totalSuperavitDeficit,
+                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
+            },
+            grafico: { labels: colunasLabels, data: graficoData },
+            tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
         });
 
     } catch (err) {
@@ -332,6 +440,9 @@ app.get('/api/dashboard', async (req, res) => {
     }
 });
 
-app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
