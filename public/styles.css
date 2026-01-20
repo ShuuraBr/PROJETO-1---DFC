@@ -586,100 +586,106 @@ table {
     }
 }
 /* =========================================================================
-   ESTILOS DO NOVO MENU E MODAL DE FILTROS
+   ESTILOS DO NOVO MENU E MODAL DE FILTROS (ESTILO DASHBOARD)
    ========================================================================= */
 
-/* Botão de Menu (Gatilho na barra superior) */
+/* Botão de Filtros (Estilo Pílula) na barra superior */
 .btn-filter-menu {
-    background: #f3f4f6;
+    background: #ffffff;
     border: 1px solid var(--border);
-    padding: 10px 18px;
-    border-radius: 8px;
+    padding: 8px 20px;
+    border-radius: 20px; /* Mantém consistência com o campo de busca */
     cursor: pointer;
     font-weight: 600;
     color: var(--text-dark);
     display: flex;
     align-items: center;
     gap: 10px;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     font-size: 14px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .btn-filter-menu:hover {
-    background: #e5e7eb;
-    border-color: #d1d5db;
-    transform: translateY(-1px);
-}
-
-.btn-filter-menu i {
+    border-color: var(--primary);
+    background-color: #f8fafc;
     color: var(--primary);
 }
 
 /* Modal de Filtros Específico */
 .filter-modal {
-    max-width: 420px !important;
-    padding: 25px !important;
+    max-width: 450px !important;
+    padding: 0 !important; /* Remove padding para o header ocupar toda a largura */
+    overflow: hidden;
+    border: none;
 }
 
 .modal-header {
+    background-color: var(--bg-sidebar); /* Azul escuro igual à sidebar */
+    color: #ffffff;
+    padding: 18px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 15px;
+    margin-bottom: 0;
 }
 
 .modal-header h3 {
-    font-size: 18px;
-    color: var(--text-dark);
+    font-size: 16px;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .btn-close {
+    color: rgba(255,255,255,0.7);
     background: none;
     border: none;
-    font-size: 22px;
+    font-size: 20px;
     cursor: pointer;
-    color: var(--text-muted);
     transition: 0.2s;
 }
 
 .btn-close:hover {
-    color: var(--danger);
+    color: #ffffff;
 }
 
-/* Seções Internas do Modal */
+/* Conteúdo Interno do Modal */
+.modal-filter-content {
+    padding: 25px;
+}
+
 .filter-group-section {
     margin-bottom: 20px;
     padding: 15px;
     background: #f9fafb;
-    border-radius: 10px;
-    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    border: 1px solid var(--border);
 }
 
 .filter-group-section h4 {
     font-size: 11px;
     text-transform: uppercase;
-    color: var(--primary);
+    color: var(--text-muted);
     margin-bottom: 15px;
     letter-spacing: 1px;
     font-weight: 700;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 5px;
 }
 
-/* Inputs dentro do Modal */
+/* Estilo dos Inputs/Selects dentro do Modal */
 .select-modal {
     width: 100%;
-    padding: 12px;
+    padding: 10px 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 14px;
-    background: white;
+    background-color: #ffffff;
+    color: var(--text-dark);
     outline: none;
-    transition: 0.2s;
+    transition: border-color 0.2s;
 }
 
 .select-modal:focus {
@@ -687,7 +693,17 @@ table {
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* Animação para troca de seções dentro do modal */
+/* Botão de Aplicar Filtros (Abaixo das seleções) */
+#btn-apply-filters {
+    margin-top: 10px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Animação suave para as seções */
 #filter-section-dashboard, 
 #filter-section-orcamento {
     animation: fadeIn 0.3s ease-in-out;
