@@ -12,6 +12,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="test_script.js"></script>
 </head>
 <body>
 
@@ -27,38 +28,38 @@
             </div>
             
             <div id="filter-section-dashboard" class="filter-group-section">
-                <h4>Configurações da Dashboard</h4>
+                <h4>Dashboard</h4>
                 <div class="input-wrapper">
-                    <label>Tipo de Visão</label>
+                    <label>Status</label>
+                    <select id="dashboard-status-view" class="select-modal">
+                        <option value="todos" selected>Todos</option>
+                        <option value="realizado">Somente Realizado</option>
+                    </select>
+                </div>
+                <div class="input-wrapper">
+                    <label>Visão</label>
                     <select id="dashboard-view-type" class="select-modal">
                         <option value="mensal" selected>Mensal</option>
                         <option value="trimestral">Trimestral</option>
                         <option value="anual">Anual</option>
                     </select>
                 </div>
-                <div class="input-wrapper">
-                    <label>Status dos Lançamentos</label>
-                    <select id="dashboard-status-view" class="select-modal">
-                        <option value="todos" selected>Todos (Aberto + Realizado)</option>
-                        <option value="realizado">Apenas Realizado (Baixado)</option>
-                    </select>
-                </div>
                 <div class="input-wrapper" id="container-ano-dash">
-                    <label>Ano de Referência</label>
+                    <label>Ano</label>
                     <select id="ano-dashboard" class="select-modal"></select>
                 </div>
             </div>
 
             <div id="filter-section-orcamento" class="filter-group-section">
-                <h4>Configurações do Orçamento</h4>
+                <h4>Orçamento</h4>
                 <div class="input-wrapper">
-                    <label>Filtrar por Departamento</label>
+                    <label>Departamento</label>
                     <select id="filtro-dep-orcamento" class="select-modal">
                         <option value="">Todos Departamentos</option>
                     </select>
                 </div>
                 <div class="input-wrapper">
-                    <label>Ano de Exercício</label>
+                    <label>Ano</label>
                     <select id="ano-orcamento" class="select-modal"></select>
                 </div>
             </div>
@@ -94,7 +95,10 @@
     <div id="view-login" class="view-container">
         <div class="login-card">
             <div class="login-header">
-                <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" alt="Logotipo" class="login-brand-logo">
+                <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                     alt="Logotipo" 
+                     class="login-brand-logo">
+                
                 <h2>Acesso Corporativo</h2>
                 <p>Fluxo de Caixa</p>
             </div>
@@ -118,16 +122,21 @@
                         Enviamos um código para o seu e-mail.
                     </p>
                 </div>
+
                 <div class="input-wrapper">
                     <label style="text-align: center;">Código de Verificação</label>
                     <input type="text" id="token-input" placeholder="000000" maxlength="6" 
                            style="text-align: center; letter-spacing: 8px; font-size: 24px; font-weight: bold; padding: 15px;">
                 </div>
+                
                 <button type="submit" class="btn-primary">Acessar Sistema</button>
-                <button type="button" id="btn-cancelar-token" style="background:none; border:none; color:#6b7280; font-size:13px; margin-top:15px; cursor:pointer; text-decoration:underline;">
+                
+                <button type="button" id="btn-cancelar-token" 
+                        style="background:none; border:none; color:#6b7280; font-size:13px; margin-top:15px; cursor:pointer; text-decoration:underline;">
                     Voltar para login
                 </button>
             </form>
+
             <p id="msg-error" class="error-text"></p>
         </div>
     </div>
@@ -175,7 +184,7 @@
                         <button class="btn-filter-menu open-filters-trigger">
                             <i class="fa-solid fa-filter"></i> Filtros
                         </button>
-
+                        
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
@@ -205,6 +214,7 @@
                 <header class="top-bar">
                     <div class="titles">
                         <h1>Orçamento vs Realizado</h1>
+                        <p>Acompanhamento detalhado por Departamento</p>
                         <p style="margin-top: 4px; font-size: 14px; color: #4b5563;">
                             Responsável: <span id="user-info-orcamento" style="font-weight:600;">...</span>
                         </p>
@@ -223,6 +233,7 @@
                 <div class="kpi-grid" id="kpi-orcamento-container" style="margin-bottom: 20px;"></div>
 
                 <div class="panel table-panel" style="border:none; background: transparent; margin-bottom: 30px;">
+                    
                     <div style="display: flex; gap: 20px; justify-content: flex-end; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: #4b5563;">
                         <div style="display: flex; align-items: center; gap: 6px;">
                             <span style="width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%;"></span>
@@ -264,46 +275,108 @@
                         <h3><i class="fa-solid fa-chart-line"></i> Evolução Orçamentária & Projeção Mensal</h3>
                     </div>
                     <div class="chart-row">
-                        <div class="chart-main"><div class="chart-wrapper"><canvas id="orcamentoChart"></canvas></div></div>
-                        <div class="thermometer-section">
-                            <h4 id="thermometer-goal-title" style="margin-bottom: 15px; color: #1f2937; font-weight: 800; font-size: 16px;">FinanCheck: R$ 0,00</h4>
-                            <div class="flat-thermometer-container">
-                                <div id="tooltip-left" class="thermometer-tooltip tooltip-left"><span id="lbl-porcentagem">0%</span><div class="arrow-right"></div></div>
-                                <div class="thermometer-body">
-                                    <div class="thermometer-tube-border">
-                                        <div class="ticks"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-                                        <div class="thermometer-liquid" id="thermometer-fill" style="height: 0%;"></div>
-                                    </div>
-                                    <div class="thermometer-bulb-border"><div class="thermometer-bulb-fill" id="thermometer-bulb-color"></div></div>
-                                </div>
-                                <div id="tooltip-right" class="thermometer-tooltip tooltip-right"><div class="arrow-left"></div><span id="lbl-valor">R$ 0</span></div>
+                        <div class="chart-main">
+                            <div class="chart-wrapper">
+                                <canvas id="orcamentoChart"></canvas>
                             </div>
                         </div>
-                    </div>
+                        
+                        <div class="thermometer-section">
+                            <h4 id="thermometer-goal-title" style="margin-bottom: 15px; color: #1f2937; font-weight: 800; font-size: 16px;">
+                                FinanCheck: R$ 0,00
+                            </h4>
+                        
+                            <div class="flat-thermometer-container">
+                                <div id="tooltip-left" class="thermometer-tooltip tooltip-left">
+                                    <span id="lbl-porcentagem">0%</span>
+                                    <div class="arrow-right"></div>
+                                </div>
+                        
+                                <div class="thermometer-body">
+                                    <div class="thermometer-tube-border">
+                                        <div class="ticks">
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                            <span></span><span></span><span></span><span></span><span></span>
+                                        </div>
+                                        <div class="thermometer-liquid" id="thermometer-fill" style="height: 0%;"></div>
+                                    </div>
+                                    <div class="thermometer-bulb-border">
+                                        <div class="thermometer-bulb-fill" id="thermometer-bulb-color"></div>
+                                    </div>
+                                </div>
+                        
+                                <div id="tooltip-right" class="thermometer-tooltip tooltip-right">
+                                    <div class="arrow-left"></div>
+                                    <span id="lbl-valor">R$ 0</span>
+                                </div>
+                            </div>
+                        
+                            <div class="thermometer-legend flat-legend">
+                                <div class="legend-item"><span class="dot dot-blue"></span> Abaixo (-80%)</div>
+                                <div class="legend-item"><span class="dot dot-green"></span> Ideal (80-95%)</div>
+                                <div class="legend-item"><span class="dot dot-yellow"></span> Alerta (95-100%)</div>
+                                <div class="legend-item"><span class="dot dot-red"></span> Estouro (>100%)</div>
+                            </div>
+                        </div>
+                        </div>
                 </div>
             </section>
 
             <section id="page-settings" class="page-section">
-                <header class="top-bar"><h1>Configurações e Administração</h1></header>
+                <header class="top-bar">
+                    <h1>Configurações e Administração</h1>
+                </header>
+                
                 <div class="panel" style="max-width: 600px; margin: 0 auto; padding: 30px;">
                     <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 20px;">
                         <h3 style="font-size: 18px; color: #111827;"><i class="fa-solid fa-user-plus"></i> Gerenciamento de Usuários</h3>
                     </div>
+                    
                     <form id="form-cadastro">
-                        <div class="input-wrapper"><label>Nome Completo</label><input type="text" id="cad-nome" required></div>
+                        <div class="input-wrapper">
+                            <label>Nome Completo</label>
+                            <input type="text" id="cad-nome" required placeholder="Ex: João Silva">
+                        </div>
+
                         <div class="input-wrapper">
                             <label>E-mail Corporativo</label>
                             <div style="display: flex; align-items: center;">
-                                <input type="text" id="cad-email-prefix" required style="border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1;">
-                                <span style="background: #f3f4f6; border: 1px solid #e5e7eb; border-left: 0; padding: 10px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; color: #6b7280;">@objetivaatacadista.com.br</span>
+                                <input type="text" id="cad-email-prefix" required placeholder="nome.sobrenome" 
+                                       style="border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; min-width: 0;">
+                                <span style="background: #f3f4f6; border: 1px solid #e5e7eb; border-left: 0; padding: 10px; border-top-right-radius: 6px; border-bottom-right-radius: 6px; color: #6b7280; font-size: 14px; font-weight: 500; white-space: nowrap;">
+                                    @objetivaatacadista.com.br
+                                </span>
                             </div>
                         </div>
+                        
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                            <div class="input-wrapper"><label>Departamento</label><select id="cad-departamento" required><option value="">Carregando...</option></select></div>
-                            <div class="input-wrapper"><label>Tipo Acesso</label><select id="cad-role"><option value="user">Usuário Comum</option><option value="admin">Administrador</option></select></div>
-                            <div class="input-wrapper"><label>Nível</label><select id="cad-nivel" required><option value="1">Nível 1</option><option value="2">Nível 2</option><option value="3">Nível 3</option></select></div>
+                            <div class="input-wrapper">
+                                <label>Departamento</label>
+                                <select id="cad-departamento" required>
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="input-wrapper">
+                                <label>Tipo Acesso</label>
+                                <select id="cad-role">
+                                    <option value="user">Usuário Comum</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                            <div class="input-wrapper">
+                                <label>Nível</label>
+                                <select id="cad-nivel" required>
+                                    <option value="1">Nível 1</option>
+                                    <option value="2">Nível 2</option>
+                                    <option value="3">Nível 3</option>
+                                </select>
+                            </div>
                         </div>
-                        <button type="submit" class="btn-primary" style="margin-top:10px;"><i class="fa-solid fa-check"></i> Salvar Usuário</button>
+
+                        <button type="submit" class="btn-primary" style="margin-top:10px;">
+                            <i class="fa-solid fa-check"></i> Salvar Usuário
+                        </button>
+                        <p id="cad-mensagem" style="text-align:center; margin-top:15px; font-size:14px; font-weight:bold;"></p>
                     </form>
                 </div>
             </section>
