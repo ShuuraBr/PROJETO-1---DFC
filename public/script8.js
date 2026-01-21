@@ -1,22 +1,13 @@
-// ARQUIVO: public/script6.js
+// ARQUIVO: public/script.js
 
 const ANO_ATUAL = new Date().getFullYear();
 
 const app = {
     user: null,
     chart: null,
-    orcamentoChart: null,
-    emailTemp: null,
-    timer: null,
-    yearDashboard: ANO_ATUAL, 
-    yearOrcamento: ANO_ATUAL,
-    viewType: "mensal", 
-    dadosOrcamentoCache: null,
+    // ... outros estados existentes ...
 
-    // =========================================================================
-    // NOVAS FUNÇÕES DO MENU DE FILTROS NA SIDEBAR
-    // =========================================================================
-
+    // NOVAS FUNÇÕES DE FILTRO AQUI
     initFiltersMenu: () => {
         const btnToggle = document.getElementById('btn-toggle-filters');
         const btnClose = document.getElementById('btn-close-filters');
@@ -24,10 +15,8 @@ const app = {
         const nav = document.getElementById('sidebar-nav');
         const filtersArea = document.getElementById('sidebar-filters');
 
-        if (!btnToggle) return;
-
         btnToggle.addEventListener('click', () => {
-            app.updateSidebarFilters(); // Monta os filtros baseados na aba ativa
+            app.updateSidebarFilters(); 
             sidebar.classList.add('expanded');
             nav.classList.add('hidden');
             filtersArea.classList.remove('hidden');
@@ -42,18 +31,15 @@ const app = {
 
     updateSidebarFilters: () => {
         const container = document.getElementById('filter-content-area');
-        container.innerHTML = '';
-
+        container.innerHTML = ''; 
         const isDashboard = document.getElementById('page-dashboard').classList.contains('active');
 
         if (isDashboard) {
-            // Aba Dashboard: Injeção da Busca com botão X e filtros
             app.createSidebarSearch(container);
             app.createSidebarElement('Status', 'dashboard-status-view', container);
             app.createSidebarElement('Visualização', 'dashboard-view-type', container);
             app.createSidebarElement('Ano', 'ano-dashboard', container);
         } else {
-            // Aba Orçamento: Departamento + Ano
             app.createSidebarElement('Departamento', 'filtro-dep-orcamento', container);
             app.createSidebarElement('Ano', 'ano-orcamento', container);
         }
@@ -62,7 +48,6 @@ const app = {
     createSidebarSearch: (container) => {
         const originalInput = document.getElementById('dashboard-search');
         if (!originalInput) return;
-
         const wrapper = document.createElement('div');
         wrapper.className = 'sidebar-search-container';
         wrapper.innerHTML = `
@@ -70,7 +55,6 @@ const app = {
             <input type="text" id="sidebar-search-input" placeholder="Buscar..." value="${originalInput.value}">
             <i class="fa-solid fa-xmark clear-icon-sidebar" id="sidebar-clear-btn"></i>
         `;
-
         container.appendChild(wrapper);
 
         const sidebarInput = wrapper.querySelector('#sidebar-search-input');
@@ -83,7 +67,7 @@ const app = {
             const val = e.target.value;
             originalInput.value = val;
             toggleClearBtn(val);
-            originalInput.dispatchEvent(new Event('input')); // Aciona a busca original
+            originalInput.dispatchEvent(new Event('input'));
         });
 
         clearBtn.addEventListener('click', () => {
@@ -99,42 +83,39 @@ const app = {
     createSidebarElement: (label, originalId, container) => {
         const original = document.getElementById(originalId);
         if (!original) return;
-
         const labelEl = document.createElement('label');
         labelEl.className = 'filter-label';
         labelEl.innerText = label;
         container.appendChild(labelEl);
-
         const clone = original.cloneNode(true);
         clone.id = originalId + '-sidebar';
-        clone.value = original.value;
-
+        clone.value = original.value; 
         clone.addEventListener('change', (e) => {
             original.value = e.target.value;
-            original.dispatchEvent(new Event('change')); // Sincroniza com a lógica original
+            original.dispatchEvent(new Event('change')); 
         });
-
         container.appendChild(clone);
     },
 
-    // =========================================================================
-    // INICIALIZAÇÃO DO APP
-    // =========================================================================
-
+    // FUNÇÃO INIT (ONDE TUDO COMEÇA)
     init: () => {
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
-        
         app.carregarAnosDisponiveis();
-
-        // INICIALIZA O MENU DE FILTROS NA SIDEBAR
+        
+        // --- CHAME A INICIALIZAÇÃO DO MENU AQUI ---
         app.initFiltersMenu();
 
-        // Listeners Globais existentes
+        // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
 
+        // --- LISTENER NOVO PARA TOKEN ---
         const tokenForm = document.getElementById('tokenForm');
         if(tokenForm) tokenForm.addEventListener('submit', app.validarToken);
+
+        const btnCancelarToken = document.getElementById('btn-cancelar-token');
+        if(btnCancelarToken) btnCancelarToken.addEventListener('click', app.resetLoginUI);
+        // ---------------------------------
 
         const btnLogout = document.getElementById('btn-logout');
         if(btnLogout) btnLogout.addEventListener('click', app.logout);
