@@ -150,7 +150,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper { 
     display: block !important;
     width: 100% !important;
-    height: 1420px !important; 
+    height: 500px !important; 
     overflow: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
@@ -162,7 +162,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 /* Garante que o painel pai não cresça além da conta */
 .table-panel {
-    height: 1420px !important; /* Altura total do painel (cabeçalho + tabela) */
+    height: 600px !important; /* Altura total do painel (cabeçalho + tabela) */
     overflow: hidden !important;
 }
 
@@ -585,44 +585,51 @@ table {
         width: 100%;
     }
 }
-/* =====================================================
-   TOPBAR: FAIXA TRANSLÚCIDA (GLASS) ATRÁS DAS INFORMAÇÕES
-   Dashboard + Orçamento
-===================================================== */
+/* ==========================
+   TOPBAR FIXA (NÃO ACOMPANHA SCROLL)
+========================== */
 
+/* fixa no topo da tela */
 header.top-bar{
-  position: sticky !important;
+  position: fixed !important;
   top: 0 !important;
-  z-index: 999 !important;
+  left: 80px !important;                 /* largura da sidebar :contentReference[oaicite:1]{index=1} */
+  width: calc(100% - 80px) !important;
+  z-index: 9999 !important;
 
-  /* faixa */
-  padding: 14px 18px !important;
-  margin: 0 0 24px 0 !important;
-  border-radius: 14px !important;
-
-  /* vidro (visível no branco) */
-  background: rgba(242, 245, 255, 0.82) !important;  /* #F2F5FF */
+  /* “vidro” */
+  background: rgba(242, 245, 255, 0.82) !important;
   backdrop-filter: blur(14px) saturate(1.15) !important;
   -webkit-backdrop-filter: blur(14px) saturate(1.15) !important;
 
-  border: 1px solid rgba(14, 46, 155, 0.14) !important; /* #0E2E9B */
-  box-shadow:
-    0 10px 28px rgba(0, 9, 40, 0.12),                 /* #000928 */
-    inset 0 1px 0 rgba(255,255,255,0.55) !important;
+  border-bottom: 1px solid rgba(14, 46, 155, 0.14) !important;
+  box-shadow: 0 10px 28px rgba(0, 9, 40, 0.12) !important;
+
+  /* espaçamento interno */
+  padding: 14px 18px !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
 }
 
-/* reforça contraste do conteúdo em cima da faixa */
-header.top-bar h1{
-  color: #000928 !important;
-  font-weight: 800 !important;
-}
-header.top-bar p{
-  color: rgba(0, 9, 40, 0.70) !important;
+/* empurra o conteúdo pra não ficar escondido atrás da topbar */
+.main-content{
+  padding-top: 100px !important;  /* ajuste fino se necessário */
 }
 
-/* inputs/selects em cima do vidro */
-header.top-bar input,
-header.top-bar select{
-  background: rgba(255,255,255,0.90) !important;
-  border: 1px solid rgba(0, 9, 40, 0.10) !important;
+/* ===== AJUSTE: TABELA OCUPAR TODA A ÁREA AZUL ===== */
+
+.table-wrapper{
+  height: 500px !important;   /* mantém o tamanho azul */
+}
+
+#finance-table,
+.table-wrapper table{
+  width: 100% !important;     /* tabela preenche toda a área */
+  min-width: 100% !important;
+}
+
+/* garante que as colunas se estiquem */
+#finance-table th,
+#finance-table td{
+  white-space: nowrap;
 }
