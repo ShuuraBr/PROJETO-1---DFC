@@ -150,7 +150,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper { 
     display: block !important;
     width: 100% !important;
-    height: 500px !important; 
+    height: 600px !important; 
     overflow: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
