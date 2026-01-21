@@ -615,3 +615,8 @@ table {
 .top-bar select{
   background: rgba(255,255,255,0.90);
 }
+/* TESTE: se isso não aparecer, seu CSS não está carregando */
+header.top-bar{
+  background: red !important;
+  outline: 6px solid lime !important;
+}
