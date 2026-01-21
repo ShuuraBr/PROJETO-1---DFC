@@ -633,12 +633,34 @@ table {
   }
 }
 /* =====================================================
-   AJUSTE FINAL: tabela se adapta ao conteúdo
-   (remove a área azul fixa)
+   TABELA OCUPA TODA A ÁREA AZUL (AJUSTE DE ALTURA)
 ===================================================== */
 
+/* mantém a área azul */
 .table-wrapper{
-  height: auto !important;        /* remove altura fixa */
-  max-height: 500px !important;  /* mantém limite com scroll */
+  height: 500px !important;
   background: #012d5a !important;
+}
+
+/* tabela ocupa 100% da área */
+.table-wrapper table{
+  height: 100% !important;
+  width: 100% !important;
+  border-collapse: collapse;
+}
+
+/* corpo da tabela também ocupa tudo */
+.table-wrapper tbody{
+  height: 100% !important;
+}
+
+/* força as linhas a se distribuírem verticalmente */
+.table-wrapper tbody tr{
+  height: calc(100% / 8); /* ajuste automático por nº médio de linhas */
+}
+
+/* células se adaptam */
+.table-wrapper td,
+.table-wrapper th{
+  vertical-align: middle;
 }
