@@ -92,42 +92,29 @@
     </div>
 
     <div id="view-app" class="view-container hidden">
-        <aside class="sidebar" id="sidebar">
-    <div class="filter-menu-trigger" id="btn-toggle-filters" title="Abrir Filtros">
-        <img src="assets/image_1cf0ce.png" alt="Filtros" class="filter-icon-img">
-    </div>
-
-    <nav id="sidebar-nav">
-        <button class="nav-btn active" data-target="dashboard">
-            <i class="fa-solid fa-house"></i>
-            <span class="tooltip">Dashboard</span>
-        </button>
-        <button class="nav-btn" data-target="reports">
-            <i class="fa-solid fa-file-invoice-dollar"></i>
-            <span class="tooltip">Orçamento</span>
-        </button>
-        <button class="nav-btn restricted" data-target="settings">
-            <i class="fa-solid fa-gear"></i>
-            <span class="tooltip">Configurações</span>
-        </button>
-    </nav>
-
-    <div id="sidebar-filters" class="hidden">
-        <div class="filter-header">
-            <span>FILTROS</span>
-            <button id="btn-close-filters"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div id="filter-content-area">
+        <aside class="sidebar">
+            <div class="brand"><i class="fa-solid fa-layer-group"></i></div>
+            <nav>
+                <button class="nav-btn active" data-target="dashboard">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="tooltip">Dashboard</span>
+                </button>
+                <button class="nav-btn" data-target="reports">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="tooltip">Orçamento</span>
+                </button>
+                <button class="nav-btn restricted" data-target="settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span class="tooltip">Configurações</span>
+                </button>
+            </nav>
+            <div class="user-profile">
+                <div class="avatar" id="user-avatar">U</div>
             </div>
-    </div>
-
-    <div class="user-profile">
-        <div class="avatar" id="user-avatar">U</div>
-    </div>
-    <button id="btn-logout" class="logout-btn">
-        <i class="fa-solid fa-right-from-bracket"></i>
-    </button>
-</aside>
+            <button id="btn-logout" class="logout-btn">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </aside>
 
         <main class="main-content">
             
@@ -357,6 +344,6 @@
         </main>
     </div>
 
-    <script src="script8.js"></script>
+    <script src="script9.js"></script>
 </body>
 </html>

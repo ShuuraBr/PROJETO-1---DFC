@@ -5,105 +5,24 @@ const ANO_ATUAL = new Date().getFullYear();
 const app = {
     user: null,
     chart: null,
-    // ... outros estados existentes ...
+    orcamentoChart: null,
+    
+    // --- ESTADO 2FA ---
+    emailTemp: null,
+    timer: null, // Novo estado para controlar o relógio
 
-    // NOVAS FUNÇÕES DE FILTRO AQUI
-    initFiltersMenu: () => {
-        const btnToggle = document.getElementById('btn-toggle-filters');
-        const btnClose = document.getElementById('btn-close-filters');
-        const sidebar = document.getElementById('sidebar');
-        const nav = document.getElementById('sidebar-nav');
-        const filtersArea = document.getElementById('sidebar-filters');
-
-        btnToggle.addEventListener('click', () => {
-            app.updateSidebarFilters(); 
-            sidebar.classList.add('expanded');
-            nav.classList.add('hidden');
-            filtersArea.classList.remove('hidden');
-        });
-
-        btnClose.addEventListener('click', () => {
-            sidebar.classList.remove('expanded');
-            nav.classList.remove('hidden');
-            filtersArea.classList.add('hidden');
-        });
-    },
-
-    updateSidebarFilters: () => {
-        const container = document.getElementById('filter-content-area');
-        container.innerHTML = ''; 
-        const isDashboard = document.getElementById('page-dashboard').classList.contains('active');
-
-        if (isDashboard) {
-            app.createSidebarSearch(container);
-            app.createSidebarElement('Status', 'dashboard-status-view', container);
-            app.createSidebarElement('Visualização', 'dashboard-view-type', container);
-            app.createSidebarElement('Ano', 'ano-dashboard', container);
-        } else {
-            app.createSidebarElement('Departamento', 'filtro-dep-orcamento', container);
-            app.createSidebarElement('Ano', 'ano-orcamento', container);
-        }
-    },
-
-    createSidebarSearch: (container) => {
-        const originalInput = document.getElementById('dashboard-search');
-        if (!originalInput) return;
-        const wrapper = document.createElement('div');
-        wrapper.className = 'sidebar-search-container';
-        wrapper.innerHTML = `
-            <i class="fa-solid fa-magnifying-glass search-icon-left"></i>
-            <input type="text" id="sidebar-search-input" placeholder="Buscar..." value="${originalInput.value}">
-            <i class="fa-solid fa-xmark clear-icon-sidebar" id="sidebar-clear-btn"></i>
-        `;
-        container.appendChild(wrapper);
-
-        const sidebarInput = wrapper.querySelector('#sidebar-search-input');
-        const clearBtn = wrapper.querySelector('#sidebar-clear-btn');
-        const toggleClearBtn = (val) => clearBtn.classList.toggle('visible', val.length > 0);
-
-        toggleClearBtn(sidebarInput.value);
-
-        sidebarInput.addEventListener('input', (e) => {
-            const val = e.target.value;
-            originalInput.value = val;
-            toggleClearBtn(val);
-            originalInput.dispatchEvent(new Event('input'));
-        });
-
-        clearBtn.addEventListener('click', () => {
-            sidebarInput.value = '';
-            originalInput.value = '';
-            toggleClearBtn('');
-            sidebarInput.focus();
-            originalInput.dispatchEvent(new Event('input'));
-            if(app.resetDashboardTable) app.resetDashboardTable();
-        });
-    },
-
-    createSidebarElement: (label, originalId, container) => {
-        const original = document.getElementById(originalId);
-        if (!original) return;
-        const labelEl = document.createElement('label');
-        labelEl.className = 'filter-label';
-        labelEl.innerText = label;
-        container.appendChild(labelEl);
-        const clone = original.cloneNode(true);
-        clone.id = originalId + '-sidebar';
-        clone.value = original.value; 
-        clone.addEventListener('change', (e) => {
-            original.value = e.target.value;
-            original.dispatchEvent(new Event('change')); 
-        });
-        container.appendChild(clone);
-    },
-
-    // FUNÇÃO INIT (ONDE TUDO COMEÇA)
+    // ESTADO INICIAL
+    yearDashboard: ANO_ATUAL, 
+    yearOrcamento: ANO_ATUAL,
+    viewType: "mensal", 
+    
+    // CACHE
+    dadosOrcamentoCache: null,
+    
     init: () => {
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
-        app.carregarAnosDisponiveis();
         
-        // --- CHAME A INICIALIZAÇÃO DO MENU AQUI ---
-        app.initFiltersMenu();
+        app.carregarAnosDisponiveis();
 
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
