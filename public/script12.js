@@ -19,8 +19,6 @@ const app = {
     // CACHE
     dadosOrcamentoCache: null,
 
-    
-    
     init: () => {
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
         
