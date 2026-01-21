@@ -585,3 +585,50 @@ table {
         width: 100%;
     }
 }
+/* =========================================
+   TOPBAR: FUNDO TRANSLÚCIDO ATRÁS DO CONTEÚDO
+   (Dashboard + Orçamento)
+========================================= */
+
+.top-bar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  /* vira “faixa” e não card */
+  margin: 0 0 24px 0;
+  padding: 16px 0;          /* altura da faixa */
+  border-radius: 0;
+  background: transparent;  /* quem pinta é o ::before */
+  box-shadow: none;
+  border: none;
+}
+
+/* o “vidro” fica atrás das informações */
+.top-bar::before{
+  content: "";
+  position: absolute;
+  inset: 0;                 /* cobre toda a topbar */
+  z-index: 0;
+
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  border-bottom: 1px solid rgba(229, 231, 235, 0.65);
+}
+
+/* garante que títulos e actions fiquem acima do vidro */
+.top-bar > *{
+  position: relative;
+  z-index: 1;
+
+  /* mantém o alinhamento “interno” igual ao restante da página */
+  padding: 0 24px;
+}
+
+/* (opcional) melhora contraste dos controles em cima do vidro */
+.top-bar input,
+.top-bar select{
+  background: rgba(255, 255, 255, 0.88);
+}
