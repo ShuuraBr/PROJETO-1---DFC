@@ -146,97 +146,184 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
-/* TABELAS (DASHBOARD) - RESPONSIVO E PROFISSIONAL */
+/* =====================================================
+   TABELA – SCROLL HORIZONTAL (TELAS MENORES) + SCROLL VERTICAL (EXPANSÃO)
+   + PRIMEIRA COLUNA AUTOAJUSTÁVEL (SEM CORTAR TEXTOS)
+   ===================================================== */
 
-/* PAINEL DA TABELA (DASHBOARD) - SEM ALTURA FIXA */
-/* PAINEL DA TABELA (DASHBOARD) - SEM SOBRA EMBAIXO */
+/* Painel da tabela (não trava altura) */
 .table-panel{
-    overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
     height: auto !important;
-    min-height: unset !important;   /* <-- REMOVE a sobra */
+    overflow: hidden !important;
 }
 
-/* WRAPPER DA TABELA - ALTURA PELO CONTEÚDO */
+/* Wrapper com scroll nos dois eixos */
 .table-wrapper{
-    flex: 0 0 auto !important;      /* <-- não força preencher altura extra */
     width: 100% !important;
-    overflow: auto !important;
     position: relative !important;
+
+    /* ✅ scroll horizontal + vertical */
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+
+    /* ✅ limita altura para permitir scroll vertical ao expandir */
+    max-height: calc(100vh - 320px); /* ajuste fino se quiser mais/menos espaço */
 
     border: 1px solid #e5e7eb;
     background: #ffffff;
     border-radius: 10px;
 }
 
-/* Estilização da barra de rolagem (Chrome/Edge/Safari) */
-.table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
-.table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-.table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-.table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+/* Scrollbar (Chrome/Edge/Safari) */
+.table-wrapper::-webkit-scrollbar { height: 10px; width: 10px; }
+.table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-/* TABELA RESPONSIVA E MAIS "PRO" */
+/* ===============================
+   TABELA
+   =============================== */
 #finance-table{
-    width: 100% !important;
-    min-width: 100% !important;     /* remove a trava gigante */
     border-collapse: collapse;
-    table-layout: fixed;            /* faz colunas se ajustarem */
+
+    /* 🔥 deixa a tabela "do tamanho do conteúdo" para forçar scroll horizontal quando precisar */
+    width: max-content !important;
+    min-width: 100% !important;
+
+    table-layout: auto; /* permite a 1ª coluna se ajustar melhor */
 }
 
-/* Fonte e espaçamento auto-ajustáveis */
+/* Células gerais */
 #finance-table th,
 #finance-table td{
     font-size: clamp(11px, 0.85vw, 13px);
-    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(8px, 0.7vw, 12px);
     border: 1px solid #e5e7eb;
     text-align: center;
+    vertical-align: middle;
+
+    /* ✅ não corta valores */
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;        /* evita “estourar” */
 }
 
-/* Cabeçalho (mantém seu estilo escuro) */
+/* Cabeçalho */
 #finance-table thead th{
-    background: #012d5a !important;
-    color: #ffffff !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
+    background: #012d5a;
+    color: #ffffff;
     font-weight: 700;
+
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-/* Primeira coluna fixa (Plano Financeiro) */
+/* Dá um "tamanho mínimo" pros meses para não esmagar valores */
+#finance-table thead th:not(:first-child),
+#finance-table td:not(:first-child){
+    min-width: 140px; /* ajuste se quiser mais compacto (ex: 120px) */
+}
+
+/* ===============================
+   PRIMEIRA COLUNA (AUTOAJUSTÁVEL + SEM CORTAR TEXTO)
+   =============================== */
 #finance-table th:first-child,
 #finance-table td:first-child{
-    text-align: left;
     position: sticky;
     left: 0;
     z-index: 110;
-    min-width: 260px;
-    max-width: 360px;
-    white-space: nowrap;
-    border-right: 2px solid #e5e7eb;
+
+    text-align: left;
+
+    /* ✅ auto ajuste */
+    width: auto;
+    min-width: 260px;     /* base mínima */
+    max-width: 520px;     /* limite elegante para não “roubar” a tela */
+    
+    /* ✅ texto completo (quebra linha se necessário) */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+    line-height: 1.25;
+
     padding-left: 14px;
+    border-right: 2px solid #e5e7eb;
+
+    background: #ffffff;
 }
 
-/* Fundo correto na coluna fixa: header escuro / body branco */
+/* Header da primeira coluna */
 #finance-table thead th:first-child{
-    background: #012d5a !important;
-    color: #ffffff !important;
-}
-#finance-table tbody td:first-child{
-    background: #ffffff !important;
+    background: #012d5a;
+    color: #ffffff;
 }
 
-/* Linhas e detalhes */
-.hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
-.toggle-icon { display: inline-block; width: 15px; transition: transform 0.2s ease; margin-right: 5px; color: #6b7280; font-size: 11px; }
+/* Hover */
+#finance-table tbody tr:hover td{
+    background-color: #f8fafc;
+}
 
-.child-row { background-color: #f9fafb; font-size: 12px; color: #4b5563; }
-.child-row td:first-child { padding-left: 35px; border-left: 4px solid #e5e7eb; }
-.child-row td { border-top: 1px dashed #e5e7eb; }
+/* Linhas filhas (expansão hierarquia) */
+.child-row{
+    background-color: #f9fafb;
+    color: #4b5563;
+    font-size: 12px;
+}
+.child-row td:first-child{
+    padding-left: 32px;
+    border-left: 4px solid #e5e7eb;
+}
 
+/* Melhor visual quando o scroll horizontal aparece */
+.table-wrapper{
+    overscroll-behavior: contain;
+}
+
+/* MOBILE: aumenta chance de scroll horizontal e melhora leitura */
+@media (max-width: 768px){
+    .table-wrapper{
+        max-height: calc(100vh - 260px); /* um pouco mais alto no mobile */
+        border-radius: 0;
+        margin: 0 -15px;
+        width: calc(100% + 30px) !important;
+    }
+
+    #finance-table thead th:not(:first-child),
+    #finance-table td:not(:first-child){
+        min-width: 150px; /* garante valores legíveis */
+    }
+
+    #finance-table th:first-child,
+    #finance-table td:first-child{
+        min-width: 200px;
+        max-width: 360px;
+    }
+}
+
+/* Header da primeira coluna */
+#finance-table thead th:first-child{
+    background: #012d5a;
+    color: #ffffff;
+}
+
+/* Linha hover */
+#finance-table tbody tr:hover td{
+    background-color: #f8fafc;
+}
+
+/* Linha filha (detalhamento) */
+.child-row{
+    background-color: #f9fafb;
+    font-size: 12px;
+    color: #4b5563;
+}
+
+.child-row td:first-child{
+    padding-left: 32px;
+    border-left: 4px solid #e5e7eb;
+}
 
 /* GRÁFICO - Altura Ajustada */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
