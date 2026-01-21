@@ -585,3 +585,79 @@ table {
         width: 100%;
     }
 }
+
+/* =============================
+   MENU DE FILTROS (SIDEBAR)
+   ============================= */
+.filter-menu-btn{
+    width:54px;height:54px;
+    border:none;border-radius:14px;
+    background: rgba(255,255,255,0.10);
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition: .2s;
+    margin-bottom: 16px;
+}
+.filter-menu-btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.14); }
+.filter-menu-btn img{
+    width:26px;height:26px;object-fit:contain;
+    filter: brightness(0) invert(1);
+    opacity:.95;
+}
+
+.sidebar-filters{
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    padding: 12px;
+    color: #fff;
+}
+.sidebar-filters-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    margin-bottom: 10px;
+}
+.sidebar-filters-head h3{
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: .2px;
+}
+.close-filters-btn{
+    width: 34px; height: 34px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    cursor: pointer;
+}
+.close-filters-btn:hover{ background: rgba(255,255,255,0.16); }
+
+.sidebar-filters-body{
+    display:flex;
+    flex-direction:column;
+    gap: 12px;
+}
+.filters-group{ display:flex; flex-direction:column; gap: 12px; }
+
+#view-app.filters-open .sidebar{
+    width: 340px;
+    align-items: stretch;
+    padding: 18px 14px;
+}
+#view-app.filters-open nav{ display:none !important; }
+#view-app.filters-open .brand{ display:none !important; }
+#view-app.filters-open .tooltip{ display:none !important; }
+#view-app.filters-open .user-profile{ margin-top: auto; }
+
+/* Quando os filtros vão para a sidebar, ficam em coluna */
+#view-app.filters-open .filters-host{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap: 12px;
+}
+#view-app.filters-open .filters-host .search-wrapper{ width: 100%; }
+#view-app.filters-open .filters-host select{ width: 100%; min-width: 0 !important; }
