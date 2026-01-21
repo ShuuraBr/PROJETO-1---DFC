@@ -24,6 +24,13 @@ const app = {
         
         app.carregarAnosDisponiveis();
 
+        // Recalcula alturas de sticky (Saldo Inicial/Final) quando a janela muda
+        window.addEventListener('resize', () => {
+            if (document.getElementById('finance-table')) {
+                app.setupFinanceStickyRows();
+            }
+        });
+
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
@@ -880,6 +887,35 @@ const app = {
         });
     },
 
+
+
+// Mantém "Saldo Inicial" fixo no topo (abaixo do cabeçalho) e "Saldo Final" fixo no rodapé dentro do scroll da tabela
+setupFinanceStickyRows: () => {
+    const table = document.getElementById('finance-table');
+    if (!table) return;
+
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    if (!thead || !tbody) return;
+
+    // Calcula a altura real do cabeçalho para posicionar o "Saldo Inicial" logo abaixo
+    const theadH = Math.ceil(thead.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--finance-thead-h', `${theadH}px`);
+
+    // Marca as linhas de saldo para ficarem sticky
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach(tr => {
+        tr.classList.remove('sticky-saldo-top', 'sticky-saldo-bottom');
+
+        const firstCell = tr.querySelector('td:first-child');
+        if (!firstCell) return;
+
+        const txt = (firstCell.innerText || '').trim().toLowerCase();
+        if (txt === 'saldo inicial') tr.classList.add('sticky-saldo-top');
+        if (txt === 'saldo final') tr.classList.add('sticky-saldo-bottom');
+    });
+},
+
     renderTable: (data) => {
         const rows = data.rows;
         const columns = data.columns; 
@@ -964,6 +1000,8 @@ const app = {
             }
         });
         tbody.innerHTML = html;
+            // Aplica sticky nas linhas de saldo após renderizar
+        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
     renderOrcamentoTable: (data) => {
@@ -1017,6 +1055,8 @@ const app = {
             }
         });
         tbody.innerHTML = html;
+            // Aplica sticky nas linhas de saldo após renderizar
+        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
     loadDepartamentos: async () => {
