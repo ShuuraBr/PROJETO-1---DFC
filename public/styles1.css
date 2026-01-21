@@ -150,7 +150,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper { 
     display: block !important;
     width: 100% !important;
-    height: 600px !important; 
+    height: 1420px !important; 
     overflow: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
@@ -162,7 +162,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 /* Garante que o painel pai não cresça além da conta */
 .table-panel {
-    height: 600px !important; /* Altura total do painel (cabeçalho + tabela) */
+    height: 1420px !important; /* Altura total do painel (cabeçalho + tabela) */
     overflow: hidden !important;
 }
 
