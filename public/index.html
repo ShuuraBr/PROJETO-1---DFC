@@ -94,26 +94,6 @@
     <div id="view-app" class="view-container hidden">
         <aside class="sidebar">
             <div class="brand"><i class="fa-solid fa-layer-group"></i></div>
-            <!-- Botão / Menu de Filtros -->
-            <button id="btn-filter-menu" class="filter-menu-btn" type="button" aria-label="Abrir menu de filtros">
-                <img src="assets/menu.png" alt="Filtros">
-            </button>
-
-            <!-- Painel de filtros (mostrado quando o menu é aberto) -->
-            <div id="sidebar-filters" class="sidebar-filters hidden" aria-hidden="true">
-                <div class="sidebar-filters-head">
-                    <h3>Filtros</h3>
-                    <button id="btn-close-filters" class="close-filters-btn" type="button" aria-label="Fechar filtros">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-
-                <div id="sidebar-filters-body" class="sidebar-filters-body">
-                    <div id="sidebar-filters-dashboard" class="filters-group" data-filters-for="dashboard"></div>
-                    <div id="sidebar-filters-reports" class="filters-group hidden" data-filters-for="reports"></div>
-                </div>
-            </div>
-
             <nav>
                 <button class="nav-btn active" data-target="dashboard">
                     <i class="fa-solid fa-house"></i>
@@ -145,8 +125,7 @@
                         <p>Bem-vindo, <span id="user-info" style="font-weight:600;">...</span></p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                                                <div id="dashboard-filters-host" class="filters-host">
-<div class="search-wrapper">
+                        <div class="search-wrapper">
                             <i class="fa-solid fa-magnifying-glass search-icon"></i>
                             <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
                             <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
@@ -164,8 +143,7 @@
                         </select>
 
                         <select id="ano-dashboard" class="select-ano">
-                        </select>                        </div>
-
+                        </select>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
@@ -202,14 +180,12 @@
                         </p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                                                <div id="reports-filters-host" class="filters-host">
-<select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
                             <option value="">Todos Departamentos</option>
                         </select>
 
                         <select id="ano-orcamento" class="select-ano">
-                        </select>                        </div>
-
+                        </select>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
@@ -368,6 +344,6 @@
         </main>
     </div>
 
-    <script src="script10.js"></script>
+    <script src="script11.js"></script>
 </body>
 </html>

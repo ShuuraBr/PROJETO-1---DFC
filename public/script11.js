@@ -21,20 +21,7 @@ const app = {
 
     
     
-
-    // --- MENU DE FILTROS (SIDEBAR) ---
-    filtersMenuOpen: false,
-    _filtersMounted: false,
-
     init: () => {
-
-        // --- MENU DE FILTROS (SIDEBAR) ---
-        const btnFilterMenu = document.getElementById('btn-filter-menu');
-        if (btnFilterMenu) btnFilterMenu.addEventListener('click', () => app.toggleFiltersMenu());
-
-        const btnCloseFilters = document.getElementById('btn-close-filters');
-        if (btnCloseFilters) btnCloseFilters.addEventListener('click', () => app.toggleFiltersMenu(false));
-
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
         
         app.carregarAnosDisponiveis();
@@ -501,90 +488,6 @@ const app = {
         app.showLogin(); 
     },
 
-
-    // ============================
-    // MENU DE FILTROS (SIDEBAR)
-    // ============================
-    toggleFiltersMenu: (forceOpen) => {
-        const viewApp = document.getElementById('view-app');
-        const sidebarFilters = document.getElementById('sidebar-filters');
-        if (!viewApp || !sidebarFilters) return;
-
-        const shouldOpen = (typeof forceOpen === 'boolean')
-            ? forceOpen
-            : !viewApp.classList.contains('filters-open');
-
-        app.filtersMenuOpen = shouldOpen;
-
-        if (shouldOpen) {
-            viewApp.classList.add('filters-open');
-            sidebarFilters.classList.remove('hidden');
-            sidebarFilters.setAttribute('aria-hidden', 'false');
-
-            app.mountFiltersToSidebar();
-
-            const activeBtn = document.querySelector('.nav-btn.active[data-target]');
-            const activeTab = activeBtn ? activeBtn.dataset.target : 'dashboard';
-            app.updateSidebarFiltersVisibility(activeTab);
-        } else {
-            viewApp.classList.remove('filters-open');
-            sidebarFilters.classList.add('hidden');
-            sidebarFilters.setAttribute('aria-hidden', 'true');
-
-            app.unmountFiltersToHeaders();
-        }
-    },
-
-    mountFiltersToSidebar: () => {
-        if (app._filtersMounted) return;
-
-        const dashHost = document.getElementById('dashboard-filters-host');
-        const repHost = document.getElementById('reports-filters-host');
-        const dashTarget = document.getElementById('sidebar-filters-dashboard');
-        const repTarget = document.getElementById('sidebar-filters-reports');
-
-        if (dashHost && dashTarget) {
-            while (dashHost.firstChild) dashTarget.appendChild(dashHost.firstChild);
-        }
-
-        if (repHost && repTarget) {
-            while (repHost.firstChild) repTarget.appendChild(repHost.firstChild);
-        }
-
-        app._filtersMounted = true;
-    },
-
-    unmountFiltersToHeaders: () => {
-        const dashHost = document.getElementById('dashboard-filters-host');
-        const repHost = document.getElementById('reports-filters-host');
-        const dashTarget = document.getElementById('sidebar-filters-dashboard');
-        const repTarget = document.getElementById('sidebar-filters-reports');
-
-        if (dashHost && dashTarget) {
-            while (dashTarget.firstChild) dashHost.appendChild(dashTarget.firstChild);
-        }
-
-        if (repHost && repTarget) {
-            while (repTarget.firstChild) repHost.appendChild(repHost.firstChild);
-        }
-
-        app._filtersMounted = false;
-    },
-
-    updateSidebarFiltersVisibility: (tab) => {
-        const dashGroup = document.getElementById('sidebar-filters-dashboard');
-        const repGroup = document.getElementById('sidebar-filters-reports');
-        if (!dashGroup || !repGroup) return;
-
-        if (tab === 'reports') {
-            dashGroup.classList.add('hidden');
-            repGroup.classList.remove('hidden');
-        } else {
-            repGroup.classList.add('hidden');
-            dashGroup.classList.remove('hidden');
-        }
-    },
-
     switchTab: (tab) => {
         document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
@@ -608,10 +511,6 @@ const app = {
             app.loadOrcamento();
         } else if (tab === 'dashboard') {
             app.fetchData();
-        }
-
-        if (app.filtersMenuOpen) {
-            app.updateSidebarFiltersVisibility(tab);
         }
     },
 
