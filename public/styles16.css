@@ -316,6 +316,36 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 #finance-table tbody tr.sticky-saldo-bottom td:first-child{
     z-index: 320 !important;
 }
+/* =====================================================
+   GARANTE que as células "Saldo Inicial" e "Saldo Final"
+   (1ª coluna) fiquem fixas na rolagem horizontal
+   MESMO com a linha sticky no topo/rodapé
+   ===================================================== */
+
+/* Linha sticky no topo */
+#finance-table tbody tr.sticky-saldo-top td{
+    background: #eff6ff !important;
+}
+#finance-table tbody tr.sticky-saldo-top td:first-child{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 999 !important;                 /* acima das outras células */
+    background: #eff6ff !important;          /* fundo sólido (sem “vazar”) */
+    border-right: 2px solid #e5e7eb !important;
+}
+
+/* Linha sticky no rodapé */
+#finance-table tbody tr.sticky-saldo-bottom td{
+    background: #eff6ff !important;
+}
+#finance-table tbody tr.sticky-saldo-bottom td:first-child{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 999 !important;
+    background: #eff6ff !important;
+    border-right: 2px solid #e5e7eb !important;
+}
+
 
 /* GRÁFICO - Altura Ajustada */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
