@@ -149,26 +149,25 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 /* TABELAS (DASHBOARD) - RESPONSIVO E PROFISSIONAL */
 
 /* PAINEL DA TABELA (DASHBOARD) - SEM ALTURA FIXA */
+/* PAINEL DA TABELA (DASHBOARD) - SEM SOBRA EMBAIXO */
 .table-panel{
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    min-height: 520px;          /* garante presença visual */
-    height: auto !important;    /* remove travas */
+    height: auto !important;
+    min-height: unset !important;   /* <-- REMOVE a sobra */
 }
 
-/* WRAPPER DA TABELA - OCUPA TODO O ESPAÇO DO PAINEL */
+/* WRAPPER DA TABELA - ALTURA PELO CONTEÚDO */
 .table-wrapper{
-    flex: 1 !important;         /* preenche o painel */
-    min-height: 0 !important;   /* essencial p/ scroll funcionar no flex */
+    flex: 0 0 auto !important;      /* <-- não força preencher altura extra */
     width: 100% !important;
     overflow: auto !important;
     position: relative !important;
 
     border: 1px solid #e5e7eb;
-    background: #ffffff;        /* remove a “área azul” */
+    background: #ffffff;
     border-radius: 10px;
-    scrollbar-width: thin;
 }
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
