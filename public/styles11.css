@@ -146,6 +146,8 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
+/* TABELAS (DASHBOARD) - RESPONSIVO E PROFISSIONAL */
+
 /* PAINEL DA TABELA (DASHBOARD) - SEM ALTURA FIXA */
 .table-panel{
     overflow: hidden !important;
@@ -164,11 +166,10 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     position: relative !important;
 
     border: 1px solid #e5e7eb;
-    background: #ffffff;        /* 🔥 some a “área azul” */
+    background: #ffffff;        /* remove a “área azul” */
     border-radius: 10px;
     scrollbar-width: thin;
 }
-
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -176,44 +177,67 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-table { 
-    width: max-content !important; 
-    min-width: 100% !important;
-    border-collapse: collapse; 
-    font-size: 13px; 
-    white-space: nowrap !important; 
+/* TABELA RESPONSIVA E MAIS "PRO" */
+#finance-table{
+    width: 100% !important;
+    min-width: 100% !important;     /* remove a trava gigante */
+    border-collapse: collapse;
+    table-layout: fixed;            /* faz colunas se ajustarem */
 }
 
-#finance-table {
-    min-width: 1800px !important;
+/* Fonte e espaçamento auto-ajustáveis */
+#finance-table th,
+#finance-table td{
+    font-size: clamp(11px, 0.85vw, 13px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;        /* evita “estourar” */
 }
 
-#finance-table thead th { 
-    background: #012d5a !important; 
-    color: #ffffff !important; 
-    padding: 10px 8px; 
-    text-align: center; 
-    border: 1px solid #e5e7eb; 
-    font-weight: 600; 
-    position: sticky !important; 
-    top: 0 !important; 
-    z-index: 100 !important; 
+/* Cabeçalho (mantém seu estilo escuro) */
+#finance-table thead th{
+    background: #012d5a !important;
+    color: #ffffff !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    font-weight: 700;
 }
 
-#finance-table th:first-child, 
-#finance-table td:first-child { 
-    text-align: left; position: sticky; left: 0; z-index: 20; background-color: inherit; 
-    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
+/* Primeira coluna fixa (Plano Financeiro) */
+#finance-table th:first-child,
+#finance-table td:first-child{
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 110;
+    min-width: 260px;
+    max-width: 360px;
+    white-space: nowrap;
+    border-right: 2px solid #e5e7eb;
+    padding-left: 14px;
 }
-#finance-table td:first-child { background-color: #fff; }
 
-#finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
+/* Fundo correto na coluna fixa: header escuro / body branco */
+#finance-table thead th:first-child{
+    background: #012d5a !important;
+    color: #ffffff !important;
+}
+#finance-table tbody td:first-child{
+    background: #ffffff !important;
+}
+
+/* Linhas e detalhes */
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
 .toggle-icon { display: inline-block; width: 15px; transition: transform 0.2s ease; margin-right: 5px; color: #6b7280; font-size: 11px; }
 
 .child-row { background-color: #f9fafb; font-size: 12px; color: #4b5563; }
 .child-row td:first-child { padding-left: 35px; border-left: 4px solid #e5e7eb; }
 .child-row td { border-top: 1px dashed #e5e7eb; }
+
 
 /* GRÁFICO - Altura Ajustada */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
