@@ -811,3 +811,20 @@ table {
     overflow: auto !important;
     background: #ffffff !important;
 }
+
+
+/* =====================================================
+   TOPBAR – SEMPRE À FRENTE DE TUDO (DURANTE SCROLL)
+   ===================================================== */
+.top-bar{
+    z-index: 9999 !important;        /* acima de tabelas, KPI, sticky cells */
+}
+
+/* Garante que elementos abaixo nunca passem por cima */
+#finance-table thead th,
+#finance-table th:first-child,
+#finance-table td:first-child,
+#finance-table tbody tr.sticky-saldo-top td,
+#finance-table tbody tr.sticky-saldo-bottom td{
+    z-index: auto !important;
+}
