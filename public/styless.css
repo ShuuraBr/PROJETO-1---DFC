@@ -146,25 +146,29 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
-/* TABELAS (DASHBOARD) - MODIFICADO */
-.table-wrapper { 
-    display: block !important;
-    width: 100% !important;
-    height: 500px !important; 
-    overflow: auto !important;
-    position: relative !important;
-    border: 1px solid #e5e7eb; 
-    background: #012d5a; 
-    border-radius: 8px; 
-    scrollbar-width: thin;
-    flex: 1 !important; /* Garante que ocupe o espaço dentro do painel flex */
+/* PAINEL DA TABELA (DASHBOARD) - SEM ALTURA FIXA */
+.table-panel{
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 520px;          /* garante presença visual */
+    height: auto !important;    /* remove travas */
 }
 
-/* Garante que o painel pai não cresça além da conta */
-.table-panel {
-    height: 600px !important; /* Altura total do painel (cabeçalho + tabela) */
-    overflow: hidden !important;
+/* WRAPPER DA TABELA - OCUPA TODO O ESPAÇO DO PAINEL */
+.table-wrapper{
+    flex: 1 !important;         /* preenche o painel */
+    min-height: 0 !important;   /* essencial p/ scroll funcionar no flex */
+    width: 100% !important;
+    overflow: auto !important;
+    position: relative !important;
+
+    border: 1px solid #e5e7eb;
+    background: #ffffff;        /* 🔥 some a “área azul” */
+    border-radius: 10px;
+    scrollbar-width: thin;
 }
+
 
 /* Estilização da barra de rolagem (Chrome/Edge/Safari) */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
