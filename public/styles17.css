@@ -8,9 +8,6 @@
     --border: #e5e7eb;
     --success: #10b981;
     --danger: #ef4444;
-
-    /* usado pelo sticky do Saldo Inicial (JS atualiza) */
-    --finance-thead-h: 44px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
@@ -103,30 +100,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .page-section.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* =====================================================
-   TOPBAR TRANSLÚCIDA (GLASS) - DASHBOARD + ORÇAMENTO
-   ===================================================== */
-.top-bar {
-    position: sticky;
-    top: 0;
-    z-index: 600;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-
-    padding: 14px 24px;
-    margin: -24px -32px 18px -32px; /* cola na borda do main-content */
-    
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-
-    border-bottom: 1px solid rgba(229, 231, 235, 0.7);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-}
-
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .top-bar h1 { font-size: 24px; font-weight: 700; color: #111827; }
 .header-logo { height: 60px; width: auto; object-fit: contain; display: block; }
 
@@ -156,6 +130,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 #kpi-orcamento-container .card-title { font-size: 10px; margin-bottom: 5px; }
 #kpi-orcamento-container .card-value { font-size: 15px; }
 
+
 /* CONFIGURAÇÃO RÍGIDA PARA DESKTOP (TABELA LARGA, GRÁFICO ESTREITO) */
 .dashboard-split { 
     display: grid; 
@@ -171,181 +146,70 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
 
-/* =====================================================
-   DASHBOARD - TABELA (SCROLL X/Y + STICKY HEADER/COL + SALDOS FIXOS)
-   ===================================================== */
+/* TABELAS (DASHBOARD) - MODIFICADO */
+.table-wrapper { 
+    display: block !important;
+    width: 100% !important;
+    height: 500px !important; 
+    overflow: auto !important;
+    position: relative !important;
+    border: 1px solid #e5e7eb; 
+    background: #012d5a; 
+    border-radius: 8px; 
+    scrollbar-width: thin;
+    flex: 1 !important; /* Garante que ocupe o espaço dentro do painel flex */
+}
 
-/* Painel da tabela */
-.table-panel{
-    display: flex !important;
-    flex-direction: column !important;
-    height: auto !important;
+/* Garante que o painel pai não cresça além da conta */
+.table-panel {
+    height: 600px !important; /* Altura total do painel (cabeçalho + tabela) */
     overflow: hidden !important;
 }
 
-/* Wrapper com scroll horizontal e vertical */
-.table-wrapper{
-    width: 100% !important;
-    position: relative !important;
+/* Estilização da barra de rolagem (Chrome/Edge/Safari) */
+.table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+.table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+.table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
-    overflow-x: auto !important;
-    overflow-y: auto !important;
-
-    /* Scroll vertical interno ao expandir hierarquia (ajuste para seu layout) */
-    max-height: calc(100vh - 340px);
-
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    border-radius: 10px;
-    scrollbar-width: thin;
-    overscroll-behavior: contain;
-}
-
-/* Scrollbar */
-.table-wrapper::-webkit-scrollbar { height: 10px; width: 10px; }
-.table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
-.table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; }
-.table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-/* Tabela */
-#finance-table{
-    border-collapse: collapse;
-
-    /* força scroll horizontal quando precisar */
-    width: max-content !important;
+table { 
+    width: max-content !important; 
     min-width: 100% !important;
-
-    table-layout: auto;
+    border-collapse: collapse; 
+    font-size: 13px; 
+    white-space: nowrap !important; 
 }
 
-/* células padrão */
-#finance-table th,
-#finance-table td{
-    font-size: clamp(11px, 0.85vw, 13px);
-    padding: clamp(8px, 0.7vw, 12px) clamp(8px, 0.7vw, 12px);
-    border: 1px solid #e5e7eb;
-    text-align: center;
-    vertical-align: middle;
-
-    /* valores NÃO cortam */
-    white-space: nowrap;
+#finance-table {
+    min-width: 1800px !important;
 }
 
-/* Cabeçalho sticky (rolagem vertical) */
-#finance-table thead th{
-    background: #012d5a !important;
-    color: #ffffff !important;
-    font-weight: 700;
-
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 200 !important;
+#finance-table thead th { 
+    background: #012d5a !important; 
+    color: #ffffff !important; 
+    padding: 10px 8px; 
+    text-align: center; 
+    border: 1px solid #e5e7eb; 
+    font-weight: 600; 
+    position: sticky !important; 
+    top: 0 !important; 
+    z-index: 100 !important; 
 }
 
-/* Colunas de mês com largura mínima (não esmagar valores) */
-#finance-table thead th:not(:first-child),
-#finance-table td:not(:first-child){
-    min-width: 140px;
+#finance-table th:first-child, 
+#finance-table td:first-child { 
+    text-align: left; position: sticky; left: 0; z-index: 20; background-color: inherit; 
+    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
 }
+#finance-table td:first-child { background-color: #fff; }
 
-/* Primeira coluna sticky (rolagem horizontal) */
-#finance-table th:first-child,
-#finance-table td:first-child{
-    position: sticky !important;
-    left: 0 !important;
-
-    text-align: left !important;
-
-    width: auto;
-    min-width: 260px;
-    max-width: 520px;
-
-    /* texto do plano pode quebrar linha */
-    white-space: normal !important;
-    word-break: break-word;
-    line-height: 1.25;
-
-    padding-left: 14px !important;
-    border-right: 2px solid #e5e7eb;
-
-    background: #ffffff;
-    z-index: 250 !important;
-}
-
-/* Interseção: célula "Plano Financeiro" (topo + esquerda) acima de tudo */
-#finance-table thead th:first-child{
-    background: #012d5a !important;
-    color: #ffffff !important;
-    z-index: 350 !important;
-}
-
-/* Hover */
-#finance-table tbody tr:hover td{
-    background-color: #f8fafc;
-}
+#finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
 .hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
-
-/* Toggle/hierarquia */
 .toggle-icon { display: inline-block; width: 15px; transition: transform 0.2s ease; margin-right: 5px; color: #6b7280; font-size: 11px; }
 
 .child-row { background-color: #f9fafb; font-size: 12px; color: #4b5563; }
-.child-row td:first-child { padding-left: 32px !important; border-left: 4px solid #e5e7eb; }
+.child-row td:first-child { padding-left: 35px; border-left: 4px solid #e5e7eb; }
 .child-row td { border-top: 1px dashed #e5e7eb; }
-
-/* =====================================================
-   SALDO INICIAL (FIXO NO TOPO) e SALDO FINAL (FIXO NO RODAPÉ)
-   Classes aplicadas via JS: sticky-saldo-top / sticky-saldo-bottom
-   ===================================================== */
-#finance-table tbody tr.sticky-saldo-top{
-    position: sticky !important;
-    top: var(--finance-thead-h) !important;
-    z-index: 180 !important;
-    box-shadow: 0 2px 0 rgba(0,0,0,0.06);
-}
-#finance-table tbody tr.sticky-saldo-bottom{
-    position: sticky !important;
-    bottom: 0 !important;
-    z-index: 180 !important;
-    box-shadow: 0 -2px 0 rgba(0,0,0,0.06);
-}
-#finance-table tbody tr.sticky-saldo-top td,
-#finance-table tbody tr.sticky-saldo-bottom td{
-    background: #eff6ff !important; /* destaque suave */
-}
-#finance-table tbody tr.sticky-saldo-top td:first-child,
-#finance-table tbody tr.sticky-saldo-bottom td:first-child{
-    z-index: 320 !important;
-}
-/* =====================================================
-   GARANTE que as células "Saldo Inicial" e "Saldo Final"
-   (1ª coluna) fiquem fixas na rolagem horizontal
-   MESMO com a linha sticky no topo/rodapé
-   ===================================================== */
-
-/* Linha sticky no topo */
-#finance-table tbody tr.sticky-saldo-top td{
-    background: #eff6ff !important;
-}
-#finance-table tbody tr.sticky-saldo-top td:first-child{
-    position: sticky !important;
-    left: 0 !important;
-    z-index: 999 !important;                 /* acima das outras células */
-    background: #eff6ff !important;          /* fundo sólido (sem “vazar”) */
-    border-right: 2px solid #e5e7eb !important;
-}
-
-/* Linha sticky no rodapé */
-#finance-table tbody tr.sticky-saldo-bottom td{
-    background: #eff6ff !important;
-}
-#finance-table tbody tr.sticky-saldo-bottom td:first-child{
-    position: sticky !important;
-    left: 0 !important;
-    z-index: 999 !important;
-    background: #eff6ff !important;
-    border-right: 2px solid #e5e7eb !important;
-}
-
 
 /* GRÁFICO - Altura Ajustada */
 .chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
@@ -564,6 +428,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .dot-yellow { background-color: #f59e0b; }
 .dot-red { background-color: #ef4444; }
 
+
 /* ORÇAMENTO TABLE */
 .table-wrapper-orcamento { 
     background: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 80vh; overflow: auto; 
@@ -643,36 +508,15 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     #btn-logout { display: flex; align-items: center; justify-content: center; width: 60px; height: 100%; margin: 0; border-left: 1px solid rgba(255,255,255,0.1); }
     
     .main-content { width: 100%; padding: 15px; padding-bottom: 80px; overflow-y: auto; height: calc(100vh - 60px); }
-
-    .top-bar {
-        margin: -15px -15px 14px -15px;
-        padding: 12px 16px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        backdrop-filter: blur(10px);
-    }
+    
+    .top-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
     .top-bar .actions { width: 100%; display: flex; justify-content: space-between; align-items: center; }
     .header-logo { height: 40px; }
-
-    .table-wrapper { 
-        margin: 0 -15px; 
-        width: calc(100% + 30px) !important; 
-        border-radius: 0; 
-        max-height: calc(100vh - 290px);
-    }
-
-    /* escopo correto para não afetar outras tabelas */
-    #finance-table th:first-child, 
-    #finance-table td:first-child { 
-        min-width: 200px; 
-        max-width: 360px; 
-        padding-left: 10px !important; 
-        font-size: 11px; 
-        white-space: normal !important; 
-        line-height: 1.2; 
-    }
-    .child-row td:first-child { padding-left: 18px !important; }
+    
+    .table-wrapper { margin: 0 -15px; width: calc(100% + 30px); border-radius: 0; }
+    
+    th:first-child, td:first-child { min-width: 130px; max-width: 130px; padding-left: 8px !important; font-size: 10px; white-space: normal; line-height: 1.2; }
+    .child-row td:first-child { padding-left: 15px !important; }
     
     .kpi-grid, #kpi-container, #kpi-orcamento-container { grid-template-columns: 1fr; gap: 10px; }
     
@@ -740,4 +584,222 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     .search-wrapper input {
         width: 100%;
     }
+}
+
+
+/* =======================================================================
+   OVERRIDES (GERADO) — Topbar Glass + Tabela Dashboard com Sticky e Scroll
+   - Mantém o arquivo original intacto e apenas sobrescreve no final.
+   ======================================================================= */
+
+/* Variável usada pelo JS para posicionar o "Saldo Inicial" abaixo do thead */
+:root{
+  --finance-thead-h: 44px;
+}
+
+/* TOPBAR TRANSLÚCIDA (DASHBOARD + ORÇAMENTO) */
+.top-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 600 !important;
+
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 20px !important;
+
+    padding: 14px 24px !important;
+
+    /* cola nas bordas do main-content (se houver padding) */
+    margin: -24px -32px 18px -32px !important;
+
+    background: rgba(255, 255, 255, 0.78) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+
+    border-bottom: 1px solid rgba(229, 231, 235, 0.7) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* MOBILE: ajusta margens da topbar */
+@media (max-width: 768px){
+  .top-bar{
+    margin: -15px -15px 14px -15px !important;
+    padding: 12px 16px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+}
+
+/* ===========================
+   DASHBOARD — TABELA (finance-table)
+   Scroll X/Y + Sticky header/col + Saldo Inicial/Final fixos
+   =========================== */
+.table-panel{
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: hidden !important;
+}
+
+.table-wrapper{
+    width: 100% !important;
+    position: relative !important;
+
+    overflow-x: auto !important; /* scroll horizontal */
+    overflow-y: auto !important; /* scroll vertical */
+
+    /* scroll vertical interno ao expandir hierarquia */
+    max-height: calc(100vh - 340px) !important;
+
+    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
+    border-radius: 10px !important;
+
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+/* Scrollbar (Chrome/Edge/Safari) */
+.table-wrapper::-webkit-scrollbar{ height: 10px; width: 10px; }
+.table-wrapper::-webkit-scrollbar-track{ background: #f1f5f9; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb{ background: #cbd5e1; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb:hover{ background: #94a3b8; }
+
+/* Tabela força scroll horizontal quando necessário */
+#finance-table{
+    border-collapse: collapse !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
+}
+
+/* Células padrão (não corta valores) */
+#finance-table th,
+#finance-table td{
+    font-size: clamp(11px, 0.85vw, 13px) !important;
+    padding: clamp(8px, 0.7vw, 12px) clamp(8px, 0.7vw, 12px) !important;
+    border: 1px solid #e5e7eb !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important; /* valores em 1 linha */
+}
+
+/* Cabeçalho sticky */
+#finance-table thead th{
+    background: #012d5a !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 200 !important;
+}
+
+/* Colunas de mês com largura mínima */
+#finance-table thead th:not(:first-child),
+#finance-table td:not(:first-child){
+    min-width: 140px !important;
+}
+
+/* Primeira coluna sticky + texto com quebra */
+#finance-table th:first-child,
+#finance-table td:first-child{
+    position: sticky !important;
+    left: 0 !important;
+
+    text-align: left !important;
+
+    width: auto !important;
+    min-width: 260px !important;
+    max-width: 520px !important;
+
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.25 !important;
+
+    padding-left: 14px !important;
+    border-right: 2px solid #e5e7eb !important;
+
+    background: #ffffff !important;
+    z-index: 250 !important;
+}
+
+/* Interseção topo+esquerda ("Plano Financeiro") acima de tudo */
+#finance-table thead th:first-child{
+    z-index: 350 !important;
+}
+
+/* Hover */
+#finance-table tbody tr:hover td{
+    background-color: #f8fafc !important;
+}
+
+/* Hierarquia */
+.child-row{
+    background-color: #f9fafb !important;
+    color: #4b5563 !important;
+    font-size: 12px !important;
+}
+.child-row td:first-child{
+    padding-left: 32px !important;
+    border-left: 4px solid #e5e7eb !important;
+}
+
+/* ===========================
+   SALDO INICIAL / FINAL FIXOS (linha)
+   (JS aplica: sticky-saldo-top / sticky-saldo-bottom)
+   =========================== */
+#finance-table tbody tr.sticky-saldo-top{
+    position: sticky !important;
+    top: var(--finance-thead-h) !important;
+    z-index: 180 !important;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.06);
+}
+
+#finance-table tbody tr.sticky-saldo-bottom{
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 180 !important;
+    box-shadow: 0 -2px 0 rgba(0,0,0,0.06);
+}
+
+/* Fundo e destaque das linhas de saldo */
+#finance-table tbody tr.sticky-saldo-top td,
+#finance-table tbody tr.sticky-saldo-bottom td{
+    background: #eff6ff !important;
+    font-weight: 700 !important;
+}
+
+/* ✅ FIXA também as CÉLULAS "Saldo Inicial" e "Saldo Final" (1ª coluna) no scroll horizontal */
+#finance-table tbody tr.sticky-saldo-top td:first-child,
+#finance-table tbody tr.sticky-saldo-bottom td:first-child{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 999 !important;
+    background: #eff6ff !important;
+    border-right: 2px solid #e5e7eb !important;
+}
+
+/* MOBILE: melhora limites */
+@media (max-width: 768px){
+  .table-wrapper{
+    max-height: calc(100vh - 290px) !important;
+    border-radius: 0 !important;
+    margin: 0 -15px !important;
+    width: calc(100% + 30px) !important;
+  }
+  #finance-table thead th:not(:first-child),
+  #finance-table td:not(:first-child){
+    min-width: 150px !important;
+  }
+  #finance-table th:first-child,
+  #finance-table td:first-child{
+    min-width: 200px !important;
+    max-width: 360px !important;
+    padding-left: 10px !important;
+  }
 }
