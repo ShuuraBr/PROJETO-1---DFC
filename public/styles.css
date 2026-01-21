@@ -1,6 +1,5 @@
 :root {
     --bg-body: #ffffff;
-    --bg-topbar:#e6dede9d;
     --bg-sidebar: #111827;
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
@@ -100,14 +99,6 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .page-section { display: none; animation: fadeIn 0.4s; padding-bottom: 50px; }
 .page-section.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-.top-bar { 
-    width: 80px; 
-    background: var(--bg-topbar); 
-    display: flex; flex-direction: row; align-items: center; padding: 20px 0; 
-    flex-shrink: 0; 
-    height: 100vh;
-}
 
 .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .top-bar h1 { font-size: 24px; font-weight: 700; color: #111827; }
