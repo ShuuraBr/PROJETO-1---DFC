@@ -585,76 +585,33 @@ table {
         width: 100%;
     }
 }
-/* =========================================
-   TOPBAR: FAIXA TRANSLÚCIDA ATRÁS DO CONTEÚDO
-========================================= */
+/* ===== TOPBAR: FAIXA TRANSLÚCIDA VISÍVEL (DASH + ORÇAMENTO) ===== */
 
 .top-bar{
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 999 !important;
+  position: sticky;
+  top: 0;
+  z-index: 999;
 
-  /* importante pro ::before */
-  position: sticky !important;
-  overflow: visible !important;
+  /* faixa */
+  padding: 14px 16px;
+  margin: -10px -16px 24px -16px; /* “encosta” e vira faixa mais larga */
+  border-radius: 12px;
 
-  /* vira faixa */
-  margin: 0 0 24px 0 !important;
-  padding: 14px 0 !important;
-  border-radius: 0 !important;
+  /* vidro (com tonalidade pra aparecer no fundo branco) */
+  background: rgba(242, 245, 255, 0.78); /* #F2F5FF com transparência */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 
-  background: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-
-  /* CRÍTICO: ancora o ::before */
-  position: sticky !important;
+  border: 1px solid rgba(14, 46, 155, 0.10); /* #0E2E9B suave */
+  box-shadow: 0 10px 24px rgba(0, 9, 40, 0.08); /* #000928 suave */
 }
 
-.top-bar{
-  /* CRÍTICO: o pseudo-elemento precisa disso */
-  position: sticky !important;
-}
+/* melhora a leitura em cima do “vidro” */
+.top-bar h1 { color: #000928; }
+.top-bar p  { color: rgba(0, 9, 40, 0.70); }
 
-.top-bar{
-  /* garante o containing block do ::before */
-  position: sticky !important;
-}
-
-.top-bar{
-  position: sticky !important;
-}
-
-/* ✅ agora o vidro */
-.top-bar::before{
-  content: "" !important;
-  position: absolute !important;
-  left: 0 !important;
-  right: 0 !important;
-  top: 0 !important;
-  bottom: 0 !important;
-
-  z-index: 0 !important;
-
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-
-  border-bottom: 1px solid rgba(229, 231, 235, 0.7) !important;
-}
-
-/* conteúdo acima do vidro */
-.top-bar > *{
-  position: relative !important;
-  z-index: 1 !important;
-
-  /* mantém o alinhamento interno */
-  padding: 0 24px !important;
-}
-
-/* opcional: controles melhor em cima do vidro */
+/* inputs/selects dentro do vidro (opcional) */
 .top-bar input,
 .top-bar select{
-  background: rgba(255,255,255,0.88) !important;
+  background: rgba(255,255,255,0.90);
 }
-
