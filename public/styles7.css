@@ -585,3 +585,60 @@ table {
         width: 100%;
     }
 }
+/* =====================================================
+   TOPBAR: FAIXA TRANSLÚCIDA FIXA NO TOPO (GLASS)
+   (mantém seu CSS como está — apenas adiciona/override)
+===================================================== */
+
+/* 1) FIX obrigatório: o transform do fadeIn “prende” position: fixed */
+@keyframes fadeIn { 
+  from { opacity: 0; } 
+  to { opacity: 1; } 
+}
+
+/* 2) Topbar fixa e com faixa translúcida atrás das infos */
+.top-bar{
+  position: fixed !important;
+  top: 0 !important;
+  left: 80px !important;                 /* largura da sidebar */
+  width: calc(100% - 80px) !important;
+  z-index: 9999 !important;
+
+  /* faixa */
+  padding: 14px 18px !important;
+  margin: 0 !important;
+
+  /* vidro translúcido */
+  background: rgba(242, 245, 255, 0.82) !important; /* #F2F5FF */
+  backdrop-filter: blur(14px) saturate(1.15) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.15) !important;
+
+  border-bottom: 1px solid rgba(14, 46, 155, 0.14) !important; /* #0E2E9B */
+  box-shadow: 0 10px 28px rgba(0, 9, 40, 0.12) !important;     /* #000928 */
+}
+
+/* 3) Empurra o conteúdo pra não ficar escondido atrás da faixa */
+.main-content{
+  padding-top: 110px !important;
+}
+
+/* 4) Mobile: topbar ocupa 100% (sem sidebar lateral) */
+@media (max-width: 768px){
+  .top-bar{
+    left: 0 !important;
+    width: 100% !important;
+  }
+  .main-content{
+    padding-top: 140px !important;
+  }
+}
+/* =====================================================
+   AJUSTE FINAL: tabela se adapta ao conteúdo
+   (remove a área azul fixa)
+===================================================== */
+
+.table-wrapper{
+  height: auto !important;        /* remove altura fixa */
+  max-height: 500px !important;  /* mantém limite com scroll */
+  background: #012d5a !important;
+}
