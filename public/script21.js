@@ -617,7 +617,7 @@ const app = {
         const diasRestantes = diasTotais - diasDecorridos;
 
         let gastoDiario = totalRealizado / diasDecorridos;
-        let projecaoTotal = gastoDiario * diasRestantes;
+        let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
 
         if (totalOrcado === 0) {
             fillEl.style.height = '0%';
@@ -760,7 +760,7 @@ const app = {
             let gastoDiario = 0;
             if (dias.decorridos > 0) gastoDiario = totalRealizado / dias.decorridos;
 
-            let projecaoTotal = gastoDiario * diasRestantes + totalRealizado;
+            let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
 
             cardMeta = fmt(metaDiaria);
             cardGasto = fmt(gastoDiario);
