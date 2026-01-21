@@ -586,49 +586,75 @@ table {
     }
 }
 /* =========================================
-   TOPBAR: FUNDO TRANSLÚCIDO ATRÁS DO CONTEÚDO
-   (Dashboard + Orçamento)
+   TOPBAR: FAIXA TRANSLÚCIDA ATRÁS DO CONTEÚDO
 ========================================= */
 
 .top-bar{
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 999 !important;
 
-  /* vira “faixa” e não card */
-  margin: 0 0 24px 0;
-  padding: 16px 0;          /* altura da faixa */
-  border-radius: 0;
-  background: transparent;  /* quem pinta é o ::before */
-  box-shadow: none;
-  border: none;
+  /* importante pro ::before */
+  position: sticky !important;
+  overflow: visible !important;
+
+  /* vira faixa */
+  margin: 0 0 24px 0 !important;
+  padding: 14px 0 !important;
+  border-radius: 0 !important;
+
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+
+  /* CRÍTICO: ancora o ::before */
+  position: sticky !important;
 }
 
-/* o “vidro” fica atrás das informações */
+.top-bar{
+  /* CRÍTICO: o pseudo-elemento precisa disso */
+  position: sticky !important;
+}
+
+.top-bar{
+  /* garante o containing block do ::before */
+  position: sticky !important;
+}
+
+.top-bar{
+  position: sticky !important;
+}
+
+/* ✅ agora o vidro */
 .top-bar::before{
-  content: "";
-  position: absolute;
-  inset: 0;                 /* cobre toda a topbar */
-  z-index: 0;
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
 
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  z-index: 0 !important;
 
-  border-bottom: 1px solid rgba(229, 231, 235, 0.65);
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+
+  border-bottom: 1px solid rgba(229, 231, 235, 0.7) !important;
 }
 
-/* garante que títulos e actions fiquem acima do vidro */
+/* conteúdo acima do vidro */
 .top-bar > *{
-  position: relative;
-  z-index: 1;
+  position: relative !important;
+  z-index: 1 !important;
 
-  /* mantém o alinhamento “interno” igual ao restante da página */
-  padding: 0 24px;
+  /* mantém o alinhamento interno */
+  padding: 0 24px !important;
 }
 
-/* (opcional) melhora contraste dos controles em cima do vidro */
+/* opcional: controles melhor em cima do vidro */
 .top-bar input,
 .top-bar select{
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255,255,255,0.88) !important;
 }
+
