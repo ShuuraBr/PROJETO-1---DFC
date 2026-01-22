@@ -588,7 +588,7 @@ table {
 
 
 /* =======================================================================
-   OVERRIDES (GERADO v2) — Fix: Plano Financeiro visível + Saldo Inicial/Final
+   OVERRIDES (GERADO v2) — Fix: Plano Financeiro visível + Saldo Inicial/FinalS
    - Header "Plano Financeiro" fixo (topo + esquerda)
    - Scroll horizontal/vertical no wrapper
    - Saldo Inicial (sticky abaixo do thead) e Saldo Final (sticky no rodapé)
@@ -827,58 +827,4 @@ table {
 #finance-table tbody tr.sticky-saldo-top td,
 #finance-table tbody tr.sticky-saldo-bottom td{
     z-index: auto !important;
-}
-
-
-/* =======================================================================
-   OVERRIDES — KPI DASHBOARD EM UMA ÚNICA LINHA (ULTRAWIDE/DESKTOP)
-   - 8 KPIs quando filtro "Todos" estiver selecionado
-   - Mantém responsividade para telas menores
-   ======================================================================= */
-
-/* Dashboard KPIs: uma linha (desktop/ultrawide) */
-#kpi-container{
-  display: grid !important;
-  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-}
-
-/* Card mais compacto para caber em 1 linha */
-#kpi-container .card{
-  padding: 12px !important;
-}
-
-#kpi-container .card-title{
-  font-size: 10px !important;
-  margin-bottom: 6px !important;
-  letter-spacing: 0.04em;
-}
-
-#kpi-container .card-value{
-  font-size: 16px !important;
-}
-
-/* Ajustes por breakpoint */
-@media (max-width: 1600px){
-  #kpi-container{
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 1366px){
-  #kpi-container{
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 1024px){
-  #kpi-container{
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-}
-
-@media (max-width: 768px){
-  #kpi-container{
-    grid-template-columns: 1fr !important;
-  }
 }
