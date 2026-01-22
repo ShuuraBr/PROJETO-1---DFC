@@ -273,6 +273,84 @@ app.get('/api/orcamento', async (req, res) => {
     }
 });
 
+
+// ==============================
+// KPI INADIMPLÊNCIA (Dashboard)
+// ==============================
+// Regras:
+// 1) Inadimplência (R$): Baixa IS NULL e Financeiro IS NOT NULL, no mês/ano informados
+// 2) % do plano 1.001.006 - BOLETOS (mês/ano informados)
+// 3) Nº de inadimplentes: COUNT(DISTINCT Nome) com o mesmo filtro da inadimplência
+app.get('/api/inadimplencia', async (req, res) => {
+    try {
+        const hoje = new Date();
+        const ano = parseInt(req.query.ano || hoje.getFullYear(), 10);
+        const mes = parseInt(req.query.mes || (hoje.getMonth() + 1), 10);
+
+        if (!Number.isFinite(ano) || !Number.isFinite(mes) || mes < 1 || mes > 12) {
+            return res.status(400).json({ error: 'Parâmetros inválidos. Use /api/inadimplencia?ano=YYYY&mes=MM' });
+        }
+
+        // Observação: a tabela já é usada em /api/dashboard com colunas "Mes" e "Ano".
+        // Aqui usamos também "Financeiro" (conforme solicitado).
+        const sql = `
+            SELECT
+                -- 1) Inadimplência (R$)
+                COALESCE(SUM(CASE
+                    WHEN Ano = ? AND Mes = ?
+                        AND Baixa IS NULL
+                        AND Financeiro IS NOT NULL
+                    THEN Valor_mov ELSE 0 END), 0) AS inadimplenciaValor,
+
+                -- 3) Nº de inadimplentes
+                COALESCE(COUNT(DISTINCT CASE
+                    WHEN Ano = ? AND Mes = ?
+                        AND Baixa IS NULL
+                        AND Financeiro IS NOT NULL
+                    THEN Nome ELSE NULL END), 0) AS inadimplentesCount,
+
+                -- Base BOLETOS (mês atual): usa Codigo_plano quando existir, com fallback em Financeiro
+                COALESCE(SUM(CASE
+                    WHEN Ano = ? AND Mes = ?
+                        AND (
+                            Codigo_plano = '1.001.006'
+                            OR Financeiro LIKE '1.001.006%'
+                            OR Nome LIKE '%BOLETOS%'
+                            OR Nome LIKE '%BOLETO%'
+                        )
+                    THEN Valor_mov ELSE 0 END), 0) AS boletosValor
+            FROM dfc_analitica
+            WHERE 1=1
+        `;
+
+        const params = [ano, mes, ano, mes, ano, mes];
+
+        const [rows] = await pool.query(sql, params);
+        const r = rows && rows[0] ? rows[0] : { inadimplenciaValor: 0, inadimplentesCount: 0, boletosValor: 0 };
+
+        const inadimplenciaValor = Number(r.inadimplenciaValor || 0);
+        const inadimplentesCount = Number(r.inadimplentesCount || 0);
+        const boletosValor = Number(r.boletosValor || 0);
+
+        const inadimplenciaPercBoletos = boletosValor !== 0
+            ? (inadimplenciaValor / boletosValor) * 100
+            : 0;
+
+        return res.json({
+            ano,
+            mes,
+            inadimplenciaValor,
+            inadimplenciaPercBoletos,
+            inadimplentesCount,
+            boletosValor
+        });
+    } catch (err) {
+        console.error('Erro /api/inadimplencia:', err);
+        return res.status(500).json({ error: 'Erro ao consultar inadimplência.' });
+    }
+});
+
+
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 

@@ -24,13 +24,6 @@ const app = {
         
         app.carregarAnosDisponiveis();
 
-        // Recalcula alturas de sticky (Saldo Inicial/Final) quando a janela muda
-        window.addEventListener('resize', () => {
-            if (document.getElementById('finance-table')) {
-                app.setupFinanceStickyRows();
-            }
-        });
-
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
@@ -624,7 +617,7 @@ const app = {
         const diasRestantes = diasTotais - diasDecorridos;
 
         let gastoDiario = totalRealizado / diasDecorridos;
-        let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
+        let projecaoTotal = gastoDiario * diasRestantes;
 
         if (totalOrcado === 0) {
             fillEl.style.height = '0%';
@@ -767,7 +760,7 @@ const app = {
             let gastoDiario = 0;
             if (dias.decorridos > 0) gastoDiario = totalRealizado / dias.decorridos;
 
-            let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
+            let projecaoTotal = gastoDiario * diasRestantes;
 
             cardMeta = fmt(metaDiaria);
             cardGasto = fmt(gastoDiario);
@@ -887,35 +880,6 @@ const app = {
         });
     },
 
-
-
-// Mantém "Saldo Inicial" fixo no topo (abaixo do cabeçalho) e "Saldo Final" fixo no rodapé dentro do scroll da tabela
-setupFinanceStickyRows: () => {
-    const table = document.getElementById('finance-table');
-    if (!table) return;
-
-    const thead = table.querySelector('thead');
-    const tbody = table.querySelector('tbody');
-    if (!thead || !tbody) return;
-
-    // Calcula a altura real do cabeçalho para posicionar o "Saldo Inicial" logo abaixo
-    const theadH = Math.ceil(thead.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--finance-thead-h', `${theadH}px`);
-
-    // Marca as linhas de saldo para ficarem sticky
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.forEach(tr => {
-        tr.classList.remove('sticky-saldo-top', 'sticky-saldo-bottom');
-
-        const firstCell = tr.querySelector('td:first-child');
-        if (!firstCell) return;
-
-        const txt = (firstCell.innerText || '').trim().toLowerCase();
-        if (txt === 'saldo inicial') tr.classList.add('sticky-saldo-top');
-        if (txt === 'saldo final') tr.classList.add('sticky-saldo-bottom');
-    });
-},
-
     renderTable: (data) => {
         const rows = data.rows;
         const columns = data.columns; 
@@ -1000,8 +964,6 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
     renderOrcamentoTable: (data) => {
@@ -1055,8 +1017,6 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
     loadDepartamentos: async () => {
@@ -1115,6 +1075,7 @@ setupFinanceStickyRows: () => {
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
+            await app.loadInadimplenciaKPIs();
             app.renderTable(data.tabela); 
             setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
@@ -1133,6 +1094,67 @@ setupFinanceStickyRows: () => {
                        mk(labelResultado, c.deficitSuperavit, c.deficitSuperavit>=0?'text-green':'text-red') + 
                        mk('Saldo Final',c.saldoFinal,'bold');
     },
+
+    // Carrega 3 KPIs extras (apenas quando filtro "Todos" estiver selecionado)
+    // 1) Inadimplência (R$) -> Baixa IS NULL e Financeiro IS NOT NULL (mês atual)
+    // 2) % da inadimplência sobre o plano 1.001.006 - BOLETOS (mês atual)
+    // 3) Nº de inadimplentes (COUNT DISTINCT Nome)
+    loadInadimplenciaKPIs: async () => {
+        const ct = document.getElementById('kpi-container');
+        if (!ct) return;
+
+        const statusSelect = document.getElementById('dashboard-status-view');
+        const statusVal = statusSelect ? String(statusSelect.value || '').toLowerCase() : 'todos';
+
+        // Se não estiver em "Todos", não mostra os KPIs extras
+        if (statusVal !== 'todos') {
+            // garante que nada extra permaneça
+            ct.querySelectorAll('.kpi-extra-inad').forEach(el => el.remove());
+            return;
+        }
+
+        // Remove cards extras antigos antes de recriar
+        ct.querySelectorAll('.kpi-extra-inad').forEach(el => el.remove());
+
+        const hoje = new Date();
+        const mesAtual = hoje.getMonth() + 1;
+
+        // Usa o ano selecionado no Dashboard, com fallback para o ano atual
+        const anoAlvo = Number.isFinite(parseInt(app.yearDashboard, 10)) ? parseInt(app.yearDashboard, 10) : hoje.getFullYear();
+
+        try {
+            const res = await fetch(`/api/inadimplencia?ano=${encodeURIComponent(anoAlvo)}&mes=${encodeURIComponent(mesAtual)}`);
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'Falha ao carregar inadimplência');
+
+            const inadValor = Number(data.inadimplenciaValor || 0);
+            const inadPerc = Number(data.inadimplenciaPercBoletos || 0);
+            const inadCount = Number(data.inadimplentesCount || 0);
+
+            const fmtMoney = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+            const fmtInt = (v) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v);
+            const fmtPerc = (v) => `${v.toFixed(2).replace('.', ',')}%`;
+
+            const mk = (label, valueHtml, cls) => `
+                <div class="card kpi-extra-inad">
+                    <div class="card-title">${label}</div>
+                    <div class="card-value ${cls || ''}">${valueHtml}</div>
+                </div>
+            `;
+
+            // KPIs extras: ordem após os 5 atuais
+            const kpi1 = mk('Inadimplência (mês atual)', fmtMoney(inadValor), 'text-red');
+            const kpi2 = mk('% da Inadimplência em BOLETOS (1.001.006)', fmtPerc(inadPerc), inadPerc >= 0 ? '' : 'text-red');
+            const kpi3 = mk('Nº de Inadimplentes (mês atual)', fmtInt(inadCount), '');
+
+            ct.insertAdjacentHTML('beforeend', kpi1 + kpi2 + kpi3);
+
+        } catch (err) {
+            console.error('KPI inadimplência:', err);
+            // Em caso de erro, não quebra a tela; apenas não mostra os extras.
+        }
+    },
+
 
     toggleGroup: (idPai, el) => {
         const filhos = document.getElementsByClassName(`pai-${idPai}`);
