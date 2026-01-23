@@ -845,103 +845,113 @@ table {
 
 
 
-/* ===== Financeiro (nova tabela) — mesmo design da DFC ===== */
+/* ===== Financeiro (nova tabela) — mesma largura da 1ª coluna da DFC ===== */
 #financeiro-table{
-    min-width: 1800px !important;
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
 
-/* Cabeçalho igual DFC */
+#financeiro-table th,
+#financeiro-table td{
+    font-size: clamp(11px, 0.85vw, 13px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 #financeiro-table thead th{
     background: #012d5a !important;
     color: #ffffff !important;
-    padding: 10px 8px;
-    text-align: center;
-    border: 1px solid #e5e7eb;
-    font-weight: 600;
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
+    font-weight: 700;
 }
 
-/* Primeira coluna igual DFC (largura sincronizada via CSS vars) */
+/* 1ª coluna (Plano Financeiro) — igual DFC */
 #financeiro-table th:first-child,
 #financeiro-table td:first-child{
     text-align: left;
     position: sticky;
     left: 0;
-    z-index: 20;
-    background-color: inherit;
-    border-right: 2px solid #e5e7eb;
+    z-index: 110;
     min-width: var(--col-plano-min);
     max-width: var(--col-plano-max);
-    padding-left: 15px;
-}
-#financeiro-table td:first-child{ background-color: #fff; }
-
-/* Células iguais DFC */
-#financeiro-table td{
-    padding: 8px;
-    text-align: center;
-    border: 1px solid #e5e7eb;
-    color: #374151;
+    white-space: nowrap;
+    border-right: 2px solid #e5e7eb;
+    padding-left: 14px;
 }
 
-/* Hover igual DFC (usando a classe .hover-row) */
-#financeiro-table tbody tr.hover-row:hover{
-    background-color: #f3f4f6 !important;
-    filter: brightness(0.98);
+#financeiro-table thead th:first-child{
+    background: #012d5a !important;
+    color: #ffffff !important;
 }
 
-/* Linhas-filhas iguais DFC */
-#financeiro-table tbody tr.child-row{
-    background-color: #f9fafb;
-    font-size: 12px;
-    color: #4b5563;
+#financeiro-table tbody td:first-child{
+    background: #ffffff !important;
 }
-#financeiro-table tbody tr.child-row td:first-child{
-    padding-left: 35px;
-    border-left: 4px solid #e5e7eb;
-}
-#financeiro-table tbody tr.child-row td{
-    border-top: 1px dashed #e5e7eb;
-}
-/* ================================
-   AJUSTE TABELA FINANCEIRO (PATCH)
-   ================================ */
 
-/* Garantir que a tabela não encolha */
-#financeiro-table{
+/* Financeiro: ícone expand/recolhe */
+#financeiro-table .toggle-icon{
+  display:inline-block;
+  width: 16px;
+  margin-right: 6px;
+  transition: transform .15s ease;
+}
+#financeiro-table .toggle-icon.rotated{
+  transform: rotate(90deg);
+}
+
+/* Painel Financeiro só aparece quando Tipo de Visão = Todos */
+#financeiro-panel{ display:none !important; }
+
+/* =====================================================
+   SINCRONIZAR LARGURA DAS COLUNAS (DFC + FINANCEIRO)
+   ===================================================== */
+
+:root {
+    --plano-col-min: 280px;
+    --plano-col-max: 380px;
+    --mes-col-width: 110px;
+}
+
+/* Ambas tabelas usam o MESMO modelo */
+#finance-table,
+#financeiro-table {
     width: 100% !important;
-    min-width: 1400px; /* mesmo padrão visual da DFC */
-    table-layout: auto !important;
+    min-width: calc(var(--plano-col-min) + (12 * var(--mes-col-width)));
+    table-layout: fixed !important;
+    border-collapse: collapse;
 }
 
-/* Wrapper com scroll horizontal */
-#financeiro-panel .table-wrapper{
-    overflow-x: auto;
-    overflow-y: auto;
-    max-width: 100%;
-}
-
-/* Primeira coluna igual DFC */
+/* Primeira coluna igual nas duas */
+#finance-table th:first-child,
+#finance-table td:first-child,
 #financeiro-table th:first-child,
-#financeiro-table td:first-child{
-    min-width: var(--col-plano-min, 260px);
-    max-width: var(--col-plano-max, 360px);
+#financeiro-table td:first-child {
+    min-width: var(--plano-col-min) !important;
+    max-width: var(--plano-col-max) !important;
+    text-align: left;
     font-weight: 600;
 }
 
-/* ================================
-   HIERARQUIA — PRIMEIRO NÍVEL EM NEGRITO
-   ================================ */
-
-#financeiro-table tbody tr.grupo td{
-    font-weight: 800 !important;
-    color: #0b3a73;
-    background: #f3f7ff;
+/* Meses com largura fixa e igual */
+#finance-table th:not(:first-child),
+#finance-table td:not(:first-child),
+#financeiro-table th:not(:first-child),
+#financeiro-table td:not(:first-child) {
+    width: var(--mes-col-width) !important;
+    min-width: var(--mes-col-width) !important;
+    max-width: var(--mes-col-width) !important;
+    text-align: center;
 }
 
-/* Hover profissional igual DFC */
-#financeiro-table tbody tr:hover td{
-    background: #eef5ff !important;
+/* Wrapper garante scroll sincronizado */
+.table-wrapper {
+    overflow-x: auto;
+    max-width: 100%;
 }
