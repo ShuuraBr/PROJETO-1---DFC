@@ -1,0 +1,911 @@
+:root {
+    --bg-body: #ffffff;
+    --bg-sidebar: #111827;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overflow: hidden; }
+
+.hidden { display: none !important; }
+.restricted { display: none !important; }
+
+/* MODAL */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); display: flex; justify-content: center; align-items: center; z-index: 9998; backdrop-filter: blur(4px);
+}
+.modal-card {
+    background: white; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); animation: modalPop 0.3s ease-out;
+}
+@keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+/* LOADING */
+.loader-overlay {
+    position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.spinner {
+    width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* LOGIN & INPUTS */
+#view-login { display: flex; align-items: center; justify-content: center; height: 100vh; background: #e5e7eb; }
+.login-card { background: white; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+
+/* CLASSE NOVA DA LOGO DE LOGIN */
+.login-brand-logo {
+    max-width: 220px; 
+    height: auto;
+    margin: 0 auto 20px auto;
+    display: block;
+}
+
+.input-wrapper { text-align: left; margin-bottom: 15px; }
+.input-wrapper label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.input-wrapper input, .input-wrapper select { 
+    width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; transition: 0.2s; background-color: #fff; font-size: 14px;
+}
+.input-wrapper input:focus, .input-wrapper select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+.btn-primary { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.btn-primary:hover { background: var(--primary-hover); }
+.error-text { color: var(--danger); font-size: 13px; margin-top: 10px; }
+
+/* FILTRO DE ANO */
+.select-ano {
+    padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background-color: white; color: var(--text-dark);
+    font-size: 14px; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;
+}
+.select-ano:hover { border-color: var(--primary); }
+
+/* --- LAYOUT PADRÃO (DESKTOP) --- */
+#view-app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+
+.sidebar { 
+    width: 80px; 
+    background: var(--bg-sidebar); 
+    display: flex; flex-direction: column; align-items: center; padding: 20px 0; 
+    flex-shrink: 0; 
+    height: 100vh;
+}
+.brand { color: white; font-size: 24px; margin-bottom: 40px; }
+.nav-btn { 
+    background: none; border: none; color: #9ca3af; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 20px; 
+    margin-bottom: 10px; transition: 0.2s; width: 80%; display: flex; justify-content: center; align-items: center; position: relative;
+}
+.nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.1); color: white; }
+.tooltip { 
+    position: absolute; left: 70px; background: #374151; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; 
+    opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap; z-index: 100;
+}
+.nav-btn:hover .tooltip { opacity: 1; left: 70px; }
+.user-profile { margin-top: auto; margin-bottom: 20px; }
+.avatar { width: 36px; height: 36px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.logout-btn { background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; margin-bottom: 10px; }
+
+.main-content { 
+    flex: 1; 
+    padding: 24px 32px; 
+    overflow-y: auto; 
+    background-color: #ffffff; 
+    height: 100vh;
+}
+
+.page-section { display: none; animation: fadeIn 0.4s; padding-bottom: 50px; }
+.page-section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.top-bar h1 { font-size: 24px; font-weight: 700; color: #111827; }
+.header-logo { height: 60px; width: auto; object-fit: contain; display: block; }
+
+/* CONFIGURAÇÃO GERAL DOS CARDS */
+.kpi-grid { 
+    display: grid; 
+    gap: 15px; 
+    margin-bottom: 24px; 
+}
+.card { background: white; padding: 15px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-value { font-size: 18px; font-weight: 700; }
+
+.text-green { color: var(--success) !important; }
+.text-red { color: var(--danger) !important; }
+
+/* --- ESPECÍFICO: DASHBOARD (5 COLUNAS) --- */
+#kpi-container {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+/* --- ESPECÍFICO: ORÇAMENTO (8 COLUNAS - LINHA ÚNICA) --- */
+#kpi-orcamento-container {
+    grid-template-columns: repeat(8, 1fr);
+}
+#kpi-orcamento-container .card { padding: 12px; }
+#kpi-orcamento-container .card-title { font-size: 10px; margin-bottom: 5px; }
+#kpi-orcamento-container .card-value { font-size: 15px; }
+
+
+/* CONFIGURAÇÃO RÍGIDA PARA DESKTOP (TABELA LARGA, GRÁFICO ESTREITO) */
+.dashboard-split { 
+    display: grid; 
+    grid-template-columns: 1fr; 
+    gap: 30px; 
+}
+
+.panel { 
+    background: white; border-radius: 10px; border: 1px solid var(--border); 
+    display: flex !important; 
+    flex-direction: column !important;
+    margin-bottom: 0; 
+}
+.panel-head { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #f9fafb; font-weight: 600; font-size: 14px; }
+
+/* TABELAS (DASHBOARD) - MODIFICADO */
+.table-wrapper { 
+    display: block !important;
+    width: 100% !important;
+    height: 500px !important; 
+    overflow: auto !important;
+    position: relative !important;
+    border: 1px solid #e5e7eb; 
+    background: #012d5a; 
+    border-radius: 8px; 
+    scrollbar-width: thin;
+    flex: 1 !important; /* Garante que ocupe o espaço dentro do painel flex */
+}
+
+/* Garante que o painel pai não cresça além da conta */
+.table-panel {
+    height: 600px !important; /* Altura total do painel (cabeçalho + tabela) */
+    overflow: hidden !important;
+}
+
+/* Estilização da barra de rolagem (Chrome/Edge/Safari) */
+.table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+.table-wrapper::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+.table-wrapper::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+table { 
+    width: max-content !important; 
+    min-width: 100% !important;
+    border-collapse: collapse; 
+    font-size: 13px; 
+    white-space: nowrap !important; 
+}
+
+#finance-table {
+    min-width: 1800px !important;
+}
+
+#finance-table thead th { 
+    background: #012d5a !important; 
+    color: #ffffff !important; 
+    padding: 10px 8px; 
+    text-align: center; 
+    border: 1px solid #e5e7eb; 
+    font-weight: 600; 
+    position: sticky !important; 
+    top: 0 !important; 
+    z-index: 100 !important; 
+}
+
+#finance-table th:first-child, 
+#finance-table td:first-child { 
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background-color: inherit;
+    border-right: 2px solid #e5e7eb;
+    min-width: var(--col-plano-min);
+    max-width: var(--col-plano-max);
+    padding-left: 15px;
+}
+#finance-table td:first-child { background-color: #fff; }
+
+#finance-table td { padding: 8px; text-align: center; border: 1px solid #e5e7eb; color: #374151; }
+.hover-row:hover { background-color: #f3f4f6 !important; filter: brightness(0.98); }
+.toggle-icon { display: inline-block; width: 15px; transition: transform 0.2s ease; margin-right: 5px; color: #6b7280; font-size: 11px; }
+
+.child-row { background-color: #f9fafb; font-size: 12px; color: #4b5563; }
+.child-row td:first-child { padding-left: 35px; border-left: 4px solid #e5e7eb; }
+.child-row td { border-top: 1px dashed #e5e7eb; }
+
+/* GRÁFICO - Altura Ajustada */
+.chart-wrapper { padding: 20px; height: 450px; position: relative; width: 100%; }
+
+/* --- LAYOUT DO CHART + TERMÔMETRO NA ABA ORÇAMENTO --- */
+.chart-row {
+    display: flex;
+    flex-direction: row;
+    height: 480px; /* Altura fixa para alinhar */
+}
+.chart-main {
+    flex: 1; /* Ocupa o espaço restante */
+    border-right: 1px solid var(--border);
+}
+
+/* =========================================================================
+   NOVO TERMÔMETRO FLAT (SUBSTITUI O 3D)
+   ========================================================================= */
+.thermometer-section {
+    width: 320px; /* Um pouco mais largo para acomodar labels */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: #fff;
+    border-left: 1px solid var(--border);
+}
+
+.flat-thermometer-container {
+    position: relative;
+    width: 240px; 
+    height: 300px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* Alinha o termômetro na base */
+    margin-bottom: 20px;
+}
+
+/* Corpo Central */
+.thermometer-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 5;
+    width: 60px;
+}
+
+/* O Tubo */
+.thermometer-tube-border {
+    width: 40px;
+    height: 220px;
+    background-color: #f1f5f9; /* Fundo cinza claro */
+    border: 5px solid #2c3e50; /* Borda grossa escura */
+    border-bottom: none; /* Conecta com o bulbo */
+    border-radius: 20px 20px 0 0;
+    position: relative;
+    overflow: hidden; /* Corta o líquido que passar */
+    z-index: 2;
+}
+
+/* Marcações (Régua) */
+.ticks {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 80%;
+    z-index: 3;
+}
+.ticks span {
+    width: 12px;
+    height: 2px;
+    background-color: #cbd5e1;
+    display: block;
+}
+
+/* O Líquido (Barra que sobe) */
+.thermometer-liquid {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #2563eb; 
+    transition: height 1.0s ease-in-out, background-color 0.5s;
+    z-index: 1; /* Fica atrás das réguas */
+}
+
+/* O Bulbo (Bola embaixo) */
+.thermometer-bulb-border {
+    width: 64px;
+    height: 64px;
+    background-color: transparent; /* A cor vem do fill interno */
+    border: 5px solid #2c3e50;
+    border-radius: 50%;
+    margin-top: -10px; /* Sobe para fundir com o tubo */
+    position: relative;
+    z-index: 1; /* Fica acima do tubo visualmente nas bordas */
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Preenchimento do Bulbo */
+.thermometer-bulb-fill {
+    width: 100%;
+    height: 100%;
+    background-color: #2563eb;
+    border-radius: 50%;
+    transition: background-color 0.5s;
+}
+
+/* Brilho no Bulbo */
+.thermometer-bulb-border::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 15px;
+    height: 25px;
+    border-left: 4px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    transform: rotate(20deg);
+}
+
+/* --- ETIQUETAS LATERAIS (TOOLTIPS) --- */
+.thermometer-tooltip {
+    position: absolute;
+    background-color: #2c3e50; /* Fundo escuro */
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: bottom 1.0s ease-in-out; 
+    bottom: 0%; 
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.tooltip-left {
+    right: 55%; 
+    margin-right: 35px;
+}
+
+.tooltip-right {
+    left: 55%; 
+    margin-left: 35px;
+}
+
+/* Setas dos Tooltips */
+.arrow-right {
+    position: absolute;
+    top: 50%;
+    right: -6px;
+    transform: translateY(-50%);
+    width: 0; 
+    height: 0; 
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 6px solid #2c3e50;
+}
+
+.arrow-left {
+    position: absolute;
+    top: 50%;
+    left: -6px;
+    transform: translateY(-50%);
+    width: 0; 
+    height: 0; 
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 6px solid #2c3e50;
+}
+
+/* Legenda Flat */
+.flat-legend {
+    width: 100%;
+    margin-top: 10px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.legend-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    font-size: 11px;
+    font-weight: 500;
+    color: #4b5563;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+.legend-item:hover { background-color: #f9fafb; }
+
+.dot { 
+    width: 10px; height: 10px; 
+    border-radius: 50%; 
+    display: inline-block; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+.dot-blue { background-color: #3b82f6; }
+.dot-green { background-color: #10b981; }
+.dot-yellow { background-color: #f59e0b; }
+.dot-red { background-color: #ef4444; }
+
+
+/* ORÇAMENTO TABLE */
+.table-wrapper-orcamento { 
+    background: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-height: 80vh; overflow: auto; 
+}
+
+#orcamento-table { border-collapse: separate; border-spacing: 0; width: auto; font-size: 11px; margin: 0; }
+#orcamento-table th, #orcamento-table td { 
+    padding: 8px 10px; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #f3f4f6; text-align: right; height: 35px;
+}
+
+.sticky-col {
+    position: sticky; left: 0; z-index: 20; background-color: #fff !important; 
+    border-right: 2px solid #e5e7eb !important; text-align: left !important; 
+    width: auto; min-width: 320px; max-width: none; white-space: nowrap; 
+    font-weight: 600; color: #1f2937; box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
+
+#orcamento-table thead tr th.sticky-col { 
+    z-index: 30; top: 0; left: 0; background-color: #012d5a !important; color: white; text-align: center !important;
+}
+#orcamento-table thead tr th { position: sticky; top: 0; z-index: 10; }
+
+.header-months th { 
+    background-color: #012d5a; color: white; text-align: center !important; 
+    border: 1px solid #374151; text-transform: uppercase; font-size: 12px; height: 30px;
+}
+.header-sub th { 
+    top: 30px !important; background-color: #f3f4f6; color: #111827; 
+    font-weight: 700; font-size: 10px; border-bottom: 2px solid #d1d5db !important; min-width: 100px; box-sizing: border-box;
+}
+#orcamento-table td:nth-child(4n+5), .header-sub th:nth-child(4n) { border-right: 2px solid #9ca3af !important; }
+
+.col-orc { color: #6b7280; }
+.col-real { color: #111827; } 
+.col-dif { font-weight: 700; background-color: #f9fafb; }
+.col-perc { font-size: 10px; font-weight: 600; } 
+#orcamento-table tbody tr:hover td { background-color: #eff6ff !important; transition: background-color 0.1s; }
+
+/* ==========================================================================
+   RESPONSIVIDADE 
+   ========================================================================== */
+
+/* Notebooks comuns (Abaixo de 1366px) */
+@media (max-width: 1366px) {
+    #kpi-orcamento-container { grid-template-columns: repeat(4, 1fr); }
+    #kpi-container { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Tablets (Abaixo de 1024px) */
+@media (max-width: 1024px) {
+    #kpi-orcamento-container { grid-template-columns: repeat(2, 1fr); }
+    #kpi-container { grid-template-columns: repeat(2, 1fr); }
+    .chart-wrapper { height: 350px; }
+    
+    .chart-row { flex-direction: column; height: auto; }
+    .chart-main { border-right: none; border-bottom: 1px solid var(--border); }
+    .thermometer-section { 
+        width: 100%; 
+        border-left: none; 
+        border-top: 1px solid var(--border);
+        padding: 30px;
+    }
+}
+
+/* Celulares (Abaixo de 768px) */
+@media (max-width: 768px) {
+    #view-app { flex-direction: column; height: 100vh; overflow: hidden; }
+    
+    .sidebar { 
+        width: 100%; height: 60px; flex-direction: row; position: fixed; bottom: 0; left: 0; z-index: 1000; 
+        padding: 0; justify-content: space-between; border-top: 1px solid #e5e7eb; background: var(--bg-sidebar); 
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1); 
+    }
+    .sidebar .brand, .sidebar .user-profile, .sidebar .tooltip { display: none !important; }
+    .sidebar nav { display: flex; flex-direction: row; justify-content: space-around; align-items: center; width: 100%; height: 100%; }
+    .nav-btn { width: auto; margin: 0; padding: 10px; background: transparent; font-size: 20px; flex-grow: 1; border-radius: 0; }
+    #btn-logout { display: flex; align-items: center; justify-content: center; width: 60px; height: 100%; margin: 0; border-left: 1px solid rgba(255,255,255,0.1); }
+    
+    .main-content { width: 100%; padding: 15px; padding-bottom: 80px; overflow-y: auto; height: calc(100vh - 60px); }
+    
+    .top-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .top-bar .actions { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+    .header-logo { height: 40px; }
+    
+    .table-wrapper { margin: 0 -15px; width: calc(100% + 30px); border-radius: 0; }
+    
+    th:first-child, td:first-child { min-width: 130px; max-width: 130px; padding-left: 8px !important; font-size: 10px; white-space: normal; line-height: 1.2; }
+    .child-row td:first-child { padding-left: 15px !important; }
+    
+    .kpi-grid, #kpi-container, #kpi-orcamento-container { grid-template-columns: 1fr; gap: 10px; }
+    
+    .login-card, .modal-card { margin: 20px; padding: 25px; width: 90%; }
+}
+
+/* --- BUSCA INTELIGENTE DASHBOARD --- */
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-wrapper input {
+    padding: 8px 30px 8px 35px; /* Mais espaço na direita para o botão X */
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    background-color: white;
+    font-size: 14px;
+    width: 250px;
+    outline: none;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.search-wrapper input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    width: 280px; 
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    color: #9ca3af;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+/* Ícone de limpar (X) */
+.clear-icon {
+    position: absolute;
+    right: 12px;
+    color: #9ca3af;
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.clear-icon:hover {
+    color: var(--danger);
+}
+
+/* Efeito de destaque na linha encontrada */
+.highlight-row td {
+    background-color: #fef08a !important; /* Amarelo suave */
+    color: #bb9d06 !important;
+    font-weight: 700;
+    border-top: 1px solid #fde047;
+    border-bottom: 1px solid #fde047;
+}
+
+/* Ajuste mobile para a busca */
+@media (max-width: 768px) {
+    .search-wrapper input {
+        width: 100%;
+    }
+}
+
+
+/* =======================================================================
+   OVERRIDES (GERADO v2) — Fix: Plano Financeiro visível + Saldo Inicial/Final
+   - Header "Plano Financeiro" fixo (topo + esquerda)
+   - Scroll horizontal/vertical no wrapper
+   - Saldo Inicial (sticky abaixo do thead) e Saldo Final (sticky no rodapé)
+     aplicados NAS CÉLULAS (td), mais compatível que sticky em <tr>.
+   - Depende do JS que adiciona as classes: sticky-saldo-top / sticky-saldo-bottom
+     e define --finance-thead-h (opcional; há fallback).
+   ======================================================================= */
+
+/* fallback para altura do thead (JS pode sobrescrever) */
+:root{ --finance-thead-h: 44px; }
+
+/* TOPBAR TRANSLÚCIDA (DASHBOARD + ORÇAMENTO) */
+.top-bar{
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 600 !important;
+
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 20px !important;
+
+  padding: 14px 24px !important;
+  margin: 0 0 18px 0 !important;
+
+  background: rgba(255,255,255,0.78) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+
+  border-bottom: 1px solid rgba(229,231,235,0.7) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04) !important;
+}
+
+@media (max-width: 768px){
+  .top-bar{
+    margin: 0 0 14px 0 !important;
+    padding: 12px 16px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+}
+
+/* WRAPPER: scroll X/Y + altura interna */
+.table-panel{
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+.table-wrapper{
+  width: 100% !important;
+  position: relative !important;
+
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+
+  max-height: calc(100vh - 340px) !important;
+
+  border: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+  border-radius: 10px !important;
+
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+
+.table-wrapper::-webkit-scrollbar{ height: 10px; width: 10px; }
+.table-wrapper::-webkit-scrollbar-track{ background: #f1f5f9; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb{ background: #cbd5e1; border-radius: 6px; }
+.table-wrapper::-webkit-scrollbar-thumb:hover{ background: #94a3b8; }
+
+/* TABELA: força scroll horizontal quando precisar */
+#finance-table{
+  border-collapse: collapse !important;
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+}
+
+/* Células padrão (não corta valores) */
+#finance-table th,
+#finance-table td{
+  font-size: clamp(11px, 0.85vw, 13px) !important;
+  padding: clamp(8px, 0.7vw, 12px) clamp(8px, 0.7vw, 12px) !important;
+  border: 1px solid #e5e7eb !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+/* HEADER sticky */
+#finance-table thead th{
+  background: #012d5a !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 400 !important;
+}
+
+/* Colunas de mês com largura mínima */
+#finance-table thead th:not(:first-child),
+#finance-table td:not(:first-child){
+  min-width: 140px !important;
+}
+
+/* Primeira coluna sticky (esquerda) + quebra de texto */
+#finance-table th:first-child,
+#finance-table td:first-child{
+  position: sticky !important;
+  left: 0 !important;
+
+  text-align: left !important;
+
+  width: auto !important;
+  min-width: 260px !important;
+  max-width: 520px !important;
+
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.25 !important;
+
+  padding-left: 14px !important;
+  border-right: 2px solid #e5e7eb !important;
+
+  background: #ffffff !important;
+  z-index: 450 !important;
+}
+
+/* ✅ GARANTE a célula "Plano Financeiro" (topo+esquerda) visível SEMPRE */
+#finance-table thead th:first-child{
+  top: 0 !important;
+  left: 0 !important;
+  background: #012d5a !important;
+  color: #ffffff !important;
+  z-index: 900 !important;
+}
+
+/* Hover */
+#finance-table tbody tr:hover td{ background-color: #f8fafc !important; }
+
+/* Hierarquia */
+.child-row{
+  background-color: #f9fafb !important;
+  color: #4b5563 !important;
+  font-size: 12px !important;
+}
+.child-row td:first-child{
+  padding-left: 32px !important;
+  border-left: 4px solid #e5e7eb !important;
+}
+
+/* ===========================
+   ✅ SALDO INICIAL / FINAL FIXOS (NAS CÉLULAS)
+   =========================== */
+
+/* Fundo e destaque */
+#finance-table tbody tr.sticky-saldo-top td,
+#finance-table tbody tr.sticky-saldo-bottom td{
+  background: #eff6ff !important;
+  font-weight: 700 !important;
+}
+
+/* Saldo Inicial: fixa logo abaixo do thead */
+#finance-table tbody tr.sticky-saldo-top td{
+  position: sticky !important;
+  top: var(--finance-thead-h) !important;
+  z-index: 300 !important; /* abaixo do header (400/900) */
+  box-shadow: 0 2px 0 rgba(0,0,0,0.06);
+}
+
+/* Saldo Final: fixa no rodapé */
+#finance-table tbody tr.sticky-saldo-bottom td{
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 300 !important;
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.06);
+}
+
+/* ✅ fixa também a 1ª célula ("Saldo Inicial"/"Saldo Final") na esquerda */
+#finance-table tbody tr.sticky-saldo-top td:first-child,
+#finance-table tbody tr.sticky-saldo-bottom td:first-child{
+  left: 0 !important;
+  z-index: 950 !important; /* acima da própria linha e acima das células */
+  border-right: 2px solid #e5e7eb !important;
+}
+
+/* MOBILE */
+@media (max-width: 768px){
+  .table-wrapper{
+    max-height: calc(100vh - 290px) !important;
+    border-radius: 0 !important;
+    margin: 0 -15px !important;
+    width: calc(100% + 30px) !important;
+  }
+  #finance-table thead th:not(:first-child),
+  #finance-table td:not(:first-child){
+    min-width: 150px !important;
+  }
+  #finance-table th:first-child,
+  #finance-table td:first-child{
+    min-width: 200px !important;
+    max-width: 360px !important;
+    padding-left: 10px !important;
+  }
+}
+
+
+/* =====================================================
+   ORÇAMENTO – BORDA NA TABELA
+   ===================================================== */
+.table-wrapper-orcamento{
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    overflow: auto !important;
+    background: #ffffff !important;
+}
+
+
+/* =====================================================
+   TOPBAR – SEMPRE À FRENTE DE TUDO (DURANTE SCROLL)
+   ===================================================== */
+.top-bar{
+    z-index: 9999 !important;        /* acima de tabelas, KPI, sticky cells */
+}
+
+/* Garante que elementos abaixo nunca passem por cima */
+#finance-table thead th,
+#finance-table th:first-child,
+#finance-table td:first-child,
+#finance-table tbody tr.sticky-saldo-top td,
+#finance-table tbody tr.sticky-saldo-bottom td{
+    z-index: auto !important;
+}
+
+
+:root{
+  /* Largura padrão da 1ª coluna (Plano Financeiro) nas duas tabelas */
+  --col-plano-min: 260px;
+  --col-plano-max: 360px;
+}
+
+
+
+/* ===== Financeiro (nova tabela) — mesma largura da 1ª coluna da DFC ===== */
+#financeiro-table{
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+#financeiro-table th,
+#financeiro-table td{
+    font-size: clamp(11px, 0.85vw, 13px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#financeiro-table thead th{
+    background: #012d5a !important;
+    color: #ffffff !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    font-weight: 700;
+}
+
+/* 1ª coluna (Plano Financeiro) — igual DFC */
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 110;
+    min-width: var(--col-plano-min);
+    max-width: var(--col-plano-max);
+    white-space: nowrap;
+    border-right: 2px solid #e5e7eb;
+    padding-left: 14px;
+}
+
+#financeiro-table thead th:first-child{
+    background: #012d5a !important;
+    color: #ffffff !important;
+}
+
+#financeiro-table tbody td:first-child{
+    background: #ffffff !important;
+}
+
+/* Financeiro: ícone expand/recolhe */
+#financeiro-table .toggle-icon{
+  display:inline-block;
+  width: 16px;
+  margin-right: 6px;
+  transition: transform .15s ease;
+}
+#financeiro-table .toggle-icon.rotated{
+  transform: rotate(90deg);
+}
+
+/* Painel Financeiro só aparece quando Tipo de Visão = Todos */
+#financeiro-panel{ display:none !important; }
+

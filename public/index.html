@@ -7,12 +7,11 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles33.css">
+    <link rel="stylesheet" href="styles34.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <script src="test_script.js"></script>
 </head>
 <body>
 
@@ -131,31 +130,19 @@
                             <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
                         </div>
 
-                        
-<div class="filters-group">
-  <div class="filter-item">
-    <label class="filter-label" for="dashboard-status-view">Tipo de Visão</label>
-    <select id="dashboard-status-view" class="select-ano">
-      <option value="todos" selected>Todos</option>
-      <option value="realizado">Somente Realizado</option>
-    </select>
-  </div>
+                        <select id="dashboard-status-view" class="select-ano">
+                            <option value="todos" selected>Todos</option>
+                            <option value="realizado">Somente Realizado</option>
+                        </select>
 
-  <div class="filter-item">
-    <label class="filter-label" for="dashboard-view-type">Período</label>
-    <select id="dashboard-view-type" class="select-ano">
-      <option value="mensal" selected>Mensal</option>
-      <option value="trimestral">Trimestral</option>
-      <option value="anual">Anual</option>
-    </select>
-  </div>
+                        <select id="dashboard-view-type" class="select-ano">
+                            <option value="mensal" selected>Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="anual">Anual</option>
+                        </select>
 
-  <div class="filter-item">
-    <label class="filter-label" for="ano-dashboard">Ano</label>
-    <select id="ano-dashboard" class="select-ano"></select>
-  </div>
-</div>
-
+                        <select id="ano-dashboard" class="select-ano">
+                        </select>
                         
                         <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
@@ -172,7 +159,7 @@
                                 <thead></thead>
                                 <tbody></tbody>
                             </table>
-</div>
+                        </div>
                     </div>
                     
                     
@@ -203,21 +190,12 @@
                         </p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                        
-<div class="filters-group">
-    <div class="filter-item" style="min-width: 150px;">
-        <label class="filter-label" for="filtro-dep-orcamento">Tipo de Visão</label>
-        <select id="filtro-dep-orcamento" class="select-ano">
-            <option value="">Todos Departamentos</option>
-        </select>
-    </div>
+                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+                            <option value="">Todos Departamentos</option>
+                        </select>
 
-    <div class="filter-item">
-        <label class="filter-label" for="ano-orcamento">Ano</label>
-        <select id="ano-orcamento" class="select-ano"></select>
-    </div>
-</div>
-
+                        <select id="ano-orcamento" class="select-ano">
+                        </select>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
