@@ -198,8 +198,15 @@ table {
 
 #finance-table th:first-child, 
 #finance-table td:first-child { 
-    text-align: left; position: sticky; left: 0; z-index: 20; background-color: inherit; 
-    border-right: 2px solid #e5e7eb; min-width: 280px; padding-left: 15px; 
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background-color: inherit;
+    border-right: 2px solid #e5e7eb;
+    min-width: var(--col-plano-min);
+    max-width: var(--col-plano-max);
+    padding-left: 15px;
 }
 #finance-table td:first-child { background-color: #fff; }
 
@@ -830,134 +837,75 @@ table {
 }
 
 
-/* =====================================================
-   OCULTAR KPIs DE INADIMPLÊNCIA (CASO APAREÇAM)
-   ===================================================== */
-.inadimplencia,
-.inadimplencia-percent,
-.titulos-inadimplentes,
-[data-kpi='inadimplencia'],
-[data-kpi='inadimplencia-percent'],
-[data-kpi='titulos-inadimplentes']{
-  display: none !important;
-}
-
-
-/* =====================================================
-   RÓTULOS DOS FILTROS (Tipo de Visão / Período / Ano)
-   ===================================================== */
-.filters-group{
-  display: flex;
-  gap: 14px;
-  align-items: flex-end;
-  flex-wrap: wrap;
-}
-
-.filter-item{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 140px;
-}
-
-.filter-label{
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-/* melhora o alinhamento quando o select está dentro do filter-item */
-.filter-item .select-ano{
-  width: 100%;
-}
-
-
-/* =====================================================
-   ORÇAMENTO — ALINHAMENTO DOS FILTROS COM RÓTULOS
-   ===================================================== */
-.actions .filters-group{
-  align-items: flex-end;
+:root{
+  /* Largura padrão da 1ª coluna (Plano Financeiro) nas duas tabelas */
+  --col-plano-min: 260px;
+  --col-plano-max: 360px;
 }
 
 
 
-/* =====================================================
-   TABELA FINANCEIRO (Previsões) — mesma linguagem da DFC
-   ===================================================== */
+/* ===== Financeiro (nova tabela) — mesma largura da 1ª coluna da DFC ===== */
 #financeiro-table{
-  width: 100% !important;
-  min-width: 100% !important;
-  border-collapse: collapse;
-  table-layout: fixed;
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
 
 #financeiro-table th,
 #financeiro-table td{
-  font-size: clamp(11px, 0.85vw, 13px);
-  padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
-  border: 1px solid #e5e7eb;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-size: clamp(11px, 0.85vw, 13px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #financeiro-table thead th{
-  background: #012d5a !important;
-  color: #ffffff !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 20 !important;
-  font-weight: 700;
+    background: #012d5a !important;
+    color: #ffffff !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    font-weight: 700;
 }
 
+/* 1ª coluna (Plano Financeiro) — igual DFC */
 #financeiro-table th:first-child,
 #financeiro-table td:first-child{
-  text-align: left;
-  position: sticky;
-  left: 0;
-  z-index: 25;
-  min-width: 260px;
-  max-width: 520px;
-  white-space: nowrap;
-  border-right: 2px solid #e5e7eb;
-  padding-left: 14px;
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 110;
+    min-width: var(--col-plano-min);
+    max-width: var(--col-plano-max);
+    white-space: nowrap;
+    border-right: 2px solid #e5e7eb;
+    padding-left: 14px;
 }
 
 #financeiro-table thead th:first-child{
-  background: #012d5a !important;
-  color: #ffffff !important;
+    background: #012d5a !important;
+    color: #ffffff !important;
 }
 
-/* Linhas de grupo (sem valores) */
-#financeiro-table tbody tr.grupo td{
-  background: #f8fafc;
-  font-weight: 700;
+#financeiro-table tbody td:first-child{
+    background: #ffffff !important;
 }
-#financeiro-table tbody tr.grupo td:first-child{
-  background: #f8fafc !important;
-}
-
-/* Scroll container */
-#financeiro-table-container .table-wrapper-inner{
-  overflow: auto;
-}
-
-
 
 /* Financeiro: ícone expand/recolhe */
 #financeiro-table .toggle-icon{
+  display:inline-block;
+  width: 16px;
+  margin-right: 6px;
   transition: transform .15s ease;
 }
 #financeiro-table .toggle-icon.rotated{
   transform: rotate(90deg);
 }
 
-/* garantir classe hidden */
-.hidden{ display:none !important; }
+/* Painel Financeiro só aparece quando Tipo de Visão = Todos */
+#financeiro-panel{ display:none !important; }
 
-
-/* Painel Financeiro (Dashboard) — inicia oculto e só aparece quando Tipo de Visão = Todos */
-#financeiro-panel{ display:none; }
