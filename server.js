@@ -274,7 +274,16 @@ app.get('/api/orcamento', async (req, res) => {
 });
 
 
-
+// =========================================================================
+// FINANCEIRO (Dashboard) — Tabela de Previsões (somente quando Tipo de Visão = "Todos")
+// Regras:
+// - Baixa IS NULL
+// - Financeiro IS NOT NULL
+// - Agrupar por Codigo_plano/Nome e por mês
+// - Hierarquia:
+//   1- Previsões a Receber: 1.001.006 - BOLETOS
+//   2- Previsões a Pagar:  2.001.001 / 2.001.002 / 2.001.003
+// =========================================================================
 app.get('/api/financeiro-dashboard', async (req, res) => {
     try {
         const { ano, view } = req.query;
@@ -381,6 +390,7 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
 });
 
 
+
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
@@ -426,14 +436,28 @@ app.get('/api/dashboard', async (req, res) => {
             return obj;
         };
 
-        const normalizar = (str) => str ? str.trim().toLowerCase().replace(/\s+/g, ' ') : '';
+        const normalizar = (str) => {
+            if (!str) return '';
+            return str
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')                 // separa acentos
+                .replace(/[\u0300-\u036f]/g, '')  // remove acentos
+                .replace(/\s*-\s*/g, '-')         // padroniza hífen: "04 - Ativo" => "04-Ativo"
+                .replace(/\s+/g, ' ')             // espaços múltiplos
+                .trim();
+        };
+
+        // Mapeamento robusto (chaves normalizadas). Isso evita sumir o "04- Ativo Imobilizado"
+        // quando o banco vier como "04-Ativo Imobilizado", "04 - Ativo Imobilizado", etc.
         const configCategorias = {
-            '01-entradas operacionais': '01- Entradas Operacionais',
-            '02- saidas operacionais': '02- Saídas Operacionais',
-            '03- operações financeiras': '03- Operações Financeiras',
-            '04- ativo imobilizado': '04- Ativo Imobilizado',
-            '06- movimentações de socios': '06- Movimentações de Sócios',
-            '07- caixas da loja': '07- Caixas da Loja'
+            [normalizar('01- Entradas Operacionais')]: '01- Entradas Operacionais',
+            [normalizar('02- Saídas Operacionais')]: '02- Saídas Operacionais',
+            [normalizar('03- Operações Financeiras')]: '03- Operações Financeiras',
+            [normalizar('04- Ativo Imobilizado')]: '04- Ativo Imobilizado',
+            [normalizar('06- Movimentações de Sócios')]: '06- Movimentações de Sócios',
+            [normalizar('07- Caixas da Loja')]: '07- Caixas da Loja'
         };
 
         let grupos = {};
@@ -474,7 +498,7 @@ app.get('/api/dashboard', async (req, res) => {
 
             if (row.Origem_DFC) {
                 const chaveBanco = normalizar(row.Origem_DFC);
-                let tituloGrupo = configCategorias[chaveBanco] || Object.values(configCategorias).find(v => normalizar(v).includes(chaveBanco));
+                let tituloGrupo = configCategorias[chaveBanco];
 
                 if (tituloGrupo) {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
