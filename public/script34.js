@@ -1254,13 +1254,13 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const thead = document.querySelector('#financeiro-table thead');
 
             if (statusParam !== 'todos') {
-                if (painel) painel.style.setProperty('display', 'none', 'important');
+                if (painel) painel.style.display = 'none';
                 if (tbody) tbody.innerHTML = '';
                 if (thead) thead.innerHTML = '';
                 return;
             }
 
-            if (painel) painel.style.setProperty('display', 'flex', 'important');
+            if (painel) painel.style.display = 'block';
 
             const anoParam = app.yearDashboard;
             const viewParam = app.viewType || 'mensal';
@@ -1300,7 +1300,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const idPai = `fin-${idx}`;
             const hasChildren = Array.isArray(grupo.detalhes) && grupo.detalhes.length > 0;
 
-            html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
+            html += `<tr class="hover-row grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
                         <td>
                           ${hasChildren ? '<span class="toggle-icon">▸</span>' : '<span class="toggle-icon" style="opacity:.0">▸</span>'}
                           ${grupo.conta || ''}
@@ -1313,7 +1313,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (hasChildren) {
                 grupo.detalhes.forEach(item => {
-                    html += `<tr class="item fpai-${idPai} hidden">
+                    html += `<tr class="hover-row child-row item fpai-${idPai} hidden">
                                 <td style="padding-left: 28px;">${item.conta || ''}</td>`;
                     columns.forEach(c => {
                         html += `<td>${fmt(item[c] ?? 0)}</td>`;
