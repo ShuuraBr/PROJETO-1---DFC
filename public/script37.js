@@ -31,9 +31,7 @@ const app = {
             }
         });
 
-        
-        window.addEventListener('resize', () => { app.syncSharedTableLayout(); });
-// Listeners Globais
+        // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
 
@@ -441,8 +439,6 @@ const app = {
             } else { msg.innerText = data.message; }
         } catch (err) { msg.innerText = "Erro ao atualizar senha."; } 
         finally { app.setLoading(false); }
-        app.bindFinanceiroTableEvents();
-        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     showApp: () => {
@@ -1004,7 +1000,9 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
+            
+        if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
+// Aplica sticky nas linhas de saldo após renderizar
         setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
@@ -1119,15 +1117,14 @@ setupFinanceStickyRows: () => {
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
-            app.renderTable(data.tabela);
-            setTimeout(() => app.syncSharedTableLayout(), 0); 
+            app.renderTable(data.tabela); 
             
-            if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
+            
+            if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
+if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
 setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
-        app.bindFinanceiroTableEvents();
-        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     renderKPIs: (c) => {
@@ -1262,6 +1259,8 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (statusParam !== 'todos') {
                 if (painel) painel.style.setProperty('display', 'none', 'important');
+                const cg = document.querySelector('#financeiro-table colgroup');
+                if (cg) cg.remove();
                 if (tbody) tbody.innerHTML = '';
                 if (thead) thead.innerHTML = '';
                 return;
@@ -1278,7 +1277,9 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (data && data.tabela) {
                 app.renderFinanceiroTable(data.tabela);
-            }
+            
+                if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
+}
         } catch (err) {
             console.error('Erro Financeiro Dashboard:', err);
         }
@@ -1307,7 +1308,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const idPai = `fin-${idx}`;
             const hasChildren = Array.isArray(grupo.detalhes) && grupo.detalhes.length > 0;
 
-            html += `<tr class="grupo hover-row" data-fid="${idPai}">
+            html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
                         <td>
                           ${hasChildren ? '<span class="toggle-icon">▸</span>' : '<span class="toggle-icon" style="opacity:.0">▸</span>'}
                           ${grupo.conta || ''}
@@ -1320,7 +1321,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (hasChildren) {
                 grupo.detalhes.forEach(item => {
-                    html += `<tr class="item hover-row fpai-${idPai} hidden">
+                    html += `<tr class="item fpai-${idPai} hidden">
                                 <td style="padding-left: 28px;">${item.conta || ''}</td>`;
                     columns.forEach(c => {
                         html += `<td>${fmt(item[c] ?? 0)}</td>`;
@@ -1331,9 +1332,6 @@ setTimeout(() => app.renderChart(data.grafico), 50);
         });
 
         tbody.innerHTML = html;
-
-        app.bindFinanceiroTableEvents();
-        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     toggleFinanceiroGroup: (idPai, trEl) => {
@@ -1349,3 +1347,51 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
+
+
+/* =====================================================
+   PATCH: Sincronizar larguras de colunas (DFC -> Financeiro)
+   - Mantém o Financeiro com a mesma "régua" da DFC
+   - Evita colunas desalinhadas e cortes em telas menores
+   ===================================================== */
+(function(){
+  function getHeaderWidths(table){
+    const headRow = table && table.tHead && table.tHead.rows && table.tHead.rows[0];
+    if (!headRow) return null;
+    return Array.from(headRow.cells).map(th => Math.max(60, Math.round(th.getBoundingClientRect().width)));
+  }
+
+  function applyColgroup(table, widths){
+    if (!table || !widths || !widths.length) return;
+    const old = table.querySelector('colgroup');
+    if (old) old.remove();
+    const cg = document.createElement('colgroup');
+    widths.forEach(w => {
+      const col = document.createElement('col');
+      col.style.width = w + 'px';
+      cg.appendChild(col);
+    });
+    table.insertBefore(cg, table.firstChild);
+  }
+
+  function syncFinanceiroColumns(){
+    const dfc = document.getElementById('finance-table');
+    const fin = document.getElementById('financeiro-table');
+    if (!dfc || !fin) return;
+    const widths = getHeaderWidths(dfc);
+    if (!widths) return;
+    applyColgroup(fin, widths);
+  }
+
+  // expõe no app se existir, sem quebrar nada
+  if (window.app && typeof window.app === 'object') {
+    window.app.syncFinanceiroColumns = syncFinanceiroColumns;
+  } else {
+    window.app = window.app || {};
+    window.app.syncFinanceiroColumns = syncFinanceiroColumns;
+  }
+
+  // roda em eventos comuns
+  window.addEventListener('resize', () => setTimeout(syncFinanceiroColumns, 50));
+  document.addEventListener('DOMContentLoaded', () => setTimeout(syncFinanceiroColumns, 200));
+})();
