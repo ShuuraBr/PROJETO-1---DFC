@@ -957,3 +957,7 @@ table {
 
 /* garantir classe hidden */
 .hidden{ display:none !important; }
+
+
+/* Painel Financeiro (Dashboard) — inicia oculto e só aparece quando Tipo de Visão = Todos */
+#financeiro-panel{ display:none; }

@@ -1190,7 +1190,10 @@ setupFinanceStickyRows: () => {
             
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela); 
-            setTimeout(() => app.renderChart(data.grafico), 50);
+            
+            // Atualiza a tabela Financeiro (somente quando status = todos)
+            if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
+setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
     },
@@ -1344,56 +1347,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-// =====================================================
-// DASHBOARD — TABELA "FINANCEIRO" (Previsões) — aparece somente em Tipo de Visão = "Todos"
-// =====================================================
-async function carregarFinanceiroDashboard() {
-  const tipo = document.getElementById('dashboard-status-view')?.value;
-  const ano = document.getElementById('ano-dashboard')?.value;
-
-  const container = document.getElementById('financeiro-panel');
-  if (!container) return;
-
-  // Só aparece quando Tipo de Visão = Todos
-  if (tipo !== 'todos') {
-    container.style.display = 'none';
-    const tb = document.querySelector('#financeiro-table tbody');
-    if (tb) tb.innerHTML = '';
-    return;
-  }
-
-  container.style.display = 'block';
-
-  try {
-    const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(ano || '')}&view=${encodeURIComponent(document.getElementById('dashboard-view-type')?.value || '')}`);
-    const data = await res.json();
-
-    if (data && data.tabela) {
-      app.renderFinanceiroTable(data.tabela);
-    }
-  } catch (e) {
-    console.error('Erro ao carregar Financeiro:', e);
-  }
-}
-
-
-
-// Hook de atualização da tabela Financeiro junto com o Dashboard
-document.addEventListener('DOMContentLoaded', () => {
-  const tipoEl = document.getElementById('dashboard-status-view');
-  const anoEl = document.getElementById('ano-dashboard');
-  const viewEl = document.getElementById('dashboard-view-type');
-
-  const refreshFinanceiro = () => {
-    if (typeof carregarFinanceiroDashboard === 'function') {
-      carregarFinanceiroDashboard();
-    }
-  };
-
-  tipoEl && tipoEl.addEventListener('change', refreshFinanceiro);
-  anoEl && anoEl.addEventListener('change', refreshFinanceiro);
-  viewEl && viewEl.addEventListener('change', refreshFinanceiro);
-
-  // primeira carga
-  refreshFinanceiro();
-});
