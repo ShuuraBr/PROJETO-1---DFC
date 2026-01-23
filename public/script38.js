@@ -1000,9 +1000,7 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            
-        if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
-// Aplica sticky nas linhas de saldo após renderizar
+            // Aplica sticky nas linhas de saldo após renderizar
         setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
@@ -1119,9 +1117,7 @@ setupFinanceStickyRows: () => {
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela); 
             
-            
-            if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
-if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
+            if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
 setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
@@ -1259,8 +1255,6 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (statusParam !== 'todos') {
                 if (painel) painel.style.setProperty('display', 'none', 'important');
-                const cg = document.querySelector('#financeiro-table colgroup');
-                if (cg) cg.remove();
                 if (tbody) tbody.innerHTML = '';
                 if (thead) thead.innerHTML = '';
                 return;
@@ -1277,9 +1271,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (data && data.tabela) {
                 app.renderFinanceiroTable(data.tabela);
-            
-                if (window.app && typeof app.syncFinanceiroColumns === 'function') setTimeout(app.syncFinanceiroColumns, 0);
-}
+            }
         } catch (err) {
             console.error('Erro Financeiro Dashboard:', err);
         }
@@ -1349,49 +1341,54 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 document.addEventListener('DOMContentLoaded', app.init);
 
 
-/* =====================================================
-   PATCH: Sincronizar larguras de colunas (DFC -> Financeiro)
-   - Mantém o Financeiro com a mesma "régua" da DFC
-   - Evita colunas desalinhadas e cortes em telas menores
-   ===================================================== */
+/* =========================================================
+   PATCH FINAL — VISIBILIDADE DO FINANCEIRO (DASHBOARD)
+   - Mostra Financeiro apenas quando Tipo de Visão = "Todos"
+   - Em outros valores, esconde o painel e não deixa "sobrar" box
+   - Não altera sua lógica existente; só garante o toggle
+   ========================================================= */
 (function(){
-  function getHeaderWidths(table){
-    const headRow = table && table.tHead && table.tHead.rows && table.tHead.rows[0];
-    if (!headRow) return null;
-    return Array.from(headRow.cells).map(th => Math.max(60, Math.round(th.getBoundingClientRect().width)));
+  function getTipoVisao(){
+    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
+    return sel ? (sel.value || '').toLowerCase() : 'todos';
   }
 
-  function applyColgroup(table, widths){
-    if (!table || !widths || !widths.length) return;
-    const old = table.querySelector('colgroup');
-    if (old) old.remove();
-    const cg = document.createElement('colgroup');
-    widths.forEach(w => {
-      const col = document.createElement('col');
-      col.style.width = w + 'px';
-      cg.appendChild(col);
-    });
-    table.insertBefore(cg, table.firstChild);
+  function setFinanceiroVisible(show){
+    const panel = document.getElementById('financeiro-panel');
+    if (!panel) return;
+    if (show) {
+      panel.classList.remove('hidden');
+      panel.style.removeProperty('display'); // evita conflitos
+    } else {
+      panel.classList.add('hidden');
+    }
   }
 
-  function syncFinanceiroColumns(){
-    const dfc = document.getElementById('finance-table');
-    const fin = document.getElementById('financeiro-table');
-    if (!dfc || !fin) return;
-    const widths = getHeaderWidths(dfc);
-    if (!widths) return;
-    applyColgroup(fin, widths);
+  async function refreshFinanceiroIfNeeded(){
+    const tipo = getTipoVisao();
+    const show = (tipo === 'todos');
+    setFinanceiroVisible(show);
+
+    // Se existir a sua função, chamamos só quando precisa
+    if (show) {
+      // tenta chamar a função já existente no seu app
+      if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
+        await window.app.fetchFinanceiroData();
+      } else if (window.app && typeof window.app.fetchFinanceiroDashboard === 'function') {
+        await window.app.fetchFinanceiroDashboard();
+      }
+      // sincroniza colunas se existir
+      if (window.app && typeof window.app.syncFinanceiroColumns === 'function') {
+        setTimeout(window.app.syncFinanceiroColumns, 0);
+      }
+    }
   }
 
-  // expõe no app se existir, sem quebrar nada
-  if (window.app && typeof window.app === 'object') {
-    window.app.syncFinanceiroColumns = syncFinanceiroColumns;
-  } else {
-    window.app = window.app || {};
-    window.app.syncFinanceiroColumns = syncFinanceiroColumns;
-  }
-
-  // roda em eventos comuns
-  window.addEventListener('resize', () => setTimeout(syncFinanceiroColumns, 50));
-  document.addEventListener('DOMContentLoaded', () => setTimeout(syncFinanceiroColumns, 200));
+  document.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
+    if (sel) sel.addEventListener('change', () => { refreshFinanceiroIfNeeded(); });
+    // primeira carga
+    setTimeout(refreshFinanceiroIfNeeded, 200);
+  });
 })();
+
