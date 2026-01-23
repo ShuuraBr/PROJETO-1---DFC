@@ -1311,7 +1311,107 @@ setTimeout(() => app.renderChart(data.grafico), 50);
                 } 
             }
         });
-    }
+    },
+
+    // =====================================================
+    // FINANCEIRO (Dashboard) — tabela separada, com expand/recolhe independente
+    // Regras:
+    // - Só aparece quando Tipo de Visão = "todos"
+    // - Mesma lógica de cabeçalhos do Dashboard (mensal/trimestral/anual)
+    // =====================================================
+    fetchFinanceiroData: async () => {
+        try {
+            const statusSelect = document.getElementById('dashboard-status-view');
+            const statusParam = statusSelect ? statusSelect.value : 'todos';
+
+            const painel = document.getElementById('financeiro-panel');
+            const tbody = document.querySelector('#financeiro-table tbody');
+            const thead = document.querySelector('#financeiro-table thead');
+
+            if (statusParam !== 'todos') {
+                if (painel) painel.style.display = 'none';
+                if (tbody) tbody.innerHTML = '';
+                if (thead) thead.innerHTML = '';
+                return;
+            }
+
+            if (painel) painel.style.display = 'block';
+
+            const anoParam = app.yearDashboard;
+            const viewParam = app.viewType || 'mensal';
+
+            const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            if (data && data.tabela) {
+                app.renderFinanceiroTable(data.tabela);
+            }
+        } catch (err) {
+            console.error('Erro Financeiro Dashboard:', err);
+        }
+    },
+
+    renderFinanceiroTable: (tabela) => {
+        const rows = tabela.rows || [];
+        const columns = tabela.columns || [];
+        const headers = tabela.headers || [];
+
+        const tbody = document.querySelector('#financeiro-table tbody');
+        const thead = document.querySelector('#financeiro-table thead');
+        if (!tbody || !thead) return;
+
+        // Cabeçalho
+        let thHtml = `<tr><th>Plano Financeiro</th>`;
+        headers.forEach(h => thHtml += `<th>${h}</th>`);
+        thHtml += `</tr>`;
+        thead.innerHTML = thHtml;
+
+        const fmt = (v) => (Number(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Corpo (2 níveis: grupo -> itens)
+        let html = '';
+        rows.forEach((grupo, idx) => {
+            const idPai = `fin-${idx}`;
+            const hasChildren = Array.isArray(grupo.detalhes) && grupo.detalhes.length > 0;
+
+            html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
+                        <td>
+                          <span class="toggle-icon">▸</span>
+                          ${grupo.conta || ''}
+                        </td>`;
+
+            columns.forEach(c => {
+                html += `<td>${fmt(grupo[c] ?? 0)}</td>`;
+            });
+            html += `</tr>`;
+
+            if (hasChildren) {
+                grupo.detalhes.forEach(item => {
+                    html += `<tr class="item fpai-${idPai} hidden">
+                                <td style="padding-left: 28px;">${item.conta || ''}</td>`;
+                    columns.forEach(c => {
+                        html += `<td>${fmt(item[c] ?? 0)}</td>`;
+                    });
+                    html += `</tr>`;
+                });
+            }
+        });
+
+        tbody.innerHTML = html;
+    },
+
+    toggleFinanceiroGroup: (idPai, trEl) => {
+        const filhos = document.querySelectorAll(`.fpai-${idPai}`);
+        if (!filhos || filhos.length === 0) return;
+
+        const icon = trEl ? trEl.querySelector('.toggle-icon') : null;
+
+        const estaFechado = filhos[0].classList.contains('hidden');
+        filhos.forEach(r => r.classList.toggle('hidden', !estaFechado));
+
+        if (icon) icon.classList.toggle('rotated', estaFechado);
+    },
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
