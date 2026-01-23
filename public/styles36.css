@@ -905,5 +905,43 @@ table {
 #financeiro-table tbody tr.child-row td{
     border-top: 1px dashed #e5e7eb;
 }
+/* ================================
+   AJUSTE TABELA FINANCEIRO (PATCH)
+   ================================ */
 
+/* Garantir que a tabela não encolha */
+#financeiro-table{
+    width: 100% !important;
+    min-width: 1400px; /* mesmo padrão visual da DFC */
+    table-layout: auto !important;
+}
 
+/* Wrapper com scroll horizontal */
+#financeiro-panel .table-wrapper{
+    overflow-x: auto;
+    overflow-y: auto;
+    max-width: 100%;
+}
+
+/* Primeira coluna igual DFC */
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+    min-width: var(--col-plano-min, 260px);
+    max-width: var(--col-plano-max, 360px);
+    font-weight: 600;
+}
+
+/* ================================
+   HIERARQUIA — PRIMEIRO NÍVEL EM NEGRITO
+   ================================ */
+
+#financeiro-table tbody tr.grupo td{
+    font-weight: 800 !important;
+    color: #0b3a73;
+    background: #f3f7ff;
+}
+
+/* Hover profissional igual DFC */
+#financeiro-table tbody tr:hover td{
+    background: #eef5ff !important;
+}
