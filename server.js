@@ -289,6 +289,11 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
         const { ano } = req.query;
         const params = [];
 
+        // Regras:
+        // - Baixa IS NULL
+        // - Financeiro IS NOT NULL
+        // - Valores por mês (jan..dez)
+        // - Hierarquia: Grupo -> Plano (igual comportamento de clique da DFC, mas tabela separada)
         let sql = `
             SELECT 
                 Codigo_plano,
@@ -308,67 +313,67 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
 
         const [rows] = await pool.query(sql, params);
 
-        const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const mapaMes = { 1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez' };
 
         const zerar = () => {
             const o = {};
-            meses.forEach(m => o[m] = 0);
+            columns.forEach(c => o[c] = 0);
             return o;
         };
 
         const grupos = {
-            receber: { titulo: '1- Previsões a Receber', planos: {} },
-            pagar:   { titulo: '2- Previsões a Pagar',   planos: {} }
+            receber: { conta: '1- Previsões a Receber', tipo: 'grupo', total: zerar(), planosMap: {} },
+            pagar:   { conta: '2- Previsões a Pagar',   tipo: 'grupo', total: zerar(), planosMap: {} }
         };
 
         const planosReceber = new Set(['1.001.006']);
         const planosPagar   = new Set(['2.001.001','2.001.002','2.001.003']);
 
         rows.forEach(r => {
-            const plano = (r.Codigo_plano || '').toString().trim();
-            const nomePlano = (r.Nome || '').toString().trim();
-            const mesNum = parseInt(r.Mes, 10);
-            const chaveMes = meses[mesNum - 1];
+            const codigo = (r.Codigo_plano || '').toString().trim();
+            const codigoBase = codigo.split(' ')[0]; // segurança
+            const nome = (r.Nome || '').toString().trim();
+            const mesKey = mapaMes[parseInt(r.Mes, 10)];
+            if (!mesKey) return;
+
             const valor = parseFloat(r.Valor_mov) || 0;
 
-            if (!chaveMes) return;
+            let grupoKey = null;
+            if (planosReceber.has(codigoBase)) grupoKey = 'receber';
+            else if (planosPagar.has(codigoBase)) grupoKey = 'pagar';
+            else return;
 
-            let grupo = null;
-            const prefix = plano.split(' ')[0];
+            const g = grupos[grupoKey];
 
-            if (planosReceber.has(prefix)) grupo = 'receber';
-            if (planosPagar.has(prefix)) grupo = 'pagar';
-            if (!grupo) return;
-
-            if (!grupos[grupo].planos[prefix]) {
-                grupos[grupo].planos[prefix] = {
-                    conta: `${prefix} - ${nomePlano || (grupo === 'receber' ? 'BOLETOS' : '')}`.trim(),
-                    dados: zerar()
-                };
+            if (!g.planosMap[codigoBase]) {
+                g.planosMap[codigoBase] = { conta: `${codigoBase} - ${nome}`, tipo: 'item', ...zerar() };
             }
 
-            grupos[grupo].planos[prefix].dados[chaveMes] += valor;
+            g.planosMap[codigoBase][mesKey] += valor;
+            g.total[mesKey] += valor;
         });
 
-        // Ordena planos pelo código
-        const tabela = [];
-        Object.values(grupos).forEach(g => {
-            tabela.push({ conta: g.titulo, tipo: 'grupo' });
+        // Monta rows hierárquicas (Grupo -> Planos)
+        const rowsOut = [];
+        const ordem = ['receber','pagar'];
+        ordem.forEach(k => {
+            const g = grupos[k];
+            const detalhes = Object.values(g.planosMap)
+                .sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric:true, sensitivity:'base' }));
 
-            Object.values(g.planos)
-                .sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }))
-                .forEach(p => {
-                    tabela.push({ conta: p.conta, tipo: 'item', ...p.dados });
-                });
+            // Grupo com totais (opcional, como DFC). Mantém "mesma forma" visual.
+            rowsOut.push({ conta: g.conta, tipo: 'grupo', ...g.total, detalhes });
         });
 
-        res.json({ tabela });
-
+        return res.json({ tabela: { rows: rowsOut, columns, headers } });
     } catch (err) {
         console.error('Erro /api/financeiro-dashboard:', err);
-        res.status(500).json({ error: 'Erro Financeiro Dashboard' });
+        return res.status(500).json({ error: 'Erro Financeiro Dashboard' });
     }
 });
+
 
 
 app.get('/api/dashboard', async (req, res) => {

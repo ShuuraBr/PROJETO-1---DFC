@@ -1004,6 +1004,80 @@ setupFinanceStickyRows: () => {
         setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
+    
+    // =====================================================
+    // TABELA FINANCEIRO (Dashboard) — separada da DFC, com clique (expand/recolhe)
+    // =====================================================
+    renderFinanceiroTable: (data) => {
+        const rows = data?.rows || [];
+        const columns = data?.columns || ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const headers = data?.headers || ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+        const tbody = document.querySelector('#financeiro-table tbody');
+        const thead = document.querySelector('#financeiro-table thead');
+        if (!tbody || !thead) return;
+
+        // Cabeçalho
+        let thHtml = `<tr><th>Plano Financeiro</th>`;
+        headers.forEach(h => { thHtml += `<th>${h}</th>`; });
+        thHtml += `</tr>`;
+        thead.innerHTML = thHtml;
+
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:16px;">Sem dados</td></tr>';
+            return;
+        }
+
+        const fmt = (v) =>
+            (v || v === 0)
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
+                : '-';
+
+        let html = '';
+        rows.forEach((row, idx1) => {
+            const idNivel1 = `F-L1-${idx1}`;
+
+            let icon = '';
+            let clickAction = '';
+            let trStyle = '';
+            let rowClass = '';
+
+            if (row.tipo === 'grupo') {
+                rowClass = 'hover-row';
+                trStyle = 'font-weight: 600; cursor: pointer; background-color: #fff;';
+                icon = '<i class="fa-solid fa-chevron-right toggle-icon"></i> ';
+                clickAction = `onclick="app.toggleFinanceiroGroup('${idNivel1}', this)"`;
+            }
+
+            let tdsValores = '';
+            columns.forEach(colKey => {
+                tdsValores += `<td>${fmt(row[colKey])}</td>`;
+            });
+
+            html += `<tr style="${trStyle}" class="${rowClass}" ${clickAction}>
+                        <td style="text-align:left; padding-left:10px;">${icon}${row.conta || ''}</td>
+                        ${tdsValores}
+                    </tr>`;
+
+            if (row.detalhes && row.detalhes.length > 0) {
+                row.detalhes.forEach((item) => {
+                    let tdsItem = '';
+                    columns.forEach(colKey => {
+                        tdsItem += `<td>${fmt(item[colKey])}</td>`;
+                    });
+
+                    html += `<tr class="child-row hidden fpai-${idNivel1}">
+                                <td style="text-align:left; padding-left: 25px; color:#555;">${item.conta || ''}</td>
+                                ${tdsItem}
+                             </tr>`;
+                });
+            }
+        });
+
+        tbody.innerHTML = html;
+    },
+
+
     renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
@@ -1280,6 +1354,7 @@ async function carregarFinanceiroDashboard() {
   const container = document.getElementById('financeiro-table-container');
   if (!container) return;
 
+  // Só aparece quando Tipo de Visão = Todos
   if (tipo !== 'todos') {
     container.style.display = 'none';
     return;
@@ -1291,30 +1366,9 @@ async function carregarFinanceiroDashboard() {
     const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(ano || '')}`);
     const data = await res.json();
 
-    const tbody = document.querySelector('#financeiro-table tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-
-    (data.tabela || []).forEach(row => {
-      const tr = document.createElement('tr');
-      tr.className = row.tipo || '';
-
-      const primeira = document.createElement('td');
-      primeira.textContent = row.conta || '';
-      tr.appendChild(primeira);
-
-      meses.forEach(m => {
-        const td = document.createElement('td');
-        const val = Number(row[m] || 0);
-        // Grupo não tem valores -> deixa em branco
-        td.textContent = (row.tipo === 'grupo') ? '' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        tr.appendChild(td);
-      });
-
-      tbody.appendChild(tr);
-    });
+    if (data && data.tabela) {
+      app.renderFinanceiroTable(data.tabela);
+    }
   } catch (e) {
     console.error('Erro ao carregar Financeiro:', e);
   }
