@@ -841,3 +841,34 @@ table {
 [data-kpi='titulos-inadimplentes']{
   display: none !important;
 }
+
+
+/* =====================================================
+   RÓTULOS DOS FILTROS (Tipo de Visão / Período / Ano)
+   ===================================================== */
+.filters-group{
+  display: flex;
+  gap: 14px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filter-item{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.filter-label{
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* melhora o alinhamento quando o select está dentro do filter-item */
+.filter-item .select-ano{
+  width: 100%;
+}

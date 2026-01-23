@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles26.css">
+    <link rel="stylesheet" href="styles27.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -45,7 +45,7 @@
     <div id="view-login" class="view-container">
         <div class="login-card">
             <div class="login-header">
-                <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                <img src="assets/Logotipo-cores-institucionais-vetorizada.png" 
                      alt="Logotipo" 
                      class="login-brand-logo">
                 
@@ -131,21 +131,33 @@
                             <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
                         </div>
 
-                        <select id="dashboard-status-view" class="select-ano">
-                            <option value="todos" selected>Todos</option>
-                            <option value="realizado">Somente Realizado</option>
-                        </select>
-
-                        <select id="dashboard-view-type" class="select-ano">
-                            <option value="mensal" selected>Mensal</option>
-                            <option value="trimestral">Trimestral</option>
-                            <option value="anual">Anual</option>
-                        </select>
-
-                        <select id="ano-dashboard" class="select-ano">
-                        </select>
                         
-                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+<div class="filters-group">
+  <div class="filter-item">
+    <label class="filter-label" for="dashboard-status-view">Tipo de Visão</label>
+    <select id="dashboard-status-view" class="select-ano">
+      <option value="todos" selected>Todos</option>
+      <option value="realizado">Somente Realizado</option>
+    </select>
+  </div>
+
+  <div class="filter-item">
+    <label class="filter-label" for="dashboard-view-type">Período</label>
+    <select id="dashboard-view-type" class="select-ano">
+      <option value="mensal" selected>Mensal</option>
+      <option value="trimestral">Trimestral</option>
+      <option value="anual">Anual</option>
+    </select>
+  </div>
+
+  <div class="filter-item">
+    <label class="filter-label" for="ano-dashboard">Ano</label>
+    <select id="ano-dashboard" class="select-ano"></select>
+  </div>
+</div>
+
+                        
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
@@ -186,7 +198,7 @@
 
                         <select id="ano-orcamento" class="select-ano">
                         </select>
-                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
