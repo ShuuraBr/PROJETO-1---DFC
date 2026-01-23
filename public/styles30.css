@@ -944,3 +944,16 @@ table {
 #financeiro-table-container .table-wrapper-inner{
   overflow: auto;
 }
+
+
+
+/* Financeiro: ícone expand/recolhe */
+#financeiro-table .toggle-icon{
+  transition: transform .15s ease;
+}
+#financeiro-table .toggle-icon.rotated{
+  transform: rotate(90deg);
+}
+
+/* garantir classe hidden */
+.hidden{ display:none !important; }

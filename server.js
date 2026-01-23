@@ -286,7 +286,7 @@ app.get('/api/orcamento', async (req, res) => {
 // =========================================================================
 app.get('/api/financeiro-dashboard', async (req, res) => {
     try {
-        const { ano } = req.query;
+        const { ano, view } = req.query;
         const params = [];
 
         // Regras:
@@ -313,9 +313,20 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
 
         const [rows] = await pool.query(sql, params);
 
-        const columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        const headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        let columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        let headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
         const mapaMes = { 1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez' };
+
+        if (view === 'trimestral') {
+            columns = ['Q1','Q2','Q3','Q4'];
+            headers = ['1º Trim','2º Trim','3º Trim','4º Trim'];
+        } else if (view === 'anual') {
+            // se vier anual, retorna colunas por ano presente no resultado (ou ano filtrado)
+            const anos = [...new Set(rows.map(r => r.Ano).filter(a => a != null))].sort((a,b)=>a-b);
+            columns = anos.map(a => a.toString());
+            headers = columns;
+        }
 
         const zerar = () => {
             const o = {};
@@ -335,7 +346,11 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
             const codigo = (r.Codigo_plano || '').toString().trim();
             const codigoBase = codigo.split(' ')[0]; // segurança
             const nome = (r.Nome || '').toString().trim();
-            const mesKey = mapaMes[parseInt(r.Mes, 10)];
+            let mesKey = mapaMes[parseInt(r.Mes, 10)];
+            const mesNum = parseInt(r.Mes, 10);
+            const anoNum = (r.Ano != null) ? r.Ano.toString() : '';
+            if (view === 'trimestral') mesKey = `Q${Math.ceil(mesNum / 3)}`;
+            else if (view === 'anual') mesKey = anoNum;
             if (!mesKey) return;
 
             const valor = parseFloat(r.Valor_mov) || 0;

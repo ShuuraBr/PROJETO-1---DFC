@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles29.css">
+    <link rel="stylesheet" href="styles30.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -172,34 +172,21 @@
                                 <thead></thead>
                                 <tbody></tbody>
                             </table>
-
-
-<!-- NOVA TABELA — FINANCEIRO (Previsões) -->
-<section id="financeiro-table-container" class="table-wrapper" style="display:none; margin-top: 18px;">
-  <div class="section-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
-    <h3 style="margin:0;">Financeiro</h3>
-  </div>
-
-  <div class="table-wrapper-inner" style="overflow:auto; max-height: 520px;">
-    <table id="financeiro-table" class="finance-table">
-      <thead>
-        <tr>
-          <th>Plano Financeiro</th>
-          <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
-          <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</section>
-
-
-
-                        </div>
+</div>
                     </div>
                     
-                    <div class="panel chart-panel">
+                    
+                    <div class="panel table-panel" id="financeiro-panel" style="margin-bottom: 30px; display:none;">
+                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Financeiro</h3></div>
+                        <div class="table-wrapper">
+                            <table id="financeiro-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+<div class="panel chart-panel">
                         <div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
                         <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
                     </div>
@@ -389,6 +376,6 @@
         </main>
     </div>
 
-    <script src="script26.js"></script>
+    <script src="script27.js"></script>
 </body>
 </html>

@@ -1351,19 +1351,21 @@ async function carregarFinanceiroDashboard() {
   const tipo = document.getElementById('dashboard-status-view')?.value;
   const ano = document.getElementById('ano-dashboard')?.value;
 
-  const container = document.getElementById('financeiro-table-container');
+  const container = document.getElementById('financeiro-panel');
   if (!container) return;
 
   // Só aparece quando Tipo de Visão = Todos
   if (tipo !== 'todos') {
     container.style.display = 'none';
+    const tb = document.querySelector('#financeiro-table tbody');
+    if (tb) tb.innerHTML = '';
     return;
   }
 
   container.style.display = 'block';
 
   try {
-    const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(ano || '')}`);
+    const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(ano || '')}&view=${encodeURIComponent(document.getElementById('dashboard-view-type')?.value || '')}`);
     const data = await res.json();
 
     if (data && data.tabela) {
