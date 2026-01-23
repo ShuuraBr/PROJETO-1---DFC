@@ -872,3 +872,11 @@ table {
 .filter-item .select-ano{
   width: 100%;
 }
+
+
+/* =====================================================
+   ORÇAMENTO — ALINHAMENTO DOS FILTROS COM RÓTULOS
+   ===================================================== */
+.actions .filters-group{
+  align-items: flex-end;
+}
