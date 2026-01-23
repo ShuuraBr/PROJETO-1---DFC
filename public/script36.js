@@ -31,7 +31,9 @@ const app = {
             }
         });
 
-        // Listeners Globais
+        
+        window.addEventListener('resize', () => { app.syncSharedTableLayout(); });
+// Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
 
@@ -439,6 +441,8 @@ const app = {
             } else { msg.innerText = data.message; }
         } catch (err) { msg.innerText = "Erro ao atualizar senha."; } 
         finally { app.setLoading(false); }
+        app.bindFinanceiroTableEvents();
+        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     showApp: () => {
@@ -1115,12 +1119,15 @@ setupFinanceStickyRows: () => {
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
-            app.renderTable(data.tabela); 
+            app.renderTable(data.tabela);
+            setTimeout(() => app.syncSharedTableLayout(), 0); 
             
             if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
 setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
+        app.bindFinanceiroTableEvents();
+        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     renderKPIs: (c) => {
@@ -1300,7 +1307,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const idPai = `fin-${idx}`;
             const hasChildren = Array.isArray(grupo.detalhes) && grupo.detalhes.length > 0;
 
-            html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
+            html += `<tr class="grupo hover-row" data-fid="${idPai}">
                         <td>
                           ${hasChildren ? '<span class="toggle-icon">▸</span>' : '<span class="toggle-icon" style="opacity:.0">▸</span>'}
                           ${grupo.conta || ''}
@@ -1313,7 +1320,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             if (hasChildren) {
                 grupo.detalhes.forEach(item => {
-                    html += `<tr class="item fpai-${idPai} hidden">
+                    html += `<tr class="item hover-row fpai-${idPai} hidden">
                                 <td style="padding-left: 28px;">${item.conta || ''}</td>`;
                     columns.forEach(c => {
                         html += `<td>${fmt(item[c] ?? 0)}</td>`;
@@ -1324,6 +1331,9 @@ setTimeout(() => app.renderChart(data.grafico), 50);
         });
 
         tbody.innerHTML = html;
+
+        app.bindFinanceiroTableEvents();
+        setTimeout(() => app.syncSharedTableLayout(), 0);
     },
 
     toggleFinanceiroGroup: (idPai, trEl) => {

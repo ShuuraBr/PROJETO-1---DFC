@@ -154,7 +154,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     overflow: auto !important;
     position: relative !important;
     border: 1px solid #e5e7eb; 
-    background: #012d5a; 
+    background: #ffffff; 
     border-radius: 8px; 
     scrollbar-width: thin;
     flex: 1 !important; /* Garante que ocupe o espaço dentro do painel flex */
@@ -954,4 +954,94 @@ table {
 .table-wrapper {
     overflow-x: auto;
     max-width: 100%;
+}
+
+
+
+/* =========================================================
+   TABELAS (DFC e FINANCEIRO) — layout unificado
+   - Mesma largura de colunas nas duas tabelas
+   - 1ª coluna sincronizada via CSS var (--plano-col-width)
+   - Colunas dos meses via CSS var (--month-col-width)
+========================================================= */
+#finance-table,
+#financeiro-table{
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: calc(var(--plano-col-width) + (12 * var(--month-col-width)));
+}
+
+#finance-table th,
+#finance-table td,
+#financeiro-table th,
+#financeiro-table td{
+    font-size: clamp(11px, 0.85vw, 13px);
+    padding: clamp(8px, 0.7vw, 12px) clamp(6px, 0.6vw, 10px);
+    border: 1px solid #e5e7eb;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Cabeçalho */
+#finance-table thead th,
+#financeiro-table thead th{
+    background: #012d5a !important;
+    color: #ffffff !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    font-weight: 700;
+}
+
+/* 1ª coluna fixa */
+#finance-table th:first-child,
+#finance-table td:first-child,
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+    text-align: left;
+    position: sticky;
+    left: 0;
+    z-index: 110;
+    width: var(--plano-col-width);
+    min-width: var(--plano-col-width);
+    max-width: var(--col-plano-max);
+    border-right: 2px solid #e5e7eb;
+    padding-left: 14px;
+}
+
+/* Header da 1ª coluna mantém fundo escuro */
+#finance-table thead th:first-child,
+#financeiro-table thead th:first-child{
+    background: #012d5a !important;
+    color: #ffffff !important;
+}
+
+/* Body da 1ª coluna mantém fundo branco */
+#finance-table tbody td:first-child,
+#financeiro-table tbody td:first-child{
+    background: #ffffff !important;
+}
+
+/* Largura das colunas dos meses */
+#finance-table th:not(:first-child),
+#finance-table td:not(:first-child),
+#financeiro-table th:not(:first-child),
+#financeiro-table td:not(:first-child){
+    width: var(--month-col-width);
+    min-width: var(--month-col-width);
+}
+
+/* Hover (pré-seleção) */
+#finance-table tbody tr.hover-row:hover,
+#financeiro-table tbody tr.hover-row:hover{
+    background-color: #f3f4f6 !important;
+    filter: brightness(0.98);
+}
+
+/* Nível 1 (grupo) no Financeiro em negrito */
+#financeiro-table tbody tr.grupo > td{
+    font-weight: 700;
 }
