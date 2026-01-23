@@ -588,7 +588,7 @@ table {
 
 
 /* =======================================================================
-   OVERRIDES (GERADO v2) — Fix: Plano Financeiro visível + Saldo Inicial/FinalS
+   OVERRIDES (GERADO v2) — Fix: Plano Financeiro visível + Saldo Inicial/Final
    - Header "Plano Financeiro" fixo (topo + esquerda)
    - Scroll horizontal/vertical no wrapper
    - Saldo Inicial (sticky abaixo do thead) e Saldo Final (sticky no rodapé)
@@ -827,4 +827,17 @@ table {
 #finance-table tbody tr.sticky-saldo-top td,
 #finance-table tbody tr.sticky-saldo-bottom td{
     z-index: auto !important;
+}
+
+
+/* =====================================================
+   OCULTAR KPIs DE INADIMPLÊNCIA (CASO APAREÇAM)
+   ===================================================== */
+.inadimplencia,
+.inadimplencia-percent,
+.titulos-inadimplentes,
+[data-kpi='inadimplencia'],
+[data-kpi='inadimplencia-percent'],
+[data-kpi='titulos-inadimplentes']{
+  display: none !important;
 }
