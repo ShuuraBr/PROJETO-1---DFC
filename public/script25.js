@@ -1267,3 +1267,77 @@ document.addEventListener("DOMContentLoaded", () => {
     window.app.loadInadimplenciaKPIs = () => {};
   }
 });
+
+
+
+// =====================================================
+// DASHBOARD — TABELA "FINANCEIRO" (Previsões) — aparece somente em Tipo de Visão = "Todos"
+// =====================================================
+async function carregarFinanceiroDashboard() {
+  const tipo = document.getElementById('dashboard-status-view')?.value;
+  const ano = document.getElementById('ano-dashboard')?.value;
+
+  const container = document.getElementById('financeiro-table-container');
+  if (!container) return;
+
+  if (tipo !== 'todos') {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+
+  try {
+    const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(ano || '')}`);
+    const data = await res.json();
+
+    const tbody = document.querySelector('#financeiro-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+    (data.tabela || []).forEach(row => {
+      const tr = document.createElement('tr');
+      tr.className = row.tipo || '';
+
+      const primeira = document.createElement('td');
+      primeira.textContent = row.conta || '';
+      tr.appendChild(primeira);
+
+      meses.forEach(m => {
+        const td = document.createElement('td');
+        const val = Number(row[m] || 0);
+        // Grupo não tem valores -> deixa em branco
+        td.textContent = (row.tipo === 'grupo') ? '' : val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    console.error('Erro ao carregar Financeiro:', e);
+  }
+}
+
+
+
+// Hook de atualização da tabela Financeiro junto com o Dashboard
+document.addEventListener('DOMContentLoaded', () => {
+  const tipoEl = document.getElementById('dashboard-status-view');
+  const anoEl = document.getElementById('ano-dashboard');
+  const viewEl = document.getElementById('dashboard-view-type');
+
+  const refreshFinanceiro = () => {
+    if (typeof carregarFinanceiroDashboard === 'function') {
+      carregarFinanceiroDashboard();
+    }
+  };
+
+  tipoEl && tipoEl.addEventListener('change', refreshFinanceiro);
+  anoEl && anoEl.addEventListener('change', refreshFinanceiro);
+  viewEl && viewEl.addEventListener('change', refreshFinanceiro);
+
+  // primeira carga
+  refreshFinanceiro();
+});
