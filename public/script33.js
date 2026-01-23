@@ -1004,80 +1004,6 @@ setupFinanceStickyRows: () => {
         setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
-    
-    // =====================================================
-    // TABELA FINANCEIRO (Dashboard) — separada da DFC, com clique (expand/recolhe)
-    // =====================================================
-    renderFinanceiroTable: (data) => {
-        const rows = data?.rows || [];
-        const columns = data?.columns || ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        const headers = data?.headers || ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-        const tbody = document.querySelector('#financeiro-table tbody');
-        const thead = document.querySelector('#financeiro-table thead');
-        if (!tbody || !thead) return;
-
-        // Cabeçalho
-        let thHtml = `<tr><th>Plano Financeiro</th>`;
-        headers.forEach(h => { thHtml += `<th>${h}</th>`; });
-        thHtml += `</tr>`;
-        thead.innerHTML = thHtml;
-
-        if (!rows || rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:16px;">Sem dados</td></tr>';
-            return;
-        }
-
-        const fmt = (v) =>
-            (v || v === 0)
-                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
-                : '-';
-
-        let html = '';
-        rows.forEach((row, idx1) => {
-            const idNivel1 = `F-L1-${idx1}`;
-
-            let icon = '';
-            let clickAction = '';
-            let trStyle = '';
-            let rowClass = '';
-
-            if (row.tipo === 'grupo') {
-                rowClass = 'hover-row';
-                trStyle = 'font-weight: 600; cursor: pointer; background-color: #fff;';
-                icon = '<i class="fa-solid fa-chevron-right toggle-icon"></i> ';
-                clickAction = `onclick="app.toggleFinanceiroGroup('${idNivel1}', this)"`;
-            }
-
-            let tdsValores = '';
-            columns.forEach(colKey => {
-                tdsValores += `<td>${fmt(row[colKey])}</td>`;
-            });
-
-            html += `<tr style="${trStyle}" class="${rowClass}" ${clickAction}>
-                        <td style="text-align:left; padding-left:10px;">${icon}${row.conta || ''}</td>
-                        ${tdsValores}
-                    </tr>`;
-
-            if (row.detalhes && row.detalhes.length > 0) {
-                row.detalhes.forEach((item) => {
-                    let tdsItem = '';
-                    columns.forEach(colKey => {
-                        tdsItem += `<td>${fmt(item[colKey])}</td>`;
-                    });
-
-                    html += `<tr class="child-row hidden fpai-${idNivel1}">
-                                <td style="text-align:left; padding-left: 25px; color:#555;">${item.conta || ''}</td>
-                                ${tdsItem}
-                             </tr>`;
-                });
-            }
-        });
-
-        tbody.innerHTML = html;
-    },
-
-
     renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
@@ -1191,7 +1117,6 @@ setupFinanceStickyRows: () => {
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela); 
             
-            // Atualiza a tabela Financeiro (somente quando status = todos)
             if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
 setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
@@ -1311,13 +1236,13 @@ setTimeout(() => app.renderChart(data.grafico), 50);
                 } 
             }
         });
+    
     },
 
     // =====================================================
     // FINANCEIRO (Dashboard) — tabela separada, com expand/recolhe independente
     // Regras:
     // - Só aparece quando Tipo de Visão = "todos"
-    // - Mesma lógica de cabeçalhos do Dashboard (mensal/trimestral/anual)
     // =====================================================
     fetchFinanceiroData: async () => {
         try {
@@ -1329,13 +1254,13 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const thead = document.querySelector('#financeiro-table thead');
 
             if (statusParam !== 'todos') {
-                if (painel) painel.style.display = 'none';
+                if (painel) painel.style.setProperty('display', 'none', 'important');
                 if (tbody) tbody.innerHTML = '';
                 if (thead) thead.innerHTML = '';
                 return;
             }
 
-            if (painel) painel.style.display = 'block';
+            if (painel) painel.style.setProperty('display', 'flex', 'important');
 
             const anoParam = app.yearDashboard;
             const viewParam = app.viewType || 'mensal';
@@ -1377,7 +1302,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
                         <td>
-                          <span class="toggle-icon">▸</span>
+                          ${hasChildren ? '<span class="toggle-icon">▸</span>' : '<span class="toggle-icon" style="opacity:.0">▸</span>'}
                           ${grupo.conta || ''}
                         </td>`;
 
@@ -1406,73 +1331,11 @@ setTimeout(() => app.renderChart(data.grafico), 50);
         if (!filhos || filhos.length === 0) return;
 
         const icon = trEl ? trEl.querySelector('.toggle-icon') : null;
-
         const estaFechado = filhos[0].classList.contains('hidden');
-        filhos.forEach(r => r.classList.toggle('hidden', !estaFechado));
 
+        filhos.forEach(r => r.classList.toggle('hidden', !estaFechado));
         if (icon) icon.classList.toggle('rotated', estaFechado);
     },
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
-
-// =====================================================
-// REMOÇÃO DEFINITIVA DOS KPIs DE INADIMPLÊNCIA (DASHBOARD)
-// =====================================================
-document.addEventListener("DOMContentLoaded", () => {
-  const selectors = [
-    "[data-kpi='inadimplencia']",
-    "[data-kpi='inadimplencia-percent']",
-    "[data-kpi='titulos-inadimplentes']",
-    ".inadimplencia",
-    ".inadimplencia-percent",
-    ".titulos-inadimplentes"
-  ];
-
-  const removeKPIs = () => {
-    document.querySelectorAll(selectors.join(",")).forEach(el => el.remove());
-  };
-
-  removeKPIs();
-
-  // Observa mudanças e remove se voltarem
-  const obs = new MutationObserver(removeKPIs);
-  obs.observe(document.body, { childList: true, subtree: true });
-
-  // Neutraliza rotina de inadimplência se existir (sem quebrar app)
-  if (window.app && typeof window.app.loadInadimplenciaKPIs === "function") {
-    window.app.loadInadimplenciaKPIs = () => {};
-  }
-});
-
-
-
-
-
-
-// === Financeiro: garante hide/show ao trocar "Tipo de Visão" (Todos x Somente Realizado) ===
-document.addEventListener('DOMContentLoaded', () => {
-  const statusEl = document.getElementById('dashboard-status-view');
-  if (!statusEl) return;
-
-  const syncFinanceiroPanel = async () => {
-    if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
-      await window.app.fetchFinanceiroData();
-    } else {
-      // fallback: esconde se não existir função ainda
-      const painel = document.getElementById('financeiro-panel');
-      if (painel) painel.style.display = (statusEl.value === 'todos') ? 'block' : 'none';
-    }
-  };
-
-  statusEl.addEventListener('change', () => {
-    // Normalmente o dashboard recarrega por fetchData(), mas garantimos aqui também.
-    if (window.app && typeof window.app.fetchData === 'function') {
-      window.app.fetchData();
-    }
-    syncFinanceiroPanel();
-  });
-
-  // primeira sincronização
-  syncFinanceiroPanel();
-});
