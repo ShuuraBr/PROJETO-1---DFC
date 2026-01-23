@@ -1447,3 +1447,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+
+
+
+// === Financeiro: garante hide/show ao trocar "Tipo de Visão" (Todos x Somente Realizado) ===
+document.addEventListener('DOMContentLoaded', () => {
+  const statusEl = document.getElementById('dashboard-status-view');
+  if (!statusEl) return;
+
+  const syncFinanceiroPanel = async () => {
+    if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
+      await window.app.fetchFinanceiroData();
+    } else {
+      // fallback: esconde se não existir função ainda
+      const painel = document.getElementById('financeiro-panel');
+      if (painel) painel.style.display = (statusEl.value === 'todos') ? 'block' : 'none';
+    }
+  };
+
+  statusEl.addEventListener('change', () => {
+    // Normalmente o dashboard recarrega por fetchData(), mas garantimos aqui também.
+    if (window.app && typeof window.app.fetchData === 'function') {
+      window.app.fetchData();
+    }
+    syncFinanceiroPanel();
+  });
+
+  // primeira sincronização
+  syncFinanceiroPanel();
+});
