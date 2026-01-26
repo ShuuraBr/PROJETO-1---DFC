@@ -362,6 +362,88 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
     }
 });
 
+
+// Alias para compatibilidade com o frontend
+app.get('/api/financeiro', async (req, res) => {
+    try {
+        const { ano, status } = req.query;
+
+        // Se não for "Todos", não retorna nada (front deve esconder)
+        if (status && status !== 'todos') {
+            return res.json({ rows: [], columns: ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'], headers: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] });
+        }
+
+        const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
+        if (!Number.isFinite(anoSel)) return res.status(400).json({ error: 'Ano inválido' });
+
+        const colunasKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const colunasLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
+
+        const zerar = () => {
+            const o = {};
+            colunasKeys.forEach(k => o[k] = 0);
+            return o;
+        };
+
+        // Consulta base: títulos em aberto (Baixa IS NULL), com Financeiro preenchido, no ano selecionado
+        const sql = `
+            SELECT Codigo_plano, Nome, Mes, Ano, Valor_mov
+            FROM dfc_analitica
+            WHERE Ano = ?
+              AND Baixa IS NULL
+              AND Financeiro IS NOT NULL
+        `;
+        const [rows] = await pool.query(sql, [anoSel]);
+
+        const grupos = {
+            '1- Previsões a Receber': { conta: '1- Previsões a Receber', tipo: 'grupo', dados: zerar(), detalhes: [] },
+            '2- Previsões a Pagar': { conta: '2- Previsões a Pagar', tipo: 'grupo', dados: zerar(), detalhes: [] }
+        };
+
+        const addToGroup = (grupoKey, codigoPlano, nomePlano, mes, valor) => {
+            const chaveMes = mapaMeses[mes];
+            if (!chaveMes) return;
+
+            let item = grupos[grupoKey].detalhes.find(d => d.conta.startsWith(codigoPlano));
+            if (!item) {
+                item = { conta: `${codigoPlano} - ${nomePlano}`, tipo: 'item', dados: zerar() };
+                grupos[grupoKey].detalhes.push(item);
+            }
+            item.dados[chaveMes] += valor;
+            grupos[grupoKey].dados[chaveMes] += valor;
+        };
+
+        rows.forEach(r => {
+            const codigo = (r.Codigo_plano || '').toString().trim();
+            const nome = (r.Nome || '').toString().trim();
+            const mes = parseInt(r.Mes, 10);
+            const valor = Math.abs(parseFloat(r.Valor_mov) || 0); // previsões exibidas como valor positivo
+
+            if (codigo === '1.001.006') {
+                addToGroup('1- Previsões a Receber', codigo, nome || 'BOLETOS', mes, valor);
+            } else if (codigo === '2.001.001' || codigo === '2.001.002' || codigo === '2.001.003') {
+                addToGroup('2- Previsões a Pagar', codigo, nome || 'TÍTULO', mes, valor);
+            }
+        });
+
+        // Ordena itens numericamente
+        Object.values(grupos).forEach(g => {
+            g.detalhes.sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
+        });
+
+        return res.json({
+            columns: colunasKeys,
+            headers: colunasLabels,
+            rows: Object.values(grupos)
+        });
+    } catch (err) {
+        console.error('Erro /api/financeiro:', err);
+        return res.status(500).json({ error: 'Erro ao montar tabela Financeiro.' });
+    }
+});
+
+
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 

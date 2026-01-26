@@ -1,3 +1,84 @@
+
+function renderFinanceiroDashboard(payload) {
+    const tbody = document.querySelector('#financeiro-table tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (!payload || !Array.isArray(payload.rows)) return;
+
+    // rows: [{ key, label, values:{1:..}, children:[{label, values}] }]
+    payload.rows.forEach((row) => {
+        const tr = document.createElement('tr');
+        tr.classList.add('hover-row', 'grupo'); // nível 1 em negrito (CSS)
+        tr.dataset.key = row.key || row.label;
+
+        // Coluna 1
+        const td0 = document.createElement('td');
+        td0.style.cursor = (row.children && row.children.length) ? 'pointer' : 'default';
+
+        const hasChildren = Array.isArray(row.children) && row.children.length > 0;
+        const icon = document.createElement('span');
+        icon.className = 'toggle-icon';
+        icon.textContent = hasChildren ? '▸' : '';
+        td0.appendChild(icon);
+
+        const label = document.createElement('span');
+        label.textContent = row.label || '';
+        td0.appendChild(label);
+
+        tr.appendChild(td0);
+
+        // Meses 1..12
+        for (let mes = 1; mes <= 12; mes++) {
+            const td = document.createElement('td');
+            const v = row.values && row.values[mes] != null ? row.values[mes] : 0;
+            td.textContent = formatCurrency(v);
+            tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+
+        // children rows (hidden by default)
+        if (hasChildren) {
+            row.children.forEach((child) => {
+                const ctr = document.createElement('tr');
+                ctr.classList.add('child-row', 'hover-row');
+                ctr.dataset.parent = tr.dataset.key;
+                ctr.style.display = 'none';
+
+                const ctd0 = document.createElement('td');
+                ctd0.textContent = child.label || '';
+                ctr.appendChild(ctd0);
+
+                for (let mes = 1; mes <= 12; mes++) {
+                    const ctd = document.createElement('td');
+                    const cv = child.values && child.values[mes] != null ? child.values[mes] : 0;
+                    ctd.textContent = formatCurrency(cv);
+                    ctr.appendChild(ctd);
+                }
+                tbody.appendChild(ctr);
+            });
+
+            // toggle click
+            tr.addEventListener('click', () => {
+                const open = tr.dataset.open === '1';
+                tr.dataset.open = open ? '0' : '1';
+                icon.textContent = open ? '▸' : '▾';
+
+                const childs = tbody.querySelectorAll(`tr.child-row[data-parent="${CSS.escape(tr.dataset.key)}"]`);
+                childs.forEach(r => r.style.display = open ? 'none' : '');
+            });
+        }
+    });
+}
+
+async function fetchFinanceiroDashboard(ano) {
+    const url = `/api/financeiro?ano=${encodeURIComponent(ano)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Erro ao buscar Financeiro (${res.status})`);
+    return await res.json();
+}
 // ARQUIVO: public/script.js
 
 const ANO_ATUAL = new Date().getFullYear();
@@ -1116,7 +1197,15 @@ setupFinanceStickyRows: () => {
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
-            app.renderTable(data.tabela); 
+            app.renderTable(data.tabela);
+        // Guarda as colunas atuais para a tabela Financeiro acompanhar exatamente a DFC
+        window.__dashboardCols = { keys: data.tabela.columns, labels: data.tabela.headers };
+
+        // Atualiza visibilidade/render da tabela Financeiro (só quando Tipo de Visão = Todos)
+        if (typeof window.refreshFinanceiroIfNeeded === 'function') {
+            window.refreshFinanceiroIfNeeded();
+        }
+ 
             
             if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
 setTimeout(() => app.renderChart(data.grafico), 50);
@@ -1266,7 +1355,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const anoParam = app.yearDashboard;
             const viewParam = app.viewType || 'mensal';
 
-            const res = await fetch(`/api/financeiro?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
+            const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 
@@ -1372,48 +1461,221 @@ document.addEventListener('DOMContentLoaded', app.init);
    - Em outros valores, esconde o painel e não deixa "sobrar" box
    - Não altera sua lógica existente; só garante o toggle
    ========================================================= */
-(function(){
-  function getTipoVisao(){
-    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
-    return sel ? (sel.value || '').toLowerCase() : 'todos';
-  }
+(function () {
+    // ============================================================
+    // TABELA "FINANCEIRO" (Dashboard) — independente da DFC
+    // Regras:
+    // - Só aparece quando Tipo de Visão = "Todos" (dashboard-status-view = "todos")
+    // - Mesmas colunas (mesmo período/headers) da DFC
+    // - Expande/recolhe igual a DFC (grupo -> itens)
+    // ============================================================
 
-  function setFinanceiroVisible(show){
-    const panel = document.getElementById('financeiro-panel');
-    if (!panel) return;
-    if (show) {
-      panel.classList.remove('hidden');
-      panel.style.removeProperty('display'); // evita conflitos
-    } else {
-      panel.classList.add('hidden');
+    const financeiroPanel = document.getElementById('financeiro-panel');
+    const financeiroTable = document.getElementById('financeiro-table');
+
+    const fallbackKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const fallbackLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+    function getAnoSelecionado() {
+        const el = document.getElementById('ano-dashboard');
+        return el && el.value ? el.value : String(new Date().getFullYear());
     }
-  }
 
-  async function refreshFinanceiroIfNeeded(){
-    const tipo = getTipoVisao();
-    const show = (tipo === 'todos');
-    setFinanceiroVisible(show);
-
-    // Se existir a sua função, chamamos só quando precisa
-    if (show) {
-      // tenta chamar a função já existente no seu app
-      if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
-        await window.app.fetchFinanceiroData();
-      } else if (window.app && typeof window.app.fetchFinanceiroDashboard === 'function') {
-        await window.app.fetchFinanceiroDashboard();
-      }
-      // sincroniza colunas se existir
-      if (window.app && typeof window.app.syncFinanceiroColumns === 'function') {
-        setTimeout(window.app.syncFinanceiroColumns, 0);
-      }
+    function getStatusSelecionado() {
+        const el = document.getElementById('dashboard-status-view');
+        return el && el.value ? el.value : 'todos';
     }
-  }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
-    if (sel) sel.addEventListener('change', () => { refreshFinanceiroIfNeeded(); });
-    // primeira carga
-    setTimeout(refreshFinanceiroIfNeeded, 200);
-  });
+    function getColsFromDashboard() {
+        const keys = (window.__dashboardCols && Array.isArray(window.__dashboardCols.keys)) ? window.__dashboardCols.keys : fallbackKeys;
+        const labels = (window.__dashboardCols && Array.isArray(window.__dashboardCols.labels)) ? window.__dashboardCols.labels : fallbackLabels;
+        return { keys, labels };
+    }
+
+    function setFinanceiroVisible(show) {
+        if (!financeiroPanel) return;
+        // usa display: none; para o painel todo (some o "box" também)
+        financeiroPanel.style.display = show ? '' : 'none';
+    }
+
+    async function fetchFinanceiroDashboard() {
+        const ano = getAnoSelecionado();
+        const status = getStatusSelecionado(); // aqui esperamos "todos" ou "realizado"
+        const qs = new URLSearchParams({ ano, status });
+
+        const resp = await fetch(`/api/financeiro-dashboard?${qs.toString()}`);
+        if (!resp.ok) throw new Error('Falha ao buscar Financeiro.');
+        return resp.json();
+    }
+
+    function formatBRL(value) {
+        const n = Number(value || 0);
+        return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function clearFinanceiroTable() {
+        if (!financeiroTable) return;
+        const thead = financeiroTable.querySelector('thead');
+        const tbody = financeiroTable.querySelector('tbody');
+        if (thead) thead.innerHTML = '';
+        if (tbody) tbody.innerHTML = '';
+    }
+
+    function renderFinanceiroDashboard(payload) {
+        if (!financeiroTable) return;
+
+        const thead = financeiroTable.querySelector('thead');
+        const tbody = financeiroTable.querySelector('tbody');
+        if (!thead || !tbody) return;
+
+        const cols = getColsFromDashboard();
+        const colKeys = cols.keys;
+        const colLabels = cols.labels;
+
+        // Header
+        thead.innerHTML = `
+            <tr>
+                <th>Plano Financeiro</th>
+                ${colLabels.map(h => `<th>${h}</th>`).join('')}
+            </tr>
+        `;
+
+        // Body
+        tbody.innerHTML = '';
+
+        const rows = payload && payload.rows ? payload.rows : [];
+        let rowId = 0;
+
+        const createRow = ({ conta, dados, tipo, level, hasChildren, parentId }) => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover-row';
+            if (tipo === 'grupo') tr.classList.add('grupo');
+            if (tipo === 'item') tr.classList.add('child-row');
+            tr.dataset.rowId = String(++rowId);
+            if (parentId) tr.dataset.parentId = parentId;
+
+            // Primeira célula com toggle
+            const td0 = document.createElement('td');
+            td0.style.cursor = hasChildren ? 'pointer' : 'default';
+
+            const indent = '&nbsp;'.repeat(level * 4);
+
+            const toggle = hasChildren
+                ? `<span class="toggle-icon" data-role="toggle">▶</span>`
+                : `<span class="toggle-icon" style="opacity:0">▶</span>`;
+
+            td0.innerHTML = `${toggle}${indent}<span class="conta-text">${conta || ''}</span>`;
+            tr.appendChild(td0);
+
+            // Valores por coluna
+            colKeys.forEach(k => {
+                const td = document.createElement('td');
+                const v = dados && Object.prototype.hasOwnProperty.call(dados, k) ? dados[k] : 0;
+                td.textContent = formatBRL(v);
+                tr.appendChild(td);
+            });
+
+            // Clique para expandir/recolher
+            if (hasChildren) {
+                tr.dataset.expanded = 'false';
+                tr.addEventListener('click', (ev) => {
+                    // evita colidir com seleção de texto
+                    ev.preventDefault();
+                    const expanded = tr.dataset.expanded === 'true';
+                    const newState = !expanded;
+                    tr.dataset.expanded = newState ? 'true' : 'false';
+
+                    // gira ícone
+                    const icon = tr.querySelector('[data-role="toggle"]');
+                    if (icon) {
+                        icon.textContent = newState ? '▼' : '▶';
+                    }
+
+                    // mostra/oculta filhos imediatos (e se ocultar, recolhe todos abaixo)
+                    const myId = tr.dataset.rowId;
+                    const children = tbody.querySelectorAll(`tr[data-parent-id="${myId}"]`);
+                    children.forEach(child => {
+                        child.style.display = newState ? '' : 'none';
+                        if (!newState) {
+                            // recolhe descendentes também
+                            const childId = child.dataset.rowId;
+                            const descendants = tbody.querySelectorAll(`tr[data-parent-id="${childId}"]`);
+                            descendants.forEach(d => d.style.display = 'none');
+                            child.dataset.expanded = 'false';
+                            const cIcon = child.querySelector('[data-role="toggle"]');
+                            if (cIcon) cIcon.textContent = '▶';
+                        }
+                    });
+                });
+            }
+
+            tbody.appendChild(tr);
+            return tr.dataset.rowId;
+        };
+
+        rows.forEach(gr => {
+            // grupo
+            const grupoId = createRow({
+                conta: gr.conta,
+                dados: gr.dados || {},
+                tipo: 'grupo',
+                level: 0,
+                hasChildren: Array.isArray(gr.detalhes) && gr.detalhes.length > 0,
+                parentId: null
+            });
+
+            // itens (inicialmente escondidos)
+            if (Array.isArray(gr.detalhes)) {
+                gr.detalhes.forEach(item => {
+                    const itemId = createRow({
+                        conta: item.conta,
+                        dados: item.dados || {},
+                        tipo: 'item',
+                        level: 1,
+                        hasChildren: false,
+                        parentId: grupoId
+                    });
+                    // começa escondido
+                    const tr = tbody.querySelector(`tr[data-row-id="${itemId}"]`);
+                    if (tr) tr.style.display = 'none';
+                });
+            }
+        });
+    }
+
+    async function refreshFinanceiroIfNeeded() {
+        const status = getStatusSelecionado();
+        const shouldShow = (status === 'todos');
+
+        setFinanceiroVisible(shouldShow);
+
+        if (!shouldShow) {
+            clearFinanceiroTable();
+            return;
+        }
+
+        try {
+            const data = await fetchFinanceiroDashboard();
+            renderFinanceiroDashboard(data);
+        } catch (e) {
+            console.error('[Financeiro] Erro ao renderizar:', e);
+            // mostra painel mas com tabela vazia (para debug visual)
+            clearFinanceiroTable();
+        }
+    }
+
+    // Expor para o restante do script (fetchData chama isso após atualizar colunas)
+    window.refreshFinanceiroIfNeeded = refreshFinanceiroIfNeeded;
+
+    // Garantir atualização ao trocar filtros relevantes
+    document.addEventListener('DOMContentLoaded', () => {
+        const st = document.getElementById('dashboard-status-view');
+        const ano = document.getElementById('ano-dashboard');
+        const periodo = document.getElementById('dashboard-view');
+
+        if (st) st.addEventListener('change', () => refreshFinanceiroIfNeeded());
+        if (ano) ano.addEventListener('change', () => refreshFinanceiroIfNeeded());
+        if (periodo) periodo.addEventListener('change', () => refreshFinanceiroIfNeeded());
+    });
 })();
 
