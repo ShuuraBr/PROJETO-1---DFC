@@ -564,7 +564,7 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'inf
 
         res.json({
             cards: {
-                saldoInicial: 0, 
+                saldoInicial: saldoInicialCols[colunasKeys[0]] || 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,

@@ -977,4 +977,85 @@ table {
     max-width: 100%;
 }
 
-:root{--plano-col-width:260px;--month-col-width:140px;}
+
+/* =========================================================
+   FIX FINAL (DFC + FINANCEIRO)
+   - Restaura o layout do Demonstrativo (id #finance-table)
+   - Mantém Financeiro independente (id #financeiro-table)
+   - Hover/Pré-seleção igual nas duas
+   ========================================================= */
+
+.table-wrapper { background: #ffffff !important; }
+
+#finance-table,
+#financeiro-table{
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+}
+
+#finance-table th,
+#finance-table td,
+#financeiro-table th,
+#financeiro-table td{
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#finance-table thead th,
+#financeiro-table thead th{
+  background: #012d5a !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+}
+
+:root{
+  --plano-col-width: 240px;     /* menor para não “comer” os meses */
+  --month-col-min: 140px;
+}
+
+#finance-table th:first-child,
+#finance-table td:first-child,
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+  min-width: var(--plano-col-width) !important;
+  max-width: 320px !important;
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 120 !important;
+  text-align: left !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  background: #ffffff !important;
+  border-right: 2px solid #e5e7eb !important;
+}
+
+#finance-table thead th:first-child,
+#financeiro-table thead th:first-child{
+  background: #012d5a !important;
+  color: #fff !important;
+  z-index: 200 !important;
+}
+
+#finance-table th:not(:first-child),
+#finance-table td:not(:first-child),
+#financeiro-table th:not(:first-child),
+#financeiro-table td:not(:first-child){
+  min-width: var(--month-col-min) !important;
+  width: auto !important;
+}
+
+#finance-table tbody tr:hover td,
+#financeiro-table tbody tr:hover td{
+  background-color: #f3f4f6 !important;
+}
+
+#financeiro-panel.hidden{ display:none !important; }
+
+/* Nível 1 no Financeiro em negrito */
+#financeiro-table tbody tr.grupo td{ font-weight: 700 !important; }
