@@ -24,13 +24,6 @@ const app = {
         
         app.carregarAnosDisponiveis();
 
-        // Recalcula alturas de sticky (Saldo Inicial/Final) quando a janela muda
-        window.addEventListener('resize', () => {
-            if (document.getElementById('finance-table')) {
-                app.setupFinanceStickyRows();
-            }
-        });
-
         // Listeners Globais
         const loginForm = document.getElementById('loginForm');
         if(loginForm) loginForm.addEventListener('submit', app.login);
@@ -624,7 +617,7 @@ const app = {
         const diasRestantes = diasTotais - diasDecorridos;
 
         let gastoDiario = totalRealizado / diasDecorridos;
-        let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
+        let projecaoTotal = gastoDiario * diasRestantes;
 
         if (totalOrcado === 0) {
             fillEl.style.height = '0%';
@@ -767,7 +760,7 @@ const app = {
             let gastoDiario = 0;
             if (dias.decorridos > 0) gastoDiario = totalRealizado / dias.decorridos;
 
-            let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
+            let projecaoTotal = gastoDiario * diasRestantes;
 
             cardMeta = fmt(metaDiaria);
             cardGasto = fmt(gastoDiario);
@@ -887,35 +880,6 @@ const app = {
         });
     },
 
-
-
-// Mantém "Saldo Inicial" fixo no topo (abaixo do cabeçalho) e "Saldo Final" fixo no rodapé dentro do scroll da tabela
-setupFinanceStickyRows: () => {
-    const table = document.getElementById('finance-table');
-    if (!table) return;
-
-    const thead = table.querySelector('thead');
-    const tbody = table.querySelector('tbody');
-    if (!thead || !tbody) return;
-
-    // Calcula a altura real do cabeçalho para posicionar o "Saldo Inicial" logo abaixo
-    const theadH = Math.ceil(thead.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--finance-thead-h', `${theadH}px`);
-
-    // Marca as linhas de saldo para ficarem sticky
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.forEach(tr => {
-        tr.classList.remove('sticky-saldo-top', 'sticky-saldo-bottom');
-
-        const firstCell = tr.querySelector('td:first-child');
-        if (!firstCell) return;
-
-        const txt = (firstCell.innerText || '').trim().toLowerCase();
-        if (txt === 'saldo inicial') tr.classList.add('sticky-saldo-top');
-        if (txt === 'saldo final') tr.classList.add('sticky-saldo-bottom');
-    });
-},
-
     renderTable: (data) => {
         const rows = data.rows;
         const columns = data.columns; 
@@ -1000,11 +964,76 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
-    renderOrcamentoTable: (data) => {
+    
+    // =============================
+    // FINANCEIRO (Nova Tabela - Dashboard)
+    // =============================
+    loadFinanceiroData: async (ano, view) => {
+        try {
+            const res = await fetch(`/api/financeiro?ano=${encodeURIComponent(ano)}&view=${encodeURIComponent(view || 'mensal')}`);
+            if (!res.ok) throw new Error('Falha ao buscar Financeiro');
+            const data = await res.json();
+            app.renderFinanceiroTable(data);
+        } catch (err) {
+            console.error(err);
+            const tbody = document.querySelector('#financeiro-table tbody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="13" style="padding:12px; text-align:center; color:#6b7280;">Sem dados para exibir.</td></tr>`;
+        }
+    },
+
+    renderFinanceiroTable: (dataTabela) => {
+        const table = document.getElementById('financeiro-table');
+        if (!table) return;
+
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+
+        const columns = dataTabela?.columns || ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const headers = dataTabela?.headers || ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const rows = dataTabela?.rows || [];
+
+        // Header
+        thead.innerHTML = `
+            <tr>
+                <th>Plano Financeiro</th>
+                ${headers.map(h => `<th>${h}</th>`).join('')}
+            </tr>
+        `;
+
+        // Body
+        let html = '';
+        rows.forEach((row, idx) => {
+            const rowId = `FIN-${idx}`;
+            const hasDetails = Array.isArray(row.detalhes) && row.detalhes.length > 0;
+
+            html += `
+                <tr class="hover-row ${row.tipo === 'grupo' ? 'grupo' : ''}" data-id="${rowId}" style="cursor:${hasDetails ? 'pointer' : 'default'}" ${hasDetails ? `onclick="app.toggleGroup('${rowId}')"` : ''}>
+                    <td>
+                        ${hasDetails ? `<span class="toggle-icon" data-icon="${rowId}">▶</span>` : `<span class="toggle-icon" style="visibility:hidden;">▶</span>`}
+                        ${row.conta || ''}
+                    </td>
+                    ${columns.map(col => `<td>${app.formatCurrency(row[col] || 0)}</td>`).join('')}
+                </tr>
+            `;
+
+            if (hasDetails) {
+                row.detalhes.forEach((det, j) => {
+                    html += `
+                        <tr class="child-row pai-${rowId}" style="display:none;">
+                            <td>${det.conta || ''}</td>
+                            ${columns.map(col => `<td>${app.formatCurrency(det[col] || 0)}</td>`).join('')}
+                        </tr>
+                    `;
+                });
+            }
+        });
+
+        tbody.innerHTML = html || `<tr><td colspan="13" style="padding:12px; text-align:center; color:#6b7280;">Sem dados para exibir.</td></tr>`;
+    },
+
+renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
         if (!data || data.length === 0) {
@@ -1055,8 +1084,6 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
     loadDepartamentos: async () => {
@@ -1115,10 +1142,22 @@ setupFinanceStickyRows: () => {
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
-            app.renderTable(data.tabela); 
-            
-            if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
-setTimeout(() => app.renderChart(data.grafico), 50);
+            app.renderTable(data.tabela);
+
+            // Financeiro (nova tabela): só aparece quando Tipo de Visão = Todos
+            const financeiroPanel = document.getElementById('financeiro-panel');
+            if (financeiroPanel) {
+                if (statusParam === 'todos') {
+                    financeiroPanel.classList.remove('hidden');
+                    await app.loadFinanceiroData(anoParam, viewParam);
+                } else {
+                    financeiroPanel.classList.add('hidden');
+                    const tbody = document.querySelector('#financeiro-table tbody');
+                    if (tbody) tbody.innerHTML = '';
+                }
+            }
+
+            setTimeout(() => app.renderChart(data.grafico), 50);
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
     },
@@ -1236,159 +1275,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
                 } 
             }
         });
-    
-    },
-
-    // =====================================================
-    // FINANCEIRO (Dashboard) — tabela separada, com expand/recolhe independente
-    // Regras:
-    // - Só aparece quando Tipo de Visão = "todos"
-    // =====================================================
-    fetchFinanceiroData: async () => {
-        try {
-            const statusSelect = document.getElementById('dashboard-status-view');
-            const statusParam = statusSelect ? statusSelect.value : 'todos';
-
-            const painel = document.getElementById('financeiro-panel');
-            const tbody = document.querySelector('#financeiro-table tbody');
-            const thead = document.querySelector('#financeiro-table thead');
-
-            if (statusParam !== 'todos') {
-                if (painel) painel.style.setProperty('display', 'none', 'important');
-                if (tbody) tbody.innerHTML = '';
-                if (thead) thead.innerHTML = '';
-                return;
-            }
-
-            if (painel) painel.style.setProperty('display', 'flex', 'important');
-
-            const anoParam = app.yearDashboard;
-            const viewParam = app.viewType || 'mensal';
-
-            const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
-            const data = await res.json();
-            if (data.error) throw new Error(data.error);
-
-            if (data && data.tabela) {
-                app.renderFinanceiroTable(data.tabela);
-            }
-        } catch (err) {
-            console.error('Erro Financeiro Dashboard:', err);
-        }
-    },
-
-    renderFinanceiroTable: (tabela) => {
-        const rows = tabela.rows || [];
-        const columns = tabela.columns || [];
-        const headers = tabela.headers || [];
-
-        const tbody = document.querySelector('#financeiro-table tbody');
-        const thead = document.querySelector('#financeiro-table thead');
-        if (!tbody || !thead) return;
-
-        // Cabeçalho
-        let thHtml = `<tr><th>Plano Financeiro</th>`;
-        headers.forEach(h => thHtml += `<th>${h}</th>`);
-        thHtml += `</tr>`;
-        thead.innerHTML = thHtml;
-
-        const fmt = (v) => (Number(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-        // Corpo (2 níveis: grupo -> itens)
-        let html = '';
-        rows.forEach((grupo, idx) => {
-            const idPai = `fin-${idx}`;
-            const hasChildren = Array.isArray(grupo.detalhes) && grupo.detalhes.length > 0;
-
-            html += `<tr class="grupo" data-id="${idPai}" onclick="app.toggleFinanceiroGroup('${idPai}', this)">
-                        <td>
-                          ${hasChildren ? '<span class="toggle-icon">▸</span>' : '<span class="toggle-icon" style="opacity:.0">▸</span>'}
-                          ${grupo.conta || ''}
-                        </td>`;
-
-            columns.forEach(c => {
-                html += `<td>${fmt(grupo[c] ?? 0)}</td>`;
-            });
-            html += `</tr>`;
-
-            if (hasChildren) {
-                grupo.detalhes.forEach(item => {
-                    html += `<tr class="item fpai-${idPai} hidden">
-                                <td style="padding-left: 28px;">${item.conta || ''}</td>`;
-                    columns.forEach(c => {
-                        html += `<td>${fmt(item[c] ?? 0)}</td>`;
-                    });
-                    html += `</tr>`;
-                });
-            }
-        });
-
-        tbody.innerHTML = html;
-    },
-
-    toggleFinanceiroGroup: (idPai, trEl) => {
-        const filhos = document.querySelectorAll(`.fpai-${idPai}`);
-        if (!filhos || filhos.length === 0) return;
-
-        const icon = trEl ? trEl.querySelector('.toggle-icon') : null;
-        const estaFechado = filhos[0].classList.contains('hidden');
-
-        filhos.forEach(r => r.classList.toggle('hidden', !estaFechado));
-        if (icon) icon.classList.toggle('rotated', estaFechado);
-    },
+    }
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
-
-
-/* =========================================================
-   PATCH FINAL — VISIBILIDADE DO FINANCEIRO (DASHBOARD)
-   - Mostra Financeiro apenas quando Tipo de Visão = "Todos"
-   - Em outros valores, esconde o painel e não deixa "sobrar" box
-   - Não altera sua lógica existente; só garante o toggle
-   ========================================================= */
-(function(){
-  function getTipoVisao(){
-    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
-    return sel ? (sel.value || '').toLowerCase() : 'todos';
-  }
-
-  function setFinanceiroVisible(show){
-    const panel = document.getElementById('financeiro-panel');
-    if (!panel) return;
-    if (show) {
-      panel.classList.remove('hidden');
-      panel.style.removeProperty('display'); // evita conflitos
-    } else {
-      panel.classList.add('hidden');
-    }
-  }
-
-  async function refreshFinanceiroIfNeeded(){
-    const tipo = getTipoVisao();
-    const show = (tipo === 'todos');
-    setFinanceiroVisible(show);
-
-    // Se existir a sua função, chamamos só quando precisa
-    if (show) {
-      // tenta chamar a função já existente no seu app
-      if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
-        await window.app.fetchFinanceiroData();
-      } else if (window.app && typeof window.app.fetchFinanceiroDashboard === 'function') {
-        await window.app.fetchFinanceiroDashboard();
-      }
-      // sincroniza colunas se existir
-      if (window.app && typeof window.app.syncFinanceiroColumns === 'function') {
-        setTimeout(window.app.syncFinanceiroColumns, 0);
-      }
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
-    if (sel) sel.addEventListener('change', () => { refreshFinanceiroIfNeeded(); });
-    // primeira carga
-    setTimeout(refreshFinanceiroIfNeeded, 200);
-  });
-})();
-

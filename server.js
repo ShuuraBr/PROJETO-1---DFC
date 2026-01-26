@@ -392,113 +392,9 @@ app.get('/api/dashboard', async (req, res) => {
             }
         });
 
-        
-        // ==============================
-        // SALDO INICIAL (movimentos_contas) + CUMULATIVO (a partir de Jan/2025)
-        // Regras:
-        // - Natureza = 'Entrada' soma, Natureza = 'Saída/Saida' subtrai
-        // - Saldo Inicial de Jan/2025 = liquidação de TODOS os anos anteriores (movimentos_contas)
-        // - Para frente: saldo final de Jan/2025 alimenta os próximos períodos (acumulado)
-        // ==============================
+        const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
 
-        const parseAnoNum = (a) => parseInt(a, 10);
-        const anoSelNum = ano ? parseAnoNum(ano) : null;
-
-        const assinarValor = (naturezaStr, valor) => {
-            const n = (naturezaStr || '').toString().trim().toLowerCase();
-            const v = parseFloat(valor) || 0;
-            if (n.includes('saída') || n.includes('saida')) return -Math.abs(v);
-            return Math.abs(v);
-        };
-
-        // 1) Baseline: saldo acumulado até Dez/2024 (tudo antes de Jan/2025)
-        let baselineSaldoJan2025 = 0;
-        try {
-            const [rowsSaldoBase] = await pool.query(
-                `SELECT COALESCE(SUM(CASE
-                    WHEN LOWER(Natureza) LIKE '%saida%' OR LOWER(Natureza) LIKE '%saída%' THEN -ABS(valor)
-                    ELSE ABS(valor)
-                 END), 0) AS saldoBase
-                 FROM movimentos_contas
-                 WHERE CAST(Ano AS SIGNED) < 2025`
-            );
-            baselineSaldoJan2025 = parseFloat(rowsSaldoBase?.[0]?.saldoBase) || 0;
-        } catch (e) {
-            console.warn('[Saldo Inicial] Falha ao consultar movimentos_contas:', e.message);
-            baselineSaldoJan2025 = 0;
-        }
-
-        // 2) Carry: soma dos fluxos do DFC (dfc_analitica) de Jan/2025 até o período anterior ao exibido
-        //    (necessário para anos > 2025 e para visão anual com primeiro ano > 2025)
-        let carryAntesPeriodo = 0;
-
-        // Determina "primeiro período exibido" para saber até onde acumular
-        let primeiroAnoExibido = null;
-        if (view === 'anual') {
-            const anosCols = colunasKeys.map(k => parseAnoNum(k)).filter(n => Number.isFinite(n)).sort((a,b)=>a-b);
-            primeiroAnoExibido = anosCols.length ? anosCols[0] : anoSelNum;
-        } else {
-            primeiroAnoExibido = anoSelNum;
-        }
-
-        if (Number.isFinite(primeiroAnoExibido) && primeiroAnoExibido > 2025) {
-            // Busca dfc_analitica de 2025 até ano anterior ao primeiro exibido (inclusive)
-            let queryCarry = 'SELECT Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
-            const paramsCarry = [];
-
-            queryCarry += ' AND CAST(Ano AS SIGNED) >= 2025 AND CAST(Ano AS SIGNED) < ?';
-            paramsCarry.push(primeiroAnoExibido);
-
-            // aplica o mesmo filtro de status do dashboard
-            if (status === 'realizado') {
-                queryCarry += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
-            } else if (status === 'aberto') {
-                queryCarry += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
-            }
-
-            const [rowsCarry] = await pool.query(queryCarry, paramsCarry);
-
-            rowsCarry.forEach(row => {
-                let y = row.Ano;
-                let mth = row.Mes;
-
-                // Mesma regra de competência para boletos (próximo dia útil)
-                if (row.Nome && row.Nome.toLowerCase().includes('boleto') && row.Dt_mov) {
-                    const dataUtil = getProximoDiaUtil(row.Dt_mov);
-                    mth = dataUtil.getMonth() + 1;
-                    y = dataUtil.getFullYear();
-                }
-
-                const valorAssinado = assinarValor(row.Natureza, row.Valor_mov);
-                // acumula tudo de 2025 até (primeiroAnoExibido-1)
-                if (Number.isFinite(parseAnoNum(y)) && parseAnoNum(y) >= 2025 && parseAnoNum(y) < primeiroAnoExibido) {
-                    carryAntesPeriodo += valorAssinado;
-                }
-            });
-        }
-
-        // 3) Saldo inicial por coluna exibida (acumulado)
-        const saldoInicialCols = zerarColunas();
-        const saldoFinalCols = zerarColunas();
-
-        // só aplicamos a regra a partir de 2025 (conforme solicitado)
-        let saldoAtual = 0;
-        if ((view === 'anual' && Number.isFinite(primeiroAnoExibido) && primeiroAnoExibido >= 2025) ||
-            (view !== 'anual' && Number.isFinite(anoSelNum) && anoSelNum >= 2025)) {
-            saldoAtual = baselineSaldoJan2025 + carryAntesPeriodo;
-        }
-
-        // ordem de colunas para acumular
-        const ordemColunas = colunasKeys.slice(); // já vem na ordem correta
-        ordemColunas.forEach(colKey => {
-            saldoInicialCols[colKey] = saldoAtual;
-            saldoAtual = saldoAtual + (FluxoGlobal[colKey] || 0);
-            saldoFinalCols[colKey] = saldoAtual;
-        });
-
-const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
-
-        let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }];
+        let tabelaRows = [{ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' }];
 
         ordemDesejada.forEach(titulo => {
             const g = grupos[titulo];
@@ -516,9 +412,10 @@ const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', 
         const totalEntradasOperacionais = grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0;
         const totalSaidasOperacionais = grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0;
 
-        const linhaSaldoFinal = saldoFinalCols;
+        const linhaSaldoFinal = zerarColunas();
         const graficoData = [];
         colunasKeys.forEach(col => {
+            linhaSaldoFinal[col] = FluxoGlobal[col];
             graficoData.push(FluxoOperacional[col]);
         });
 
@@ -527,11 +424,11 @@ const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', 
 
         res.json({
             cards: {
-                saldoInicial: saldoInicialCols[colunasKeys[0]] || 0, 
+                saldoInicial: 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: saldoFinalCols[colunasKeys[colunasKeys.length-1]] || 0
+                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
@@ -542,6 +439,142 @@ const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', 
         res.status(500).json({ error: "Erro interno" });
     }
 });
+
+
+// ==============================
+// FINANCEIRO (Nova Tabela - Dashboard)
+// ==============================
+// Regras:
+// - Só exibe no front quando Tipo de Visão = "Todos"
+// - Sem "cálculo" de DFC: apenas soma por competência (mês/ano) dos lançamentos EM ABERTO
+//   (Baixa IS NULL) e com Financeiro preenchido (Financeiro IS NOT NULL)
+// - Hierarquia:
+//   1- Previsões a Receber: 1.001.006 - BOLETOS
+//   2- Previsões a Pagar:  2.001.001 / 2.001.002 / 2.001.003
+app.get('/api/financeiro', async (req, res) => {
+    try {
+        const hoje = new Date();
+        const anoParam = parseInt(req.query.ano || hoje.getFullYear(), 10);
+        const viewParam = (req.query.view || 'mensal').toString();
+
+        if (!Number.isFinite(anoParam)) return res.status(400).json({ error: 'Ano inválido' });
+
+        let columns = [];
+        let headers = [];
+
+        if (viewParam === 'trimestral') {
+            columns = ['Q1','Q2','Q3','Q4'];
+            headers = ['1º Trim','2º Trim','3º Trim','4º Trim'];
+        } else if (viewParam === 'anual') {
+            // anual: retorna apenas o ano escolhido como coluna (mantemos compatível)
+            columns = [anoParam.toString()];
+            headers = [anoParam.toString()];
+        } else {
+            columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+            headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        }
+
+        const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
+
+        const planosReceber = [
+            { codigo: '1.001.006', nome: 'BOLETOS' }
+        ];
+        const planosPagar = [
+            { codigo: '2.001.001', nome: 'FORNECEDORES DE MERCADORIA PARA REVENDA' },
+            { codigo: '2.001.002', nome: 'FRETES SOBRE COMPRAS' },
+            { codigo: '2.001.003', nome: 'ICMS SOBRE COMPRAS' }
+        ];
+
+        const codigos = [...planosReceber, ...planosPagar].map(p => p.codigo);
+
+        const sql = `
+            SELECT Ano, Mes, Codigo_plano, Nome, Financeiro, Baixa, Valor_mov, Natureza
+            FROM dfc_analitica
+            WHERE Ano = ?
+              AND Baixa IS NULL
+              AND Financeiro IS NOT NULL
+              AND (
+                    Codigo_plano IN (${codigos.map(() => '?').join(',')})
+                    OR ${codigos.map(() => 'Financeiro LIKE ?').join(' OR ')}
+                  )
+        `;
+
+        const likeParams = codigos.map(c => `${c}%`);
+        const params = [anoParam, ...codigos, ...likeParams];
+
+        const [rows] = await pool.query(sql, params);
+
+        const zerarCols = () => {
+            const o = {};
+            columns.forEach(c => o[c] = 0);
+            return o;
+        };
+
+        const chaveColuna = (ano, mes) => {
+            if (viewParam === 'anual') return ano.toString();
+            if (viewParam === 'trimestral') return `Q${Math.ceil(mes / 3)}`;
+            return mapaMeses[mes];
+        };
+
+        // index por plano
+        const planoMap = new Map();
+        [...planosReceber, ...planosPagar].forEach(p => {
+            planoMap.set(p.codigo, { conta: `${p.codigo} - ${p.nome}`, tipo: 'item', ...zerarCols() });
+        });
+
+        // agrega
+        rows.forEach(r => {
+            const mes = parseInt(r.Mes, 10);
+            const ano = parseInt(r.Ano, 10);
+            const col = chaveColuna(ano, mes);
+            if (!columns.includes(col)) return;
+
+            const codigo = (r.Codigo_plano || '').toString();
+            const financeiro = (r.Financeiro || '').toString();
+
+            const matchCodigo = codigos.find(c => codigo === c || financeiro.startsWith(c));
+            if (!matchCodigo) return;
+
+            const valorAbs = parseFloat(r.Valor_mov) || 0;
+            const natureza = (r.Natureza || '').toString().toLowerCase();
+            const ehSaida = natureza.includes('saída') || natureza.includes('saida');
+            const valor = ehSaida ? -Math.abs(valorAbs) : Math.abs(valorAbs);
+
+            const item = planoMap.get(matchCodigo);
+            if (item) item[col] += valor;
+        });
+
+        // monta grupos
+        const receberGrupo = { conta: '1- Previsões a Receber', tipo: 'grupo', ...zerarCols(), detalhes: [] };
+        planosReceber.forEach(p => {
+            const item = planoMap.get(p.codigo);
+            if (item) {
+                receberGrupo.detalhes.push(item);
+                columns.forEach(c => receberGrupo[c] += item[c]);
+            }
+        });
+
+        const pagarGrupo = { conta: '2- Previsões a Pagar', tipo: 'grupo', ...zerarCols(), detalhes: [] };
+        planosPagar.forEach(p => {
+            const item = planoMap.get(p.codigo);
+            if (item) {
+                pagarGrupo.detalhes.push(item);
+                columns.forEach(c => pagarGrupo[c] += item[c]);
+            }
+        });
+
+        return res.json({
+            columns,
+            headers,
+            rows: [receberGrupo, pagarGrupo]
+        });
+
+    } catch (err) {
+        console.error('Erro /api/financeiro:', err);
+        return res.status(500).json({ error: 'Erro ao consultar Financeiro.' });
+    }
+});
+
 
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

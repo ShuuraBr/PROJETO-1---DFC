@@ -63,6 +63,27 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 }
 .select-ano:hover { border-color: var(--primary); }
 
+/* =============================
+   RÓTULOS DOS FILTROS (TOP BAR)
+   ============================= */
+.filter-field{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-field label{
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}
+
+/* melhora quebra em telas menores */
+.top-bar .actions{ flex-wrap: wrap; }
+
 /* --- LAYOUT PADRÃO (DESKTOP) --- */
 #view-app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
 
@@ -907,8 +928,7 @@ table {
 }
 
 /* Painel Financeiro só aparece quando Tipo de Visão = Todos */
-#financeiro-panel{ display:flex; flex-direction:column; }
-#financeiro-panel.hidden{ display:none !important; }
+#financeiro-panel{ display:none !important; }
 
 /* =====================================================
    SINCRONIZAR LARGURA DAS COLUNAS (DFC + FINANCEIRO)
@@ -958,219 +978,84 @@ table {
 }
 
 
-
 /* =========================================================
-   PATCH SEGURO (DFC + FINANCEIRO)
-   - Não remove regras existentes
-   - Só corrige: largura da 1ª coluna + meses + scroll + não truncar números
+   FIX FINAL (DFC + FINANCEIRO)
+   - Restaura o layout do Demonstrativo (id #finance-table)
+   - Mantém Financeiro independente (id #financeiro-table)
+   - Hover/Pré-seleção igual nas duas
    ========================================================= */
 
-:root{
-  /* Ajuste fino da 1ª coluna (Plano Financeiro) */
-  --dfc-col-plano-min: 210px;
-  --dfc-col-plano-max: 280px;
+.table-wrapper { background: #ffffff !important; }
 
-  /* Largura mínima dos meses para evitar corte */
-  --dfc-col-mes-min: 110px;
-}
-
-/* Wrapper: permitir scroll horizontal quando precisar (em telas menores) */
-#finance-table-wrapper,
-#financeiro-panel .table-wrapper{
-  overflow-x: auto !important;
-  overflow-y: auto;
-  max-width: 100%;
-}
-
-/* Garantir largura total das tabelas */
 #finance-table,
 #financeiro-table{
-  width: 100% !important;
-}
-
-/* 1ª coluna: reduzir para liberar espaço pros meses */
-#finance-table thead th:first-child,
-#finance-table tbody td:first-child,
-#financeiro-table thead th:first-child,
-#financeiro-table tbody td:first-child{
-  min-width: var(--dfc-col-plano-min) !important;
-  max-width: var(--dfc-col-plano-max) !important;
-}
-
-/* Meses: largura mínima + sem quebrar linha (gera scroll ao invés de cortar) */
-#finance-table thead th:not(:first-child),
-#finance-table tbody td:not(:first-child),
-#financeiro-table thead th:not(:first-child),
-#financeiro-table tbody td:not(:first-child){
-  min-width: var(--dfc-col-mes-min) !important;
-  white-space: nowrap !important;
-}
-
-/* Números: não usar ellipsis (evita "sumir" com valores) */
-#finance-table td,
-#finance-table th,
-#financeiro-table td,
-#financeiro-table th{
-  text-overflow: clip !important;
-}
-
-/* Financeiro: 1º nível em negrito */
-#financeiro-table tbody tr.grupo td{
-  font-weight: 800 !important;
-}
-
-
-
-
-/* =========================================================
-   PATCH FINAL — corrige conflitos que estavam quebrando:
-   1) Financeiro sumindo por 'display:none !important'
-   2) Colunas bagunçadas por múltiplos blocos de sincronização (fixed widths)
-   3) Variáveis indefinidas (--plano-col-width / --month-col-width)
-   Obs: Este patch só SOBRESCREVE no final (não remove nada acima).
-   ========================================================= */
-
-:root{
-  /* 1ª coluna (Plano Financeiro) — menor para liberar espaço dos meses */
-  --col-plano-min: 210px;
-  --col-plano-max: 280px;
-
-  /* Compatibilidade com blocos antigos */
-  --plano-col-width: 240px;
-  --month-col-width: 140px;
-}
-
-/* Financeiro: NÃO travar display none no CSS.
-   Quem controla é o JS + .hidden (display:none !important). */
-#financeiro-panel{
-  display: flex !important;
-}
-
-/* Tabelas: remover "régua fixa" conflitando.
-   A largura final das colunas do Financeiro é sincronizada via JS (colgroup).
-*/
-#finance-table,
-#financeiro-table{
-  table-layout: auto !important;
   width: max-content !important;
   min-width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
 }
 
-/* 1ª coluna (DFC + Financeiro) */
-#finance-table th:first-child,
-#finance-table td:first-child,
-#financeiro-table th:first-child,
-#financeiro-table td:first-child{
-  min-width: var(--col-plano-min) !important;
-  max-width: var(--col-plano-max) !important;
-}
-
-/* Meses: largura mínima (scroll ao invés de cortar) */
-#finance-table thead th:not(:first-child),
-#finance-table tbody td:not(:first-child),
-#financeiro-table thead th:not(:first-child),
-#financeiro-table tbody td:not(:first-child){
-  min-width: var(--month-col-width) !important;
-  width: auto !important;
-  max-width: none !important;
+#finance-table th,
+#finance-table td,
+#financeiro-table th,
+#financeiro-table td{
   white-space: nowrap !important;
-}
-
-/* Financeiro: não truncar números com ellipsis */
-#financeiro-table td,
-#financeiro-table th{
   overflow: visible !important;
   text-overflow: clip !important;
 }
 
-/* Hover (pré-seleção) também no Financeiro */
-#financeiro-table tbody tr:hover td{
-  background-color: #f8fafc !important;
+#finance-table thead th,
+#financeiro-table thead th{
+  background: #012d5a !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
 }
 
-/* Financeiro: 1º nível (grupo) em negrito */
-#financeiro-table tbody tr.grupo td{
-  font-weight: 800 !important;
-}
-
-
-
-
-/* =========================================================
-   PATCH FINAL — FINANCEIRO VISÍVEL + AUTO-AJUSTE DE COLUNAS
-   Objetivo:
-   1) A tabela Financeiro aparecer quando "Tipo de Visão = Todos"
-      (quem controla isso é o JS via .hidden). NÃO travar no CSS.
-   2) Colunas voltarem a se auto-ajustar (table-layout:auto),
-      com largura mínima por mês e scroll quando necessário.
-   ========================================================= */
-
-/* NÃO travar o painel Financeiro no CSS (isso quebrava o JS) */
-#financeiro-panel{ display:flex !important; }
-
-/* DFC e Financeiro: auto-ajuste de colunas + scroll quando precisar */
-#finance-table,
-#financeiro-table{
-  width: max-content !important;      /* permite crescer e gerar scroll */
-  min-width: 100% !important;         /* ocupa o painel no desktop */
-  table-layout: auto !important;      /* auto-ajuste real */
-  border-collapse: collapse !important;
-}
-
-/* wrapper garante scroll horizontal */
-#finance-table-wrapper,
-#financeiro-panel .table-wrapper,
-.table-wrapper{
-  overflow-x: auto !important;
-  overflow-y: auto !important;
-  max-width: 100% !important;
-}
-
-/* 1ª coluna (Plano Financeiro): menor pra não esmagar os meses */
 :root{
-  --dfc-plano-min: 210px;
-  --dfc-plano-max: 280px;
-  --dfc-mes-min: 110px;
+  --plano-col-width: 240px;     /* menor para não “comer” os meses */
+  --month-col-min: 140px;
 }
+
 #finance-table th:first-child,
 #finance-table td:first-child,
 #financeiro-table th:first-child,
 #financeiro-table td:first-child{
-  min-width: var(--dfc-plano-min) !important;
-  max-width: var(--dfc-plano-max) !important;
-  white-space: normal !important;     /* permite quebrar texto */
+  min-width: var(--plano-col-width) !important;
+  max-width: 320px !important;
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 120 !important;
+  text-align: left !important;
+  white-space: normal !important;
   word-break: break-word !important;
+  background: #ffffff !important;
+  border-right: 2px solid #e5e7eb !important;
 }
 
-/* Meses: largura mínima; sem width fixa (pra auto-ajustar) */
+#finance-table thead th:first-child,
+#financeiro-table thead th:first-child{
+  background: #012d5a !important;
+  color: #fff !important;
+  z-index: 200 !important;
+}
+
 #finance-table th:not(:first-child),
 #finance-table td:not(:first-child),
 #financeiro-table th:not(:first-child),
 #financeiro-table td:not(:first-child){
-  min-width: var(--dfc-mes-min) !important;
-  white-space: nowrap !important;
+  min-width: var(--month-col-min) !important;
+  width: auto !important;
 }
 
-/* Números: não cortar com ellipsis */
-#finance-table td,
-#financeiro-table td{
-  overflow: visible !important;
-  text-overflow: clip !important;
-}
-
-/* Financeiro: mesmo hover da DFC */
+#finance-table tbody tr:hover td,
 #financeiro-table tbody tr:hover td{
   background-color: #f3f4f6 !important;
-  filter: brightness(0.98);
 }
 
-/* Financeiro: 1º nível em negrito (se o JS usa classe .grupo) */
-#financeiro-table tbody tr.grupo td{
-  font-weight: 800 !important;
-}
+#financeiro-panel.hidden{ display:none !important; }
 
-/* IMPORTANTE:
-   Se existir qualquer bloco antigo que fixe width dos meses (width:110px),
-   este patch ganha por estar no final + !important.
-*/
-
+/* Nível 1 no Financeiro em negrito */
+#financeiro-table tbody tr.grupo td{ font-weight: 700 !important; }
