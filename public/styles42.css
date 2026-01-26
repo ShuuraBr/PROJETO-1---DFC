@@ -1,4 +1,7 @@
 :root {
+    --plano-col-width: 260px;
+    --month-col-width: 140px;
+
     --bg-body: #ffffff;
     --bg-sidebar: #111827;
     --primary: #2563eb;
@@ -62,27 +65,6 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
     font-size: 14px; font-weight: 600; cursor: pointer; outline: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;
 }
 .select-ano:hover { border-color: var(--primary); }
-
-/* =============================
-   RÓTULOS DOS FILTROS (TOP BAR)
-   ============================= */
-.filter-field{
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.filter-field label{
-    font-size: 10px;
-    font-weight: 800;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    line-height: 1;
-}
-
-/* melhora quebra em telas menores */
-.top-bar .actions{ flex-wrap: wrap; }
 
 /* --- LAYOUT PADRÃO (DESKTOP) --- */
 #view-app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
@@ -928,7 +910,7 @@ table {
 }
 
 /* Painel Financeiro só aparece quando Tipo de Visão = Todos */
-#financeiro-panel{ display:none !important; }
+#financeiro-panel{ display:block; }
 
 /* =====================================================
    SINCRONIZAR LARGURA DAS COLUNAS (DFC + FINANCEIRO)
