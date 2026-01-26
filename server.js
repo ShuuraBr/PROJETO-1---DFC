@@ -273,95 +273,6 @@ app.get('/api/orcamento', async (req, res) => {
     }
 });
 
-
-
-// ==============================
-// TABELA FINANCEIRO (Dashboard)
-// - Só deve ser exibida quando status=view = "todos" (Tipo de Visão = Todos)
-// - Sem cálculos: apenas somas por mês dos títulos em aberto (Baixa IS NULL) com Financeiro preenchido
-// - Hierarquia:
-//   1- Previsões a Receber -> 1.001.006 - BOLETOS
-//   2- Previsões a Pagar   -> 2.001.001 / 2.001.002 / 2.001.003
-// ==============================
-app.get('/api/financeiro-dashboard', async (req, res) => {
-    try {
-        const { ano, status } = req.query;
-
-        // Se não for "Todos", não retorna nada (front deve esconder)
-        if (status && status !== 'todos') {
-            return res.json({ rows: [], columns: ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'], headers: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] });
-        }
-
-        const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
-        if (!Number.isFinite(anoSel)) return res.status(400).json({ error: 'Ano inválido' });
-
-        const colunasKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        const colunasLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
-
-        const zerar = () => {
-            const o = {};
-            colunasKeys.forEach(k => o[k] = 0);
-            return o;
-        };
-
-        // Consulta base: títulos em aberto (Baixa IS NULL), com Financeiro preenchido, no ano selecionado
-        const sql = `
-            SELECT Codigo_plano, Nome, Mes, Ano, Valor_mov
-            FROM dfc_analitica
-            WHERE Ano = ?
-              AND Baixa IS NULL
-              AND Financeiro IS NOT NULL
-        `;
-        const [rows] = await pool.query(sql, [anoSel]);
-
-        const grupos = {
-            '1- Previsões a Receber': { conta: '1- Previsões a Receber', tipo: 'grupo', dados: zerar(), detalhes: [] },
-            '2- Previsões a Pagar': { conta: '2- Previsões a Pagar', tipo: 'grupo', dados: zerar(), detalhes: [] }
-        };
-
-        const addToGroup = (grupoKey, codigoPlano, nomePlano, mes, valor) => {
-            const chaveMes = mapaMeses[mes];
-            if (!chaveMes) return;
-
-            let item = grupos[grupoKey].detalhes.find(d => d.conta.startsWith(codigoPlano));
-            if (!item) {
-                item = { conta: `${codigoPlano} - ${nomePlano}`, tipo: 'item', dados: zerar() };
-                grupos[grupoKey].detalhes.push(item);
-            }
-            item.dados[chaveMes] += valor;
-            grupos[grupoKey].dados[chaveMes] += valor;
-        };
-
-        rows.forEach(r => {
-            const codigo = (r.Codigo_plano || '').toString().trim();
-            const nome = (r.Nome || '').toString().trim();
-            const mes = parseInt(r.Mes, 10);
-            const valor = Math.abs(parseFloat(r.Valor_mov) || 0); // previsões exibidas como valor positivo
-
-            if (codigo === '1.001.006') {
-                addToGroup('1- Previsões a Receber', codigo, nome || 'BOLETOS', mes, valor);
-            } else if (codigo === '2.001.001' || codigo === '2.001.002' || codigo === '2.001.003') {
-                addToGroup('2- Previsões a Pagar', codigo, nome || 'TÍTULO', mes, valor);
-            }
-        });
-
-        // Ordena itens numericamente
-        Object.values(grupos).forEach(g => {
-            g.detalhes.sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
-        });
-
-        return res.json({
-            columns: colunasKeys,
-            headers: colunasLabels,
-            rows: Object.values(grupos)
-        });
-    } catch (err) {
-        console.error('Erro /api/financeiro-dashboard:', err);
-        return res.status(500).json({ error: 'Erro ao montar tabela Financeiro.' });
-    }
-});
-
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
@@ -481,60 +392,113 @@ app.get('/api/dashboard', async (req, res) => {
             }
         });
 
-        const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
-
+        
         // ==============================
-// SALDO INICIAL (movimentos_contas)
-// Regras:
-// - Natureza = 'Saída' (ou 'Saida') subtrai o valor; 'Entrada' soma.
-// - Janeiro do ano selecionado = soma de todos os movimentos anteriores a 01/01 do ano.
-// - Meses seguintes: saldo inicial do mês = saldo final do mês anterior.
-// ==============================
-let saldoInicialPorColuna = zerarColunas();
-if (view !== 'anual') {
-    const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
-    if (Number.isFinite(anoSel)) {
-        const anoInicio = `${anoSel}-01-01`;
-        const sqlBase = `
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
-                    ELSE ABS(valor)
-                END
-            ),0) AS saldo
-            FROM movimentos_contas
-            WHERE Data_movimento < ?
-        `;
-        const [[baseRow]] = await pool.query(sqlBase, [anoInicio]);
-        const saldoJan = parseFloat(baseRow?.saldo || 0) || 0;
+        // SALDO INICIAL (movimentos_contas) + CUMULATIVO (a partir de Jan/2025)
+        // Regras:
+        // - Natureza = 'Entrada' soma, Natureza = 'Saída/Saida' subtrai
+        // - Saldo Inicial de Jan/2025 = liquidação de TODOS os anos anteriores (movimentos_contas)
+        // - Para frente: saldo final de Jan/2025 alimenta os próximos períodos (acumulado)
+        // ==============================
 
-        // Nets por mês no ano
-        const sqlNets = `
-            SELECT Mes, COALESCE(SUM(
-                CASE
-                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
-                    ELSE ABS(valor)
-                END
-            ),0) AS net
-            FROM movimentos_contas
-            WHERE Ano = ?
-            GROUP BY Mes
-        `;
-        const [netsRows] = await pool.query(sqlNets, [anoSel]);
-        const netPorMes = {};
-        netsRows.forEach(r => { netPorMes[parseInt(r.Mes,10)] = parseFloat(r.net || 0) || 0; });
+        const parseAnoNum = (a) => parseInt(a, 10);
+        const anoSelNum = ano ? parseAnoNum(ano) : null;
 
-        // Monta saldo inicial mensal
-        let running = saldoJan;
-        for (let m = 1; m <= 12; m++) {
-            const key = mapaMeses[m];
-            if (key && colunasKeys.includes(key)) saldoInicialPorColuna[key] = running;
-            running += (netPorMes[m] || 0);
+        const assinarValor = (naturezaStr, valor) => {
+            const n = (naturezaStr || '').toString().trim().toLowerCase();
+            const v = parseFloat(valor) || 0;
+            if (n.includes('saída') || n.includes('saida')) return -Math.abs(v);
+            return Math.abs(v);
+        };
+
+        // 1) Baseline: saldo acumulado até Dez/2024 (tudo antes de Jan/2025)
+        let baselineSaldoJan2025 = 0;
+        try {
+            const [rowsSaldoBase] = await pool.query(
+                `SELECT COALESCE(SUM(CASE
+                    WHEN LOWER(Natureza) LIKE '%saida%' OR LOWER(Natureza) LIKE '%saída%' THEN -ABS(valor)
+                    ELSE ABS(valor)
+                 END), 0) AS saldoBase
+                 FROM movimentos_contas
+                 WHERE CAST(Ano AS SIGNED) < 2025`
+            );
+            baselineSaldoJan2025 = parseFloat(rowsSaldoBase?.[0]?.saldoBase) || 0;
+        } catch (e) {
+            console.warn('[Saldo Inicial] Falha ao consultar movimentos_contas:', e.message);
+            baselineSaldoJan2025 = 0;
         }
-    }
-}
 
-let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'info' }];
+        // 2) Carry: soma dos fluxos do DFC (dfc_analitica) de Jan/2025 até o período anterior ao exibido
+        //    (necessário para anos > 2025 e para visão anual com primeiro ano > 2025)
+        let carryAntesPeriodo = 0;
+
+        // Determina "primeiro período exibido" para saber até onde acumular
+        let primeiroAnoExibido = null;
+        if (view === 'anual') {
+            const anosCols = colunasKeys.map(k => parseAnoNum(k)).filter(n => Number.isFinite(n)).sort((a,b)=>a-b);
+            primeiroAnoExibido = anosCols.length ? anosCols[0] : anoSelNum;
+        } else {
+            primeiroAnoExibido = anoSelNum;
+        }
+
+        if (Number.isFinite(primeiroAnoExibido) && primeiroAnoExibido > 2025) {
+            // Busca dfc_analitica de 2025 até ano anterior ao primeiro exibido (inclusive)
+            let queryCarry = 'SELECT Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
+            const paramsCarry = [];
+
+            queryCarry += ' AND CAST(Ano AS SIGNED) >= 2025 AND CAST(Ano AS SIGNED) < ?';
+            paramsCarry.push(primeiroAnoExibido);
+
+            // aplica o mesmo filtro de status do dashboard
+            if (status === 'realizado') {
+                queryCarry += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
+            } else if (status === 'aberto') {
+                queryCarry += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
+            }
+
+            const [rowsCarry] = await pool.query(queryCarry, paramsCarry);
+
+            rowsCarry.forEach(row => {
+                let y = row.Ano;
+                let mth = row.Mes;
+
+                // Mesma regra de competência para boletos (próximo dia útil)
+                if (row.Nome && row.Nome.toLowerCase().includes('boleto') && row.Dt_mov) {
+                    const dataUtil = getProximoDiaUtil(row.Dt_mov);
+                    mth = dataUtil.getMonth() + 1;
+                    y = dataUtil.getFullYear();
+                }
+
+                const valorAssinado = assinarValor(row.Natureza, row.Valor_mov);
+                // acumula tudo de 2025 até (primeiroAnoExibido-1)
+                if (Number.isFinite(parseAnoNum(y)) && parseAnoNum(y) >= 2025 && parseAnoNum(y) < primeiroAnoExibido) {
+                    carryAntesPeriodo += valorAssinado;
+                }
+            });
+        }
+
+        // 3) Saldo inicial por coluna exibida (acumulado)
+        const saldoInicialCols = zerarColunas();
+        const saldoFinalCols = zerarColunas();
+
+        // só aplicamos a regra a partir de 2025 (conforme solicitado)
+        let saldoAtual = 0;
+        if ((view === 'anual' && Number.isFinite(primeiroAnoExibido) && primeiroAnoExibido >= 2025) ||
+            (view !== 'anual' && Number.isFinite(anoSelNum) && anoSelNum >= 2025)) {
+            saldoAtual = baselineSaldoJan2025 + carryAntesPeriodo;
+        }
+
+        // ordem de colunas para acumular
+        const ordemColunas = colunasKeys.slice(); // já vem na ordem correta
+        ordemColunas.forEach(colKey => {
+            saldoInicialCols[colKey] = saldoAtual;
+            saldoAtual = saldoAtual + (FluxoGlobal[colKey] || 0);
+            saldoFinalCols[colKey] = saldoAtual;
+        });
+
+const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
+
+        let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }];
 
         ordemDesejada.forEach(titulo => {
             const g = grupos[titulo];
@@ -552,10 +516,9 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'inf
         const totalEntradasOperacionais = grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0;
         const totalSaidasOperacionais = grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0;
 
-        const linhaSaldoFinal = zerarColunas();
+        const linhaSaldoFinal = saldoFinalCols;
         const graficoData = [];
         colunasKeys.forEach(col => {
-            linhaSaldoFinal[col] = (saldoInicialPorColuna[col] || 0) + (FluxoGlobal[col] || 0);
             graficoData.push(FluxoOperacional[col]);
         });
 
@@ -568,7 +531,7 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'inf
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
+                saldoFinal: saldoFinalCols[colunasKeys[colunasKeys.length-1]] || 0
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
