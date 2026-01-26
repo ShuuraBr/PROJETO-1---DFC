@@ -1266,7 +1266,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const anoParam = app.yearDashboard;
             const viewParam = app.viewType || 'mensal';
 
-            const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
+            const res = await fetch(`/api/financeiro?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
             const data = await res.json();
             if (data.error) throw new Error(data.error);
 

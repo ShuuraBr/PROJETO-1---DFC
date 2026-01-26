@@ -927,8 +927,58 @@ table {
   transform: rotate(90deg);
 }
 
-/* Painel Financeiro só aparece quando Tipo de Visão = Todos */
-#financeiro-panel{ display:none !important;}
+/* =====================================================
+   FINANCEIRO (nova tabela do Dashboard)
+   - Visibilidade é controlada via JS (classe .is-hidden)
+   - Mantém o mesmo "design" e comportamento da tabela DFC
+   ===================================================== */
+
+#financeiro-panel{ display:flex; flex-direction:column; }
+#financeiro-panel.is-hidden{ display:none !important; }
+#financeiro-panel.is-hidden{ display:none !important; }
+
+/* Wrapper e tabela seguem o mesmo padrão do DFC */
+.financeiro-wrapper{ max-height: 420px; }
+
+#financeiro-table{ width: max-content !important; min-width: 100% !important; border-collapse: collapse; }
+
+#financeiro-table thead th{
+  background: #012d5a !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+#financeiro-table th,
+#financeiro-table td{
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* 1ª coluna fixa e mesma largura do DFC */
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+  position: sticky;
+  left: 0;
+  z-index: 110;
+  text-align: left;
+  min-width: var(--plano-col-min, 260px);
+  max-width: var(--plano-col-max, 380px);
+  border-right: 2px solid #e5e7eb;
+  padding-left: 14px;
+  background: #ffffff;
+}
+#financeiro-table thead th:first-child{ background:#012d5a !important; color:#fff !important; z-index: 130; }
+
+/* Hover / pré-seleção (mesmo do DFC) */
+#financeiro-table tbody tr:hover td{ background-color: #f3f4f6 !important; }
+
+/* Nível 1 em negrito */
+#financeiro-table tbody tr.grupo td{ font-weight: 700; }
 
 /* =====================================================
    SINCRONIZAR LARGURA DAS COLUNAS (DFC + FINANCEIRO)
@@ -1059,62 +1109,3 @@ table {
 
 /* Nível 1 no Financeiro em negrito */
 #financeiro-table tbody tr.grupo td{ font-weight: 700 !important; }
-
-
-
-/* ================================
-   FINANCEIRO (nova tabela) — visual igual ao DFC
-   ================================ */
-#financeiro-panel.hidden{ display:none !important; }
-
-#financeiro-table{
-  border-collapse: collapse;
-  width: max-content;
-  min-width: 100%;
-  table-layout: auto;
-}
-
-#financeiro-table thead th{
-  background: #012d5a;
-  color: #fff;
-  font-weight: 700;
-  position: sticky;
-  top: 0;
-  z-index: 120;
-  text-align: center;
-}
-
-#financeiro-table th, #financeiro-table td{
-  border: 1px solid #e5e7eb;
-  padding: 8px;
-  text-align: center;
-  white-space: nowrap;
-  font-size: 13px;
-}
-
-#financeiro-table th:first-child,
-#financeiro-table td:first-child{
-  position: sticky;
-  left: 0;
-  z-index: 130;
-  background: #fff;
-  text-align: left;
-  border-right: 2px solid #e5e7eb;
-  min-width: 220px;
-  max-width: 320px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-left: 14px;
-}
-
-#financeiro-table thead th:first-child{
-  background: #012d5a;
-  color: #fff;
-  z-index: 200;
-}
-
-#financeiro-table tbody tr:hover td{
-  background-color: #f3f4f6;
-}
-#financeiro-table tbody tr.grupo td{ font-weight: 700; }

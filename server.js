@@ -407,14 +407,24 @@ app.get('/api/dashboard', async (req, res) => {
             return obj;
         };
 
-        const normalizar = (str) => str ? str.trim().toLowerCase().replace(/\s+/g, ' ') : '';
+        const normalizar = (str) => {
+            if (!str) return '';
+            return str
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s*-\s*/g, '-')
+                .replace(/\s+/g, ' ');
+        };
         const configCategorias = {
             '01-entradas operacionais': '01- Entradas Operacionais',
-            '02- saidas operacionais': '02- Saídas Operacionais',
-            '03- operações financeiras': '03- Operações Financeiras',
-            '04- ativo imobilizado': '04- Ativo Imobilizado',
-            '06- movimentações de socios': '06- Movimentações de Sócios',
-            '07- caixas da loja': '07- Caixas da Loja'
+            '02-saidas operacionais': '02- Saídas Operacionais',
+            '03-operacoes financeiras': '03- Operações Financeiras',
+            '04-ativo imobilizado': '04- Ativo Imobilizado',
+            '06-movimentacoes de socios': '06- Movimentações de Sócios',
+            '07-caixas da loja': '07- Caixas da Loja'
         };
 
         let grupos = {};
@@ -616,11 +626,11 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'inf
 
         res.json({
             cards: {
-                saldoInicial: saldoInicialPorColuna[colunasKeys[0]] || 0, 
+                saldoInicial: saldoInicialCols[colunasKeys[0]] || 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: linhaSaldoFinal[colunasKeys[colunasKeys.length - 1]] || 0
+                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
