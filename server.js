@@ -273,6 +273,95 @@ app.get('/api/orcamento', async (req, res) => {
     }
 });
 
+
+
+// ==============================
+// TABELA FINANCEIRO (Dashboard)
+// - Só deve ser exibida quando status=view = "todos" (Tipo de Visão = Todos)
+// - Sem cálculos: apenas somas por mês dos títulos em aberto (Baixa IS NULL) com Financeiro preenchido
+// - Hierarquia:
+//   1- Previsões a Receber -> 1.001.006 - BOLETOS
+//   2- Previsões a Pagar   -> 2.001.001 / 2.001.002 / 2.001.003
+// ==============================
+app.get('/api/financeiro-dashboard', async (req, res) => {
+    try {
+        const { ano, status } = req.query;
+
+        // Se não for "Todos", não retorna nada (front deve esconder)
+        if (status && status !== 'todos') {
+            return res.json({ rows: [], columns: ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'], headers: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] });
+        }
+
+        const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
+        if (!Number.isFinite(anoSel)) return res.status(400).json({ error: 'Ano inválido' });
+
+        const colunasKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const colunasLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
+
+        const zerar = () => {
+            const o = {};
+            colunasKeys.forEach(k => o[k] = 0);
+            return o;
+        };
+
+        // Consulta base: títulos em aberto (Baixa IS NULL), com Financeiro preenchido, no ano selecionado
+        const sql = `
+            SELECT Codigo_plano, Nome, Mes, Ano, Valor_mov
+            FROM dfc_analitica
+            WHERE Ano = ?
+              AND Baixa IS NULL
+              AND Financeiro IS NOT NULL
+        `;
+        const [rows] = await pool.query(sql, [anoSel]);
+
+        const grupos = {
+            '1- Previsões a Receber': { conta: '1- Previsões a Receber', tipo: 'grupo', dados: zerar(), detalhes: [] },
+            '2- Previsões a Pagar': { conta: '2- Previsões a Pagar', tipo: 'grupo', dados: zerar(), detalhes: [] }
+        };
+
+        const addToGroup = (grupoKey, codigoPlano, nomePlano, mes, valor) => {
+            const chaveMes = mapaMeses[mes];
+            if (!chaveMes) return;
+
+            let item = grupos[grupoKey].detalhes.find(d => d.conta.startsWith(codigoPlano));
+            if (!item) {
+                item = { conta: `${codigoPlano} - ${nomePlano}`, tipo: 'item', dados: zerar() };
+                grupos[grupoKey].detalhes.push(item);
+            }
+            item.dados[chaveMes] += valor;
+            grupos[grupoKey].dados[chaveMes] += valor;
+        };
+
+        rows.forEach(r => {
+            const codigo = (r.Codigo_plano || '').toString().trim();
+            const nome = (r.Nome || '').toString().trim();
+            const mes = parseInt(r.Mes, 10);
+            const valor = Math.abs(parseFloat(r.Valor_mov) || 0); // previsões exibidas como valor positivo
+
+            if (codigo === '1.001.006') {
+                addToGroup('1- Previsões a Receber', codigo, nome || 'BOLETOS', mes, valor);
+            } else if (codigo === '2.001.001' || codigo === '2.001.002' || codigo === '2.001.003') {
+                addToGroup('2- Previsões a Pagar', codigo, nome || 'TÍTULO', mes, valor);
+            }
+        });
+
+        // Ordena itens numericamente
+        Object.values(grupos).forEach(g => {
+            g.detalhes.sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
+        });
+
+        return res.json({
+            columns: colunasKeys,
+            headers: colunasLabels,
+            rows: Object.values(grupos)
+        });
+    } catch (err) {
+        console.error('Erro /api/financeiro-dashboard:', err);
+        return res.status(500).json({ error: 'Erro ao montar tabela Financeiro.' });
+    }
+});
+
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
@@ -394,7 +483,58 @@ app.get('/api/dashboard', async (req, res) => {
 
         const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
 
-        let tabelaRows = [{ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' }];
+        // ==============================
+// SALDO INICIAL (movimentos_contas)
+// Regras:
+// - Natureza = 'Saída' (ou 'Saida') subtrai o valor; 'Entrada' soma.
+// - Janeiro do ano selecionado = soma de todos os movimentos anteriores a 01/01 do ano.
+// - Meses seguintes: saldo inicial do mês = saldo final do mês anterior.
+// ==============================
+let saldoInicialPorColuna = zerarColunas();
+if (view !== 'anual') {
+    const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
+    if (Number.isFinite(anoSel)) {
+        const anoInicio = `${anoSel}-01-01`;
+        const sqlBase = `
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
+                    ELSE ABS(valor)
+                END
+            ),0) AS saldo
+            FROM movimentos_contas
+            WHERE Data_movimento < ?
+        `;
+        const [[baseRow]] = await pool.query(sqlBase, [anoInicio]);
+        const saldoJan = parseFloat(baseRow?.saldo || 0) || 0;
+
+        // Nets por mês no ano
+        const sqlNets = `
+            SELECT Mes, COALESCE(SUM(
+                CASE
+                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
+                    ELSE ABS(valor)
+                END
+            ),0) AS net
+            FROM movimentos_contas
+            WHERE Ano = ?
+            GROUP BY Mes
+        `;
+        const [netsRows] = await pool.query(sqlNets, [anoSel]);
+        const netPorMes = {};
+        netsRows.forEach(r => { netPorMes[parseInt(r.Mes,10)] = parseFloat(r.net || 0) || 0; });
+
+        // Monta saldo inicial mensal
+        let running = saldoJan;
+        for (let m = 1; m <= 12; m++) {
+            const key = mapaMeses[m];
+            if (key && colunasKeys.includes(key)) saldoInicialPorColuna[key] = running;
+            running += (netPorMes[m] || 0);
+        }
+    }
+}
+
+let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'info' }];
 
         ordemDesejada.forEach(titulo => {
             const g = grupos[titulo];
@@ -415,7 +555,7 @@ app.get('/api/dashboard', async (req, res) => {
         const linhaSaldoFinal = zerarColunas();
         const graficoData = [];
         colunasKeys.forEach(col => {
-            linhaSaldoFinal[col] = FluxoGlobal[col];
+            linhaSaldoFinal[col] = (saldoInicialPorColuna[col] || 0) + (FluxoGlobal[col] || 0);
             graficoData.push(FluxoOperacional[col]);
         });
 
@@ -439,142 +579,6 @@ app.get('/api/dashboard', async (req, res) => {
         res.status(500).json({ error: "Erro interno" });
     }
 });
-
-
-// ==============================
-// FINANCEIRO (Nova Tabela - Dashboard)
-// ==============================
-// Regras:
-// - Só exibe no front quando Tipo de Visão = "Todos"
-// - Sem "cálculo" de DFC: apenas soma por competência (mês/ano) dos lançamentos EM ABERTO
-//   (Baixa IS NULL) e com Financeiro preenchido (Financeiro IS NOT NULL)
-// - Hierarquia:
-//   1- Previsões a Receber: 1.001.006 - BOLETOS
-//   2- Previsões a Pagar:  2.001.001 / 2.001.002 / 2.001.003
-app.get('/api/financeiro', async (req, res) => {
-    try {
-        const hoje = new Date();
-        const anoParam = parseInt(req.query.ano || hoje.getFullYear(), 10);
-        const viewParam = (req.query.view || 'mensal').toString();
-
-        if (!Number.isFinite(anoParam)) return res.status(400).json({ error: 'Ano inválido' });
-
-        let columns = [];
-        let headers = [];
-
-        if (viewParam === 'trimestral') {
-            columns = ['Q1','Q2','Q3','Q4'];
-            headers = ['1º Trim','2º Trim','3º Trim','4º Trim'];
-        } else if (viewParam === 'anual') {
-            // anual: retorna apenas o ano escolhido como coluna (mantemos compatível)
-            columns = [anoParam.toString()];
-            headers = [anoParam.toString()];
-        } else {
-            columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-            headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        }
-
-        const mapaMeses = { 1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun', 7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez' };
-
-        const planosReceber = [
-            { codigo: '1.001.006', nome: 'BOLETOS' }
-        ];
-        const planosPagar = [
-            { codigo: '2.001.001', nome: 'FORNECEDORES DE MERCADORIA PARA REVENDA' },
-            { codigo: '2.001.002', nome: 'FRETES SOBRE COMPRAS' },
-            { codigo: '2.001.003', nome: 'ICMS SOBRE COMPRAS' }
-        ];
-
-        const codigos = [...planosReceber, ...planosPagar].map(p => p.codigo);
-
-        const sql = `
-            SELECT Ano, Mes, Codigo_plano, Nome, Financeiro, Baixa, Valor_mov, Natureza
-            FROM dfc_analitica
-            WHERE Ano = ?
-              AND Baixa IS NULL
-              AND Financeiro IS NOT NULL
-              AND (
-                    Codigo_plano IN (${codigos.map(() => '?').join(',')})
-                    OR ${codigos.map(() => 'Financeiro LIKE ?').join(' OR ')}
-                  )
-        `;
-
-        const likeParams = codigos.map(c => `${c}%`);
-        const params = [anoParam, ...codigos, ...likeParams];
-
-        const [rows] = await pool.query(sql, params);
-
-        const zerarCols = () => {
-            const o = {};
-            columns.forEach(c => o[c] = 0);
-            return o;
-        };
-
-        const chaveColuna = (ano, mes) => {
-            if (viewParam === 'anual') return ano.toString();
-            if (viewParam === 'trimestral') return `Q${Math.ceil(mes / 3)}`;
-            return mapaMeses[mes];
-        };
-
-        // index por plano
-        const planoMap = new Map();
-        [...planosReceber, ...planosPagar].forEach(p => {
-            planoMap.set(p.codigo, { conta: `${p.codigo} - ${p.nome}`, tipo: 'item', ...zerarCols() });
-        });
-
-        // agrega
-        rows.forEach(r => {
-            const mes = parseInt(r.Mes, 10);
-            const ano = parseInt(r.Ano, 10);
-            const col = chaveColuna(ano, mes);
-            if (!columns.includes(col)) return;
-
-            const codigo = (r.Codigo_plano || '').toString();
-            const financeiro = (r.Financeiro || '').toString();
-
-            const matchCodigo = codigos.find(c => codigo === c || financeiro.startsWith(c));
-            if (!matchCodigo) return;
-
-            const valorAbs = parseFloat(r.Valor_mov) || 0;
-            const natureza = (r.Natureza || '').toString().toLowerCase();
-            const ehSaida = natureza.includes('saída') || natureza.includes('saida');
-            const valor = ehSaida ? -Math.abs(valorAbs) : Math.abs(valorAbs);
-
-            const item = planoMap.get(matchCodigo);
-            if (item) item[col] += valor;
-        });
-
-        // monta grupos
-        const receberGrupo = { conta: '1- Previsões a Receber', tipo: 'grupo', ...zerarCols(), detalhes: [] };
-        planosReceber.forEach(p => {
-            const item = planoMap.get(p.codigo);
-            if (item) {
-                receberGrupo.detalhes.push(item);
-                columns.forEach(c => receberGrupo[c] += item[c]);
-            }
-        });
-
-        const pagarGrupo = { conta: '2- Previsões a Pagar', tipo: 'grupo', ...zerarCols(), detalhes: [] };
-        planosPagar.forEach(p => {
-            const item = planoMap.get(p.codigo);
-            if (item) {
-                pagarGrupo.detalhes.push(item);
-                columns.forEach(c => pagarGrupo[c] += item[c]);
-            }
-        });
-
-        return res.json({
-            columns,
-            headers,
-            rows: [receberGrupo, pagarGrupo]
-        });
-
-    } catch (err) {
-        console.error('Erro /api/financeiro:', err);
-        return res.status(500).json({ error: 'Erro ao consultar Financeiro.' });
-    }
-});
-
 
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
