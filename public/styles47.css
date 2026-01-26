@@ -928,7 +928,7 @@ table {
 }
 
 /* Painel Financeiro só aparece quando Tipo de Visão = Todos */
-#financeiro-panel{ display:none !important; }
+#financeiro-panel{ display:none !important;}
 
 /* =====================================================
    SINCRONIZAR LARGURA DAS COLUNAS (DFC + FINANCEIRO)
@@ -1059,3 +1059,62 @@ table {
 
 /* Nível 1 no Financeiro em negrito */
 #financeiro-table tbody tr.grupo td{ font-weight: 700 !important; }
+
+
+
+/* ================================
+   FINANCEIRO (nova tabela) — visual igual ao DFC
+   ================================ */
+#financeiro-panel.hidden{ display:none !important; }
+
+#financeiro-table{
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+#financeiro-table thead th{
+  background: #012d5a;
+  color: #fff;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  text-align: center;
+}
+
+#financeiro-table th, #financeiro-table td{
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+#financeiro-table th:first-child,
+#financeiro-table td:first-child{
+  position: sticky;
+  left: 0;
+  z-index: 130;
+  background: #fff;
+  text-align: left;
+  border-right: 2px solid #e5e7eb;
+  min-width: 220px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 14px;
+}
+
+#financeiro-table thead th:first-child{
+  background: #012d5a;
+  color: #fff;
+  z-index: 200;
+}
+
+#financeiro-table tbody tr:hover td{
+  background-color: #f3f4f6;
+}
+#financeiro-table tbody tr.grupo td{ font-weight: 700; }

@@ -616,11 +616,11 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'inf
 
         res.json({
             cards: {
-                saldoInicial: saldoInicialCols[colunasKeys[0]] || 0, 
+                saldoInicial: saldoInicialPorColuna[colunasKeys[0]] || 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
+                saldoFinal: linhaSaldoFinal[colunasKeys[colunasKeys.length - 1]] || 0
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }

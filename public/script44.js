@@ -28,6 +28,7 @@ const app = {
         window.addEventListener('resize', () => {
             if (document.getElementById('finance-table')) {
                 app.setupFinanceStickyRows();
+                if (app.syncDfcFinanceiroColumns) app.syncDfcFinanceiroColumns();
             }
         });
 
@@ -1324,7 +1325,31 @@ setTimeout(() => app.renderChart(data.grafico), 50);
         });
 
         tbody.innerHTML = html;
+        setTimeout(() => { if (app.syncDfcFinanceiroColumns) app.syncDfcFinanceiroColumns(); }, 0);
     },
+    syncDfcFinanceiroColumns: () => {
+        const dfc = document.getElementById('finance-table');
+        const fin = document.getElementById('financeiro-table');
+        if (!dfc || !fin) return;
+
+        const dfcThs = dfc.querySelectorAll('thead th');
+        const finThs = fin.querySelectorAll('thead th');
+        if (!dfcThs.length || finThs.length !== dfcThs.length) return;
+
+        // Usa as larguras reais da DFC como referência
+        const widths = Array.from(dfcThs).map(th => th.getBoundingClientRect().width);
+
+        finThs.forEach((th, i) => { th.style.width = widths[i] + 'px'; });
+        // aplica também nas células do corpo (1ª linha é suficiente para fixar table-layout)
+        const finFirstRow = fin.querySelector('tbody tr');
+        if (finFirstRow) {
+            const tds = finFirstRow.children;
+            for (let i = 0; i < tds.length; i++) {
+                if (widths[i]) tds[i].style.width = widths[i] + 'px';
+            }
+        }
+    },
+
 
     toggleFinanceiroGroup: (idPai, trEl) => {
         const filhos = document.querySelectorAll(`.fpai-${idPai}`);
