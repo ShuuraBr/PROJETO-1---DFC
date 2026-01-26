@@ -485,53 +485,105 @@ app.get('/api/dashboard', async (req, res) => {
 
         // ==============================
 // SALDO INICIAL (movimentos_contas)
-// Regras:
-// - Natureza = 'Saída' (ou 'Saida') subtrai o valor; 'Entrada' soma.
-// - Janeiro do ano selecionado = soma de todos os movimentos anteriores a 01/01 do ano.
-// - Meses seguintes: saldo inicial do mês = saldo final do mês anterior.
 // ==============================
-let saldoInicialPorColuna = zerarColunas();
-if (view !== 'anual') {
-    const anoSel = ano ? parseInt(ano, 10) : new Date().getFullYear();
-    if (Number.isFinite(anoSel)) {
-        const anoInicio = `${anoSel}-01-01`;
-        const sqlBase = `
-            SELECT COALESCE(SUM(
-                CASE
-                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
-                    ELSE ABS(valor)
-                END
-            ),0) AS saldo
-            FROM movimentos_contas
-            WHERE CAST(Ano AS UNSIGNED) < ?
-        `;
-        const [[baseRow]] = await pool.query(sqlBase, [anoSel]);
-        const saldoJan = parseFloat(baseRow?.saldo || 0) || 0;
+// Regra (ciclo por ano):
+// - Janeiro do ano selecionado: soma líquida de TODOS os anos anteriores (Entrada + / Saída -)
+// - Meses seguintes (ou trimestres): saldo do início do período = saldo do período anterior + líquido do período anterior
+// - Na visão ANUAL: cada coluna-ano mostra o saldo do início daquele ano (soma de todos os anos anteriores)
+let saldoInicialPorColuna = null;
 
-        // Nets por mês no ano
-        const sqlNets = `
-            SELECT Mes, COALESCE(SUM(
-                CASE
-                    WHEN LOWER(Natureza) LIKE 'sa%ida%' THEN -ABS(valor)
-                    ELSE ABS(valor)
-                END
-            ),0) AS net
-            FROM movimentos_contas
-            WHERE Ano = ?
-            GROUP BY Mes
-        `;
-        const [netsRows] = await pool.query(sqlNets, [anoSel]);
-        const netPorMes = {};
-        netsRows.forEach(r => { netPorMes[parseInt(r.Mes,10)] = parseFloat(r.net || 0) || 0; });
+try {
+    // Se não existir a tabela movimentos_contas em algum ambiente, não quebra o dashboard.
+    // Só tenta calcular quando há colunas mensais/trimestrais/anuais.
+    if (colunasKeys && colunasKeys.length > 0) {
+        const anoSel = parseInt(ano || hoje.getFullYear(), 10);
 
-        // Monta saldo inicial mensal
-        let running = saldoJan;
-        for (let m = 1; m <= 12; m++) {
-            const key = mapaMeses[m];
-            if (key && colunasKeys.includes(key)) saldoInicialPorColuna[key] = running;
-            running += (netPorMes[m] || 0);
+        const liquidoExpr = `SUM(CASE
+            WHEN LOWER(TRIM(Natureza)) IN ('saída','saida') THEN -ABS(COALESCE(valor,0))
+            WHEN LOWER(TRIM(Natureza)) = 'entrada' THEN  ABS(COALESCE(valor,0))
+            ELSE COALESCE(valor,0)
+        END)`;
+
+        if (view === 'anual') {
+            // Cada coluna é um ano: saldo do início do ano = soma líquida de todos os anos anteriores
+            saldoInicialPorColuna = {};
+            for (const anoCol of colunasKeys) {
+                const a = parseInt(anoCol, 10);
+                if (!Number.isFinite(a)) { saldoInicialPorColuna[anoCol] = 0; continue; }
+
+                const sqlBaseAno = `
+                    SELECT COALESCE(${liquidoExpr}, 0) AS saldoBase
+                    FROM movimentos_contas
+                    WHERE CAST(Ano AS UNSIGNED) < ?
+                `;
+                const [rowsBaseAno] = await pool.query(sqlBaseAno, [a]);
+                saldoInicialPorColuna[anoCol] = Number(rowsBaseAno?.[0]?.saldoBase || 0);
+            }
+        } else {
+            // Base do ano selecionado (Janeiro): soma de todos os anos anteriores
+            const sqlSaldoBase = `
+                SELECT COALESCE(${liquidoExpr}, 0) AS saldoBase
+                FROM movimentos_contas
+                WHERE CAST(Ano AS UNSIGNED) < ?
+            `;
+            const [rowsSaldoBase] = await pool.query(sqlSaldoBase, [anoSel]);
+            const saldoJan = Number(rowsSaldoBase?.[0]?.saldoBase || 0);
+
+            // Líquido por mês do ano selecionado (para compor os saldos dos meses/trimestres)
+            const sqlNets = `
+                SELECT CAST(Mes AS UNSIGNED) AS MesNum,
+                       COALESCE(${liquidoExpr}, 0) AS netMes
+                FROM movimentos_contas
+                WHERE CAST(Ano AS UNSIGNED) = ?
+                GROUP BY CAST(Mes AS UNSIGNED)
+            `;
+            const [rowsNets] = await pool.query(sqlNets, [anoSel]);
+
+            const netPorMes = {};
+            rowsNets.forEach(r => { netPorMes[Number(r.MesNum)] = Number(r.netMes || 0); });
+
+            if (view === 'trimestral') {
+                // Saldo do início de cada trimestre
+                // Q1 inicia em Jan (1), Q2 em Abr (4), Q3 em Jul (7), Q4 em Out (10)
+                saldoInicialPorColuna = { Q1: 0, Q2: 0, Q3: 0, Q4: 0 };
+                let running = saldoJan;
+
+                // Q1
+                saldoInicialPorColuna.Q1 = running;
+
+                // Avança Jan–Mar para chegar no início do Q2
+                for (let m = 1; m <= 3; m++) running += (netPorMes[m] || 0);
+                saldoInicialPorColuna.Q2 = running;
+
+                // Avança Abr–Jun para início do Q3
+                for (let m = 4; m <= 6; m++) running += (netPorMes[m] || 0);
+                saldoInicialPorColuna.Q3 = running;
+
+                // Avança Jul–Set para início do Q4
+                for (let m = 7; m <= 9; m++) running += (netPorMes[m] || 0);
+                saldoInicialPorColuna.Q4 = running;
+            } else {
+                // Mensal: saldo inicial de cada mês = running antes de aplicar o líquido do próprio mês
+                const chavesMes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+                saldoInicialPorColuna = {};
+                let running = saldoJan;
+
+                for (let m = 1; m <= 12; m++) {
+                    const chave = chavesMes[m - 1];
+                    saldoInicialPorColuna[chave] = running;
+                    running += (netPorMes[m] || 0);
+                }
+            }
         }
     }
+} catch (e) {
+    console.warn('Aviso: não foi possível calcular Saldo Inicial via movimentos_contas:', e.message);
+    saldoInicialPorColuna = null;
+}
+
+// Fallback (se não calculou): zera
+if (!saldoInicialPorColuna) {
+    saldoInicialPorColuna = zerarColunas();
 }
 
 let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialPorColuna, tipo: 'info' }];
