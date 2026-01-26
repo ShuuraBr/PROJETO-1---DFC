@@ -1339,3 +1339,56 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 };
 
 document.addEventListener('DOMContentLoaded', app.init);
+
+
+/* =========================================================
+   PATCH FINAL — VISIBILIDADE DO FINANCEIRO (DASHBOARD)
+   - Mostra Financeiro apenas quando Tipo de Visão = "Todos"
+   - Em outros valores, esconde o painel e não deixa "sobrar" box
+   - Não altera sua lógica existente; só garante o toggle
+   ========================================================= */
+(function(){
+  function getTipoVisao(){
+    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
+    return sel ? (sel.value || '').toLowerCase() : 'todos';
+  }
+
+  function setFinanceiroVisible(show){
+    const panel = document.getElementById('financeiro-panel');
+    if (!panel) return;
+    if (show) {
+      panel.classList.remove('hidden');
+      panel.style.removeProperty('display'); // evita conflitos
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+
+  async function refreshFinanceiroIfNeeded(){
+    const tipo = getTipoVisao();
+    const show = (tipo === 'todos');
+    setFinanceiroVisible(show);
+
+    // Se existir a sua função, chamamos só quando precisa
+    if (show) {
+      // tenta chamar a função já existente no seu app
+      if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
+        await window.app.fetchFinanceiroData();
+      } else if (window.app && typeof window.app.fetchFinanceiroDashboard === 'function') {
+        await window.app.fetchFinanceiroDashboard();
+      }
+      // sincroniza colunas se existir
+      if (window.app && typeof window.app.syncFinanceiroColumns === 'function') {
+        setTimeout(window.app.syncFinanceiroColumns, 0);
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('dashboard-status-view') || document.getElementById('status-view');
+    if (sel) sel.addEventListener('change', () => { refreshFinanceiroIfNeeded(); });
+    // primeira carga
+    setTimeout(refreshFinanceiroIfNeeded, 200);
+  });
+})();
+
