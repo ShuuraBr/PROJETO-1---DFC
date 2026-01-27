@@ -309,10 +309,18 @@ async function handleFinanceiroDashboard(req, res) {
       return o;
     };
 
-    // Agrega valores por plano e mês.
-    // Código pode vir em Codigo_plano (preferencial) ou no prefixo do campo Financeiro.
+    const normalizar = (s) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+    const ehSaidaOperacional = (origem) => {
+      const o = normalizar(origem);
+      // cobre variações comuns: "02- Saídas Operacionais", "02 - Saidas operacionais", etc.
+      return o.includes('02') && o.includes('sa') && o.includes('oper');
+    };
+
+    // Consulta base: títulos em aberto (Baixa IS NULL) e com Financeiro preenchido, no ano selecionado.
+    // OBS: o Código pode vir em Codigo_plano (preferencial) ou no prefixo do campo Financeiro.
     const sql = `
       SELECT
+        Origem_DFC,
         COALESCE(NULLIF(TRIM(Codigo_plano), ''), NULLIF(SUBSTRING(TRIM(Financeiro), 1, 9), '')) AS Codigo,
         COALESCE(NULLIF(TRIM(Nome), ''), TRIM(Financeiro)) AS Nome,
         Mes,
@@ -323,52 +331,64 @@ async function handleFinanceiroDashboard(req, res) {
         Baixa IS NULL
         AND Financeiro IS NOT NULL
         AND Ano = ?
-      GROUP BY Codigo, Nome, Mes, Ano
+      GROUP BY Origem_DFC, Codigo, Nome, Mes, Ano
       ORDER BY Codigo, Mes
     `;
     const [rows] = await pool.query(sql, [ano]);
 
-    const porCodigo = new Map();
+    // Agrega por código para montar as linhas (detalhes) por grupo
+    const mapByCodigo = new Map();
     for (const r of rows) {
       const codigo = (r.Codigo || '').toString().trim();
       if (!codigo) continue;
+
       const mesKey = mapaMeses[Number(r.Mes)];
       if (!mesKey) continue;
 
       const nome = (r.Nome || '').toString().trim();
       const conta = nome ? `${codigo} - ${nome}` : codigo;
 
-      if (!porCodigo.has(codigo)) porCodigo.set(codigo, { conta, dados: zeros() });
-      porCodigo.get(codigo).dados[mesKey] += Number(r.valor || 0);
+      if (!mapByCodigo.has(codigo)) {
+        mapByCodigo.set(codigo, { conta, dados: zeros(), origemDFC: r.Origem_DFC });
+      }
+      const ref = mapByCodigo.get(codigo);
+      // mantém a origem mais “forte” (se vier vazia em algum registro, não sobrescreve)
+      if (!ref.origemDFC && r.Origem_DFC) ref.origemDFC = r.Origem_DFC;
+
+      ref.dados[mesKey] += Number(r.valor || 0);
     }
 
-    const itensReceber = [
-      { codigo: '1.001.006', labelFallback: 'BOLETOS' },
-    ];
-    const itensPagar = [
-      { codigo: '2.001.001', labelFallback: 'FORNECEDORES DE MERCADORIA PARA REVENDA' },
-      { codigo: '2.001.002', labelFallback: 'FRETES SOBRE COMPRAS' },
-      { codigo: '2.001.003', labelFallback: 'ICMS SOBRE COMPRAS' },
-    ];
+    // Grupo 1: Previsões a Receber — BOLETOS (1.001.006)
+    const receberDetalhes = [];
+    const boleto = mapByCodigo.get('1.001.006');
+    receberDetalhes.push(
+      boleto
+        ? { conta: boleto.conta, tipo: 'item', dados: boleto.dados }
+        : { conta: '1.001.006 - BOLETOS', tipo: 'item', dados: zeros() }
+    );
 
-    const buildItem = (it) => {
-      const found = porCodigo.get(it.codigo);
-      if (found) return { conta: found.conta, tipo: 'item', dados: found.dados };
-      return { conta: `${it.codigo} - ${it.labelFallback}`, tipo: 'item', dados: zeros() };
-    };
+    // Grupo 2: Previsões a Pagar — SOMENTE Origem_DFC = 02- Saídas Operacionais (em aberto)
+    // IMPORTANTE: conforme solicitado, NÃO filtra por 2.001.001/2.001.002/2.001.003.
+    const pagarDetalhes = [];
+    for (const [codigo, item] of mapByCodigo.entries()) {
+      if (codigo === '1.001.006') continue; // já está no Receber
+      if (ehSaidaOperacional(item.origemDFC)) {
+        pagarDetalhes.push({ conta: item.conta, tipo: 'item', dados: item.dados });
+      }
+    }
+    pagarDetalhes.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
 
-    const buildGrupo = (titulo, itens) => {
-      const detalhes = itens.map(buildItem);
+    const somaTotal = (detalhes) => {
       const total = zeros();
       detalhes.forEach(d => colKeys.forEach(k => total[k] += Number((d.dados && d.dados[k]) || 0)));
-      return { conta: titulo, tipo: 'grupo', dados: total, detalhes };
+      return total;
     };
 
     return res.json({
       year: ano,
       rows: [
-        buildGrupo('1- Previsões a Receber', itensReceber),
-        buildGrupo('2- Previsões a Pagar', itensPagar),
+        { conta: '1- Previsões a Receber', tipo: 'grupo', dados: somaTotal(receberDetalhes), detalhes: receberDetalhes },
+        { conta: '2- Previsões a Pagar', tipo: 'grupo', dados: somaTotal(pagarDetalhes), detalhes: pagarDetalhes },
       ],
     });
   } catch (e) {
@@ -398,7 +418,7 @@ app.get('/api/dashboard', async (req, res) => {
     // --- FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
     if (status === 'realizado') {
       query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
-    } else if (status === 'todos') {
+    } else if (status === 'aberto') {
       query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
     }
 
