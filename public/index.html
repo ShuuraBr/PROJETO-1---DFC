@@ -45,7 +45,7 @@
     <div id="view-login" class="view-container">
         <div class="login-card">
             <div class="login-header">
-                <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                      alt="Logotipo" 
                      class="login-brand-logo">
                 
@@ -131,29 +131,21 @@
                             <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
                         </div>
 
-                        <div class="filter-field">
-                            <label for="dashboard-status-view">Tipo de Visão</label>
-                            <select id="dashboard-status-view" class="select-ano">
-                                <option value="todos" selected>Todos</option>
-                                <option value="realizado">Somente Realizado</option>
-                            </select>
-                        </div>
+                        <select id="dashboard-status-view" class="select-ano">
+                            <option value="todos" selected>Todos</option>
+                            <option value="realizado">Somente Realizado</option>
+                        </select>
 
-                        <div class="filter-field">
-                            <label for="dashboard-view-type">Período</label>
-                            <select id="dashboard-view-type" class="select-ano">
-                                <option value="mensal" selected>Mensal</option>
-                                <option value="trimestral">Trimestral</option>
-                                <option value="anual">Anual</option>
-                            </select>
-                        </div>
+                        <select id="dashboard-view-type" class="select-ano">
+                            <option value="mensal" selected>Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="anual">Anual</option>
+                        </select>
 
-                        <div class="filter-field">
-                            <label for="ano-dashboard">Ano</label>
-                            <select id="ano-dashboard" class="select-ano"></select>
-                        </div>
+                        <select id="ano-dashboard" class="select-ano">
+                        </select>
                         
-                        <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
@@ -170,11 +162,11 @@
                             </table>
                         </div>
                     </div>
-                    
-                    
-                    <div class="panel table-panel" id="financeiro-panel" style="margin-bottom: 30px;">
+
+                    <!-- Tabela Financeiro (apenas quando Tipo de Visão = Todos) -->
+                    <div class="panel table-panel" id="financeiro-panel" style="margin-bottom: 30px; display: none;">
                         <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Financeiro</h3></div>
-                        <div class="table-wrapper" id="financeiro-wrapper">
+                        <div class="table-wrapper">
                             <table id="financeiro-table">
                                 <thead></thead>
                                 <tbody></tbody>
@@ -199,18 +191,13 @@
                         </p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                        <div class="filter-field">
-                            <label for="filtro-dep-orcamento">Departamento</label>
-                            <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
-                                <option value="">Todos Departamentos</option>
-                            </select>
-                        </div>
+                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+                            <option value="">Todos Departamentos</option>
+                        </select>
 
-                        <div class="filter-field">
-                            <label for="ano-orcamento">Ano</label>
-                            <select id="ano-orcamento" class="select-ano"></select>
-                        </div>
-                        <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                        <select id="ano-orcamento" class="select-ano">
+                        </select>
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada.jpg" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
@@ -368,6 +355,6 @@
         </main>
     </div>
 
-    <script src="script46.js"></script>
+    <script src="script47.js"></script>
 </body>
 </html>
