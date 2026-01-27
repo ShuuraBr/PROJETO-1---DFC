@@ -1,10 +1,5 @@
 
-// ==============================
-// FINANCEIRO (LEGADO)
-// Esta versão antiga conflita com a implementação atual (IIFE) no fim do arquivo.
-// Mantemos aqui com nomes "_legacy" para evitar sobrescrita.
-// ==============================
-function renderFinanceiroDashboard_legacy(payload) {
+function renderFinanceiroDashboard(payload) {
     const tbody = document.querySelector('#financeiro-table tbody');
     if (!tbody) return;
 
@@ -78,7 +73,7 @@ function renderFinanceiroDashboard_legacy(payload) {
     });
 }
 
-async function fetchFinanceiroDashboard_legacy(ano) {
+async function fetchFinanceiroDashboard(ano) {
     const url = `/api/financeiro?ano=${encodeURIComponent(ano)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Erro ao buscar Financeiro (${res.status})`);
@@ -1491,11 +1486,6 @@ document.addEventListener('DOMContentLoaded', app.init);
         return el && el.value ? el.value : 'todos';
     }
 
-	function getViewSelecionada() {
-		const el = document.getElementById('dashboard-view-type');
-		return el && el.value ? el.value : 'mensal';
-	}
-
     function getColsFromDashboard() {
         const keys = (window.__dashboardCols && Array.isArray(window.__dashboardCols.keys)) ? window.__dashboardCols.keys : fallbackKeys;
         const labels = (window.__dashboardCols && Array.isArray(window.__dashboardCols.labels)) ? window.__dashboardCols.labels : fallbackLabels;
@@ -1508,13 +1498,12 @@ document.addEventListener('DOMContentLoaded', app.init);
         financeiroPanel.style.display = show ? '' : 'none';
     }
 
-	async function fetchFinanceiroDashboard() {
-		const ano = getAnoSelecionado();
-		const status = getStatusSelecionado(); // "todos" | "realizado" | "aberto"
-		const view = getViewSelecionada();
-		const qs = new URLSearchParams({ ano, status, view });
+    async function fetchFinanceiroDashboard() {
+        const ano = getAnoSelecionado();
+        const status = getStatusSelecionado(); // aqui esperamos "todos" ou "realizado"
+        const qs = new URLSearchParams({ ano, status });
 
-		const resp = await fetch(`/api/financeiro-dashboard?${qs.toString()}`);
+        const resp = await fetch(`/api/financeiro-dashboard?${qs.toString()}`);
         if (!resp.ok) throw new Error('Falha ao buscar Financeiro.');
         return resp.json();
     }
@@ -1679,10 +1668,10 @@ document.addEventListener('DOMContentLoaded', app.init);
     window.refreshFinanceiroIfNeeded = refreshFinanceiroIfNeeded;
 
     // Garantir atualização ao trocar filtros relevantes
-		document.addEventListener('DOMContentLoaded', () => {
-			const st = document.getElementById('dashboard-status-view');
-			const ano = document.getElementById('year-select');
-			const periodo = document.getElementById('dashboard-view-type');
+    document.addEventListener('DOMContentLoaded', () => {
+        const st = document.getElementById('dashboard-status-view');
+        const ano = document.getElementById('ano-dashboard');
+        const periodo = document.getElementById('dashboard-view');
 
         if (st) st.addEventListener('change', () => refreshFinanceiroIfNeeded());
         if (ano) ano.addEventListener('change', () => refreshFinanceiroIfNeeded());
