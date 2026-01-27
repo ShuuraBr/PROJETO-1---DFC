@@ -74,7 +74,8 @@ function renderFinanceiroDashboard(payload) {
 }
 
 async function fetchFinanceiroDashboard(ano) {
-    const url = `/api/financeiro?ano=${encodeURIComponent(ano)}`;
+    const anoFinal = ano || (window.app && window.app.yearDashboard) || (document.getElementById('select-ano-dashboard') ? document.getElementById('select-ano-dashboard').value : undefined) || new Date().getFullYear();
+    const url = `/api/financeiro?ano=${encodeURIComponent(anoFinal)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Erro ao buscar Financeiro (${res.status})`);
     return await res.json();
@@ -1655,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', app.init);
         }
 
         try {
-            const data = await fetchFinanceiroDashboard();
+            const data = await fetchFinanceiroDashboard((window.app && window.app.yearDashboard) || undefined);
             renderFinanceiroDashboard(data);
         } catch (e) {
             console.error('[Financeiro] Erro ao renderizar:', e);
