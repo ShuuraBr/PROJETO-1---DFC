@@ -1498,16 +1498,10 @@ document.addEventListener('DOMContentLoaded', app.init);
         financeiroPanel.style.display = show ? '' : 'none';
     }
 
-    function getViewSelecionada() {
-        const el = document.getElementById('dashboard-view-type');
-        return el && el.value ? el.value : 'mensal';
-    }
-
     async function fetchFinanceiroDashboard() {
         const ano = getAnoSelecionado();
         const status = getStatusSelecionado(); // aqui esperamos "todos" ou "realizado"
-        const view = getViewSelecionada();
-        const qs = new URLSearchParams({ ano, status, view });
+        const qs = new URLSearchParams({ ano, status });
 
         const resp = await fetch(`/api/financeiro-dashboard?${qs.toString()}`);
         if (!resp.ok) throw new Error('Falha ao buscar Financeiro.');
