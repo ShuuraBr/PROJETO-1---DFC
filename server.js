@@ -398,7 +398,7 @@ app.get('/api/dashboard', async (req, res) => {
     // --- FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
     if (status === 'realizado') {
       query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
-    } else if (status === 'aberto') {
+    } else if (status === 'todos') {
       query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
     }
 
