@@ -1671,7 +1671,7 @@ document.addEventListener('DOMContentLoaded', app.init);
     document.addEventListener('DOMContentLoaded', () => {
         const st = document.getElementById('dashboard-status-view');
         const ano = document.getElementById('ano-dashboard');
-        const periodo = document.getElementById('dashboard-view');
+        const periodo = document.getElementById('dashboard-view-type') || document.getElementById('dashboard-view');
 
         if (st) st.addEventListener('change', () => refreshFinanceiroIfNeeded());
         if (ano) ano.addEventListener('change', () => refreshFinanceiroIfNeeded());
