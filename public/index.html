@@ -189,13 +189,18 @@
                             Responsável: <span id="user-info-orcamento" style="font-weight:600;">...</span>
                         </p>
                     </div>
-                    <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-                        <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
-                            <option value="">Todos Departamentos</option>
-                        </select></div>
+                    <div class="actions" style="display: flex; gap: 15px; align-items: flex-end;">
+	                        <div class="filter-field">
+	                            <div class="filter-label">Departamento</div>
+	                            <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+	                                <option value="">Todos Departamentos</option>
+	                            </select>
+	                        </div>
 
-                        <div class="filter-field"><span class="filter-label">Ano</span><select id="ano-orcamento" class="select-ano">
-                        </select>
+	                        <div class="filter-field">
+	                            <div class="filter-label">Ano</div>
+	                            <select id="ano-orcamento" class="select-ano"></select>
+	                        </div>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
