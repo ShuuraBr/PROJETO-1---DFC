@@ -415,14 +415,18 @@ app.get('/api/dashboard', async (req, res) => {
       params.push(ano, parseInt(ano) - 1);
     }
 
-    // --- FILTRO POR STATUS (REALIZADO / EM ABERTO) ---
-    if (status === 'realizado') {
-      query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NOT NULL)';
-    } else if (status === 'aberto') {
-      query += ' AND (NOT (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") OR Baixa IS NULL)';
-    }
+    // --- FILTRO POR STATUS / TIPO DE VISÃO ---
+// Regras:
+// - Todos: não filtra Baixa (traz tudo)
+// - Somente Realizado: Baixa IS NOT NULL
+// - Em Aberto: Baixa IS NULL
+if (status === 'realizado') {
+  query += ' AND Baixa IS NOT NULL';
+} else if (status === 'aberto') {
+  query += ' AND Baixa IS NULL';
+}
 
-    const [rawData] = await pool.query(query, params);
+const [rawData] = await pool.query(query, params);
 
     let colunasKeys = [];
     let colunasLabels = [];
@@ -643,7 +647,16 @@ app.get('/api/dashboard', async (req, res) => {
       graficoData.push(FluxoOperacional[col] || 0);
     });
 
-    tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
+    // Linha: Representatividade de Caixa
+// Regra: soma de todos os planos (movimentação do período), excluindo o Saldo Inicial.
+// Como o Saldo Final é (Saldo Inicial + FluxoGlobal), aqui usamos apenas FluxoGlobal.
+const linhaRepresentatividade = zerarColunas();
+colunasKeys.forEach(col => {
+  linhaRepresentatividade[col] = (FluxoGlobal[col] || 0);
+});
+tabelaRows.push({ conta: 'Representatividade de Caixa', ...linhaRepresentatividade, tipo: 'info' });
+
+tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
 
     const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
 
