@@ -642,7 +642,7 @@ function parentFromChildren(children, periodCfg) {
   return out;
 }
 
-app.get('/api/financeiro-dashboard', authenticateToken, async (req, res) => {
+app.get('/api/financeiro-dashboard', async (req, res) => {
   try {
     const ano = Number(req.query.ano) || new Date().getFullYear();
     const period = buildFinanceiroPeriod(req.query.view || req.query.periodo || 'mensal');
