@@ -1134,3 +1134,55 @@ table {
 
 /* Nível 1 no Financeiro em negrito */
 #financeiro-table tbody tr.grupo td{ font-weight: 700 !important; }
+
+
+/* =========================================================
+   PATCH — ORÇAMENTO: rótulos acima + filtros lado a lado
+   (corrige layout/posicionamento na aba Orçamento)
+========================================================= */
+#page-orcamento .top-bar{
+  align-items: center;
+}
+
+#page-orcamento .top-bar .actions{
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+#page-orcamento .filter-field{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+#page-orcamento .filter-field label{
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1;
+}
+
+#page-orcamento .filter-field select{
+  min-width: 220px;
+}
+
+@media (max-width: 768px){
+  #page-orcamento .top-bar .actions{
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #page-orcamento .filter-field,
+  #page-orcamento .filter-field select{
+    width: 100%;
+  }
+}
+
