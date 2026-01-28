@@ -1186,3 +1186,31 @@ table {
   }
 }
 
+
+
+/* =========================================================
+   PATCH (FINAL v2)
+   - Labels acima dos filtros (Dashboard + Orçamento)
+   - Filtros lado a lado (layout antigo)
+   ========================================================= */
+.filters-row{
+  display:flex;
+  align-items:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.filter-field{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.filter-label{
+  font-size:12px;
+  font-weight:700;
+  color: var(--text-muted);
+  line-height: 1;
+}
+@media (max-width: 768px){
+  .filters-row{ width:100%; }
+  .filter-field{ width:100%; }
+}
