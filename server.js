@@ -241,11 +241,17 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Baixa FROM dfc_analitica WHERE 1=1 `;
+        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
-        // Busca um range de 2 anos para capturar boletos que podem transbordar o ano
-        if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
-        // Somente Realizado (mesma regra da aba Dashboard): Baixa IS NOT NULL, exceto DINHEIRO/PIX
+        // Mantém a MESMA lógica de busca da aba Dashboard para o filtro "Somente realizado":
+        // Para visões não anuais (mensal/trimestral), inclui também o ANO ANTERIOR apenas para BOLETOS e CARTÕES,
+        // pois podem cair em competência do ano selecionado após a regra do próximo dia útil (boletos) / fechamento (cartões).
+        if (ano) {
+            queryReal += ' AND (Ano = ? OR ( (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
+            paramsReal.push(ano, parseInt(ano) - 1);
+        }
+        // "Somente Realizado": Baixa IS NOT NULL
+        // Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         queryReal += ' ORDER BY Dt_mov';
 
@@ -725,7 +731,7 @@ const representatividadeCols = zerarColunas();
 colunasKeys.forEach(col => {
   representatividadeCols[col] = FluxoGlobal[col];
 });
-tabelaRows.push({ conta: 'Fluxo Caixa Livre - FCL', ...representatividadeCols, tipo: 'info' });
+tabelaRows.push({ conta: 'Representatividade de Caixa', ...representatividadeCols, tipo: 'info' });
 
 // -----------------------------------------------------------------
 // SALDO FINAL (por coluna) = Saldo Inicial + Movimento Líquido do Período
