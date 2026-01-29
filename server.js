@@ -250,6 +250,11 @@ app.get('/api/orcamento', async (req, res) => {
             queryReal += ' AND (Ano = ? OR ( (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
             paramsReal.push(ano, parseInt(ano) - 1);
         }
+        // IMPORTANTE: NÃO filtramos Origem_DFC via SQL com LIKE, porque o banco pode variar
+        // ("01 - Entradas...", "01- Entradas...", espaços, acentos etc.).
+        // Para garantir que o Realizado do Orçamento bata 1:1 com o Demonstrativo do Dashboard
+        // (filtro "Somente realizado"), aplicamos o MESMO mapeamento robusto em JS,
+        // usando a função normalizar() e o configCategorias.
         // "Somente Realizado": Baixa IS NOT NULL
         // Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
@@ -257,8 +262,36 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
+
+        // Para garantir que o "Realizado" do Orçamento seja idêntico ao Demonstrativo (Dashboard)
+        // quando o filtro é "Somente realizado", aplicamos o MESMO mapeamento robusto de Origem_DFC
+        // (normalização + whitelist de categorias 01/02/03/04/06/07) aqui no backend.
+        const normalizarOrigem = (str) => {
+            if (!str) return '';
+            return str
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s*-\s*/g, '-')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
+
+        const categoriasValidas = new Set([
+            normalizarOrigem('01- Entradas Operacionais'),
+            normalizarOrigem('02- Saídas Operacionais'),
+            normalizarOrigem('03- Operações Financeiras'),
+            normalizarOrigem('04- Ativo Imobilizado'),
+            normalizarOrigem('06- Movimentações de Sócios'),
+            normalizarOrigem('07- Caixas da Loja')
+        ]);
         
         resRealRaw.forEach(r => {
+            // Se a linha não pertence às mesmas categorias do Demonstrativo, ignora
+            if (!r.Origem_DFC || !categoriasValidas.has(normalizarOrigem(r.Origem_DFC))) return;
+
             let mesAlvo = r.Mes;
             let anoAlvo = r.Ano;
 
@@ -271,20 +304,12 @@ app.get('/api/orcamento', async (req, res) => {
 
             // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
             if (!ano || anoAlvo.toString() === ano.toString()) {
-                // Usa o MESMO identificador de linha do Demonstrativo (Origem_DFC),
-// pois um mesmo Codigo_plano pode aparecer em múltiplas origens.
-let codigoLinha = r.Codigo_plano;
-if (r.Origem_DFC) {
-    const m = String(r.Origem_DFC).trim().match(/^([0-9]+(?:\.[0-9]+)+)/);
-    if (m && m[1]) codigoLinha = m[1];
-    else {
-        // fallback: pega antes do hífen
-        const p = String(r.Origem_DFC).split('-')[0].trim();
-        if (p) codigoLinha = p;
-    }
-}
-const chave = `${codigoLinha}-${mesAlvo}`;
-                mapRealizado[chave] = (mapRealizado[chave] || 0) + (parseFloat(r.Valor_mov) || 0);
+                const chave = `${r.Codigo_plano}-${mesAlvo}`;
+                                const valorAbs = parseFloat(r.Valor_mov) || 0;
+                const nat = r.Natureza ? String(r.Natureza).trim().toLowerCase() : '';
+                const ehSaida = nat.includes('saída') || nat.includes('saida');
+                const valorParaTabela = ehSaida ? -Math.abs(valorAbs) : Math.abs(valorAbs);
+                mapRealizado[chave] = (mapRealizado[chave] || 0) + valorParaTabela;
             }
         });
 
@@ -510,7 +535,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
+            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008","7.001.001"))';
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }
