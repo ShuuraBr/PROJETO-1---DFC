@@ -241,10 +241,12 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov FROM dfc_analitica WHERE 1=1 `;
+        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Baixa FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
         // Busca um range de 2 anos para capturar boletos que podem transbordar o ano
         if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
+        // Somente Realizado (mesma regra da aba Dashboard): Baixa IS NOT NULL, exceto DINHEIRO/PIX
+        queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         queryReal += ' ORDER BY Dt_mov';
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
@@ -490,7 +492,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008","7.001.001"))';
+            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }
