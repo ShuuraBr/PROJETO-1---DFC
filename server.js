@@ -293,8 +293,6 @@ app.get('/api/orcamento', async (req, res) => {
                 const natureza = r.Natureza ? r.Natureza.toString().trim().toLowerCase() : '';
                 const ehSaida = natureza.includes('saída') || natureza.includes('saida');
                 const valorAbsoluto = (parseFloat(r.Valor_mov) || 0);
-                const valorParaCalculo = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
-                mapRealizado[chave] = (mapRealizado[chave] || 0) + valorParaCalculo;
             }
         });
 
@@ -320,7 +318,7 @@ app.get('/api/orcamento', async (req, res) => {
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
                 const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
-                const diferenca = valOrcado + valRealizado;
+                const diferenca = valOrcado - valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
