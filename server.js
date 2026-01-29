@@ -13,31 +13,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-
-// --- FUNÇÃO COMPARTILHADA: BUSCA BASE DA DFC (MESMA QUERY DO DASHBOARD) ---
-async function buscarDfcAnaliticaBase({ ano, view, status, fields = 'Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa' }) {
-    let query = `SELECT ${fields} FROM dfc_analitica WHERE 1=1`;
-    const params = [];
-
-    // Mesmo critério do Dashboard: para visão != anual, traz também 1 ano antes
-    // para capturar boletos/cartões que transbordam a competência.
-    if (view !== 'anual' && ano) {
-        query += ' AND (Ano = ? OR ( (Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
-        params.push(ano, parseInt(ano) - 1);
-    }
-
-    // Mesmo critério de status do Dashboard
-    if (status === 'realizado') {
-        query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
-    } else if (status === 'aberto') {
-        query += ' AND Baixa IS NULL';
-    }
-
-    query += ' ORDER BY Dt_mov';
-    const [rows] = await pool.query(query, params);
-    return rows;
-}
-
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
 // Formato armazenado: scrypt$<salt-hex>$<hash-hex>
@@ -266,14 +241,17 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        // Realizado: usar exatamente a MESMA BUSCA do Dashboard quando o Tipo de Visão = "Somente Realizado"
-        // (mesmas regras de ano anterior para boletos/cartões + mesma regra de status=realizado)
-        const resRealRaw = await buscarDfcAnaliticaBase({
-            ano,
-            view: 'mensal',            // orçamento é mensal (colunas Jan..Dez)
-            status: 'realizado',
-            fields: 'Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa'
-        });
+        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
+        const paramsReal = [];
+        // Buscamos um ano anterior para capturar boletos/cartões de 31/12 que caem no próximo dia útil (01/01)
+        if (ano) {
+            queryReal += ' AND (Ano = ? OR ((Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
+            paramsReal.push(ano, parseInt(ano) - 1);
+        }
+        queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
+        queryReal += ' ORDER BY Dt_mov';
+
+        const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
         
         resRealRaw.forEach(r => {
@@ -290,11 +268,11 @@ app.get('/api/orcamento', async (req, res) => {
             // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
             if (!ano || anoAlvo.toString() === ano.toString()) {
                 const chave = `${r.Codigo_plano}-${mesAlvo}`;
-                const natureza = r.Natureza ? r.Natureza.toString().trim().toLowerCase() : '';
-                const ehSaida = natureza.includes('saída') || natureza.includes('saida');
-                const valorAbsoluto = (parseFloat(r.Valor_mov) || 0);
-                const valorParaCalculo = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
-                mapRealizado[chave] = (mapRealizado[chave] || 0) + valorParaCalculo;
+                const v = parseFloat(r.Valor_mov) || 0;
+                const absV = Math.abs(v);
+                const natureza = (r.Natureza || '').toString().toLowerCase();
+                const liquido = natureza.startsWith('sa') ? -absV : absV;
+                mapRealizado[chave] = (mapRealizado[chave] || 0) + liquido;
             }
         });
 
