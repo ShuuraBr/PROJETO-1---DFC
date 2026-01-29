@@ -293,7 +293,14 @@ app.get('/api/orcamento', async (req, res) => {
                 const natureza = r.Natureza ? r.Natureza.toString().trim().toLowerCase() : '';
                 const ehSaida = natureza.includes('saída') || natureza.includes('saida');
                 const valorAbsoluto = (parseFloat(r.Valor_mov) || 0);
-                const valorParaCalculo = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
+                /*
+  IMPORTANTE (Orçamento):
+  - A aba Orçamento compara ORÇADO x REALIZADO usando valores em magnitude (positivos).
+  - O Dashboard usa sinal pela Natureza (saída negativa) para fluxo de caixa.
+  - Para evitar que (orçado - realizado) vire soma quando realizado é negativo (menos com menos),
+    aqui usamos a MAGNITUDE do realizado (ABS), mantendo ehSaida apenas como referência de natureza.
+*/
+const valorParaCalculo = Math.abs(valorAbsoluto);
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + valorParaCalculo;
             }
         });
