@@ -320,7 +320,7 @@ app.get('/api/orcamento', async (req, res) => {
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
                 const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
-                const diferenca = valOrcado - valRealizado;
+                const diferenca = valOrcado + valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
