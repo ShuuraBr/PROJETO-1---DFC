@@ -1391,7 +1391,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
         thHtml += `</tr>`;
         thead.innerHTML = thHtml;
 
-        const fmt = (v) => (Number(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const fmt = (v) => (Math.abs(Number(v || 0))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         // Corpo (2 níveis: grupo -> itens)
         let html = '';
@@ -1537,7 +1537,7 @@ document.addEventListener('DOMContentLoaded', app.init);
     }
 
     function formatBRL(value) {
-        const n = Number(value || 0);
+        const n = Math.abs(Number(value || 0));
         return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
