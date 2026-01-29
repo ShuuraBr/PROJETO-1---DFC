@@ -266,31 +266,19 @@ app.get('/api/orcamento', async (req, res) => {
         // Para garantir que o "Realizado" do Orçamento seja idêntico ao Demonstrativo (Dashboard)
         // quando o filtro é "Somente realizado", aplicamos o MESMO mapeamento robusto de Origem_DFC
         // (normalização + whitelist de categorias 01/02/03/04/06/07) aqui no backend.
-        const normalizarOrigem = (str) => {
+        const getCategoriaOrigem = (str) => {
             if (!str) return '';
-            return str
-                .toString()
-                .trim()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/\s*-\s*/g, '-')
-                .replace(/\s+/g, ' ')
-                .trim();
+            const s = String(str).trim();
+            const m = s.match(/^\s*(\d{2})\b/);
+            return m ? m[1] : '';
         };
 
-        const categoriasValidas = new Set([
-            normalizarOrigem('01- Entradas Operacionais'),
-            normalizarOrigem('02- Saídas Operacionais'),
-            normalizarOrigem('03- Operações Financeiras'),
-            normalizarOrigem('04- Ativo Imobilizado'),
-            normalizarOrigem('06- Movimentações de Sócios'),
-            normalizarOrigem('07- Caixas da Loja')
-        ]);
+        // Mesmas categorias do Demonstrativo (Dashboard)
+        const categoriasValidas = new Set(['01', '02', '03', '04', '06', '07']);
         
         resRealRaw.forEach(r => {
             // Se a linha não pertence às mesmas categorias do Demonstrativo, ignora
-            if (!r.Origem_DFC || !categoriasValidas.has(normalizarOrigem(r.Origem_DFC))) return;
+            if (!r.Origem_DFC || !categoriasValidas.has(getCategoriaOrigem(r.Origem_DFC))) return;
 
             let mesAlvo = r.Mes;
             let anoAlvo = r.Ano;
