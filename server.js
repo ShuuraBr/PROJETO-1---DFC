@@ -253,6 +253,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
+    const mapRealizadoSaidas = {};
         
         resRealRaw.forEach(r => {
             let mesAlvo = r.Mes;
@@ -297,7 +298,8 @@ app.get('/api/orcamento', async (req, res) => {
                 const mesNumero = index + 1;
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
-                const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
+                const valRealizadoBruto = mapRealizado[`${codigo}-${mesNumero}`] || 0;
+                const valRealizado = valRealizadoBruto; // já é positivo (somente saídas)
                 const diferenca = valOrcado - valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
