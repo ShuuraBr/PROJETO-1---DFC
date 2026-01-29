@@ -263,16 +263,6 @@ app.get('/api/orcamento', async (req, res) => {
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
 
-        // Para garantir que o "Realizado" do Orçamento seja idêntico ao Demonstrativo (Dashboard)
-        // quando o filtro é "Somente realizado", aplicamos o MESMO mapeamento robusto de Origem_DFC
-        // (normalização + whitelist de categorias 01/02/03/04/06/07) aqui no backend.
-        const getCategoriaOrigem = (str) => {
-            if (!str) return '';
-            const s = String(str).trim();
-            const m = s.match(/^\s*(\d{2})\b/);
-            return m ? m[1] : '';
-        };
-
         // Mesmas categorias do Demonstrativo (Dashboard)
         const categoriasValidas = new Set(['01', '02', '03', '04', '06', '07']);
         
@@ -323,7 +313,7 @@ app.get('/api/orcamento', async (req, res) => {
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
                 const valRealizado = mapRealizado[`${codigo}-${mesNumero}`] || 0;
-                const diferenca = valOrcado - valRealizado;
+                const diferenca = valOrcado + valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
                 grupos[depto].dados[chaveFront].orcado += valOrcado;
