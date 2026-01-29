@@ -241,7 +241,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
+        let queryReal = `SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1`;
         const paramsReal = [];
         // Mantém a MESMA lógica de busca da aba Dashboard para o filtro "Somente realizado":
         // Para visões não anuais (mensal/trimestral), inclui também o ANO ANTERIOR apenas para BOLETOS e CARTÕES,
