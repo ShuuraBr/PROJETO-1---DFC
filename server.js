@@ -293,6 +293,8 @@ app.get('/api/orcamento', async (req, res) => {
                 const natureza = r.Natureza ? r.Natureza.toString().trim().toLowerCase() : '';
                 const ehSaida = natureza.includes('saída') || natureza.includes('saida');
                 const valorAbsoluto = (parseFloat(r.Valor_mov) || 0);
+                const valorParaCalculo = ehSaida ? -Math.abs(valorAbsoluto) : Math.abs(valorAbsoluto);
+                mapRealizado[chave] = (mapRealizado[chave] || 0) + valorParaCalculo;
             }
         });
 
