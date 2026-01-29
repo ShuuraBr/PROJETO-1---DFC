@@ -274,6 +274,10 @@ app.get('/api/orcamento', async (req, res) => {
                 const natureza = (r.Natureza || '').toString().toLowerCase();
                 const liquido = natureza.startsWith('sa') ? -absV : absV;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + liquido;
+                // Para Orçamento: Realizado deve representar consumo (somente saídas), sempre positivo
+                if (natureza.startsWith('sa')) {
+                    mapRealizadoSaidas[chave] = (mapRealizadoSaidas[chave] || 0) + absV;
+                }
             }
         });
 
@@ -298,7 +302,7 @@ app.get('/api/orcamento', async (req, res) => {
                 const mesNumero = index + 1;
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
-                const valRealizadoBruto = mapRealizado[`${codigo}-${mesNumero}`] || 0;
+                const valRealizadoBruto = mapRealizadoSaidas[`${codigo}-${mesNumero}`] || 0;
                 const valRealizado = valRealizadoBruto; // já é positivo (somente saídas)
                 const diferenca = valOrcado - valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
