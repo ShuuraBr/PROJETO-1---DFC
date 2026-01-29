@@ -13,6 +13,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const PLANOS_CAIXA = new Set(['1.001.001','1.001.008']);
+
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
 // Formato armazenado: scrypt$<salt-hex>$<hash-hex>
@@ -223,6 +225,7 @@ app.get('/api/anos', async (req, res) => {
 
 app.get('/api/orcamento', async (req, res) => {
     const { email, ano } = req.query;
+    const anoSel = Number(ano) || new Date().getFullYear();
     try {
         const [users] = await pool.query(
             'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
@@ -244,16 +247,13 @@ app.get('/api/orcamento', async (req, res) => {
         let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
         // Buscamos um ano anterior para capturar boletos/cartões de 31/12 que caem no próximo dia útil (01/01)
-        if (ano) {
-            queryReal += ' AND (Ano = ? OR ((Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
-            paramsReal.push(ano, parseInt(ano) - 1);
-        }
+        queryReal += ' AND (Ano = ? OR ((Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
+        paramsReal.push(anoSel, anoSel - 1);
         queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         queryReal += ' ORDER BY Dt_mov';
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
-    const mapRealizadoSaidas = {};
         
         resRealRaw.forEach(r => {
             let mesAlvo = r.Mes;
@@ -267,24 +267,20 @@ app.get('/api/orcamento', async (req, res) => {
             }
 
             // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
-            if (!ano || anoAlvo.toString() === ano.toString()) {
+            if (anoAlvo === anoSel) {
                 const chave = `${r.Codigo_plano}-${mesAlvo}`;
                 const v = parseFloat(r.Valor_mov) || 0;
                 const absV = Math.abs(v);
                 const natureza = (r.Natureza || '').toString().toLowerCase();
                 const liquido = natureza.startsWith('sa') ? -absV : absV;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + liquido;
-                // Para Orçamento: Realizado deve representar consumo (somente saídas), sempre positivo
-                if (natureza.startsWith('sa')) {
-                    mapRealizadoSaidas[chave] = (mapRealizadoSaidas[chave] || 0) + absV;
-                }
             }
         });
 
         const colunasBanco = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
         const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const grupos = {};
-        const ocultarOrcado = (ano && ano.toString() === '2025');
+        const ocultarOrcado = (anoSel.toString() === '2025');
 
         orcamentoData.forEach(row => {
             const codigo = row.Plano;
@@ -302,8 +298,8 @@ app.get('/api/orcamento', async (req, res) => {
                 const mesNumero = index + 1;
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
-                const valRealizadoBruto = mapRealizadoSaidas[`${codigo}-${mesNumero}`] || 0;
-                const valRealizado = valRealizadoBruto; // já é positivo (somente saídas)
+                const valRealizadoLiquido = mapRealizado[`${codigo}-${mesNumero}`] || 0;
+                const valRealizado = Math.abs(valRealizadoLiquido); // neutro: ignora sinal (entrada/saída) só na exibição/ comparação
                 const diferenca = valOrcado - valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
@@ -504,7 +500,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008","7.001.001"))';
+            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }
