@@ -241,7 +241,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
 
-        let queryReal = `SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1`;
+        let queryReal = `SELECT Origem_DFC, Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
         // Mantém a MESMA lógica de busca da aba Dashboard para o filtro "Somente realizado":
         // Para visões não anuais (mensal/trimestral), inclui também o ANO ANTERIOR apenas para BOLETOS e CARTÕES,
@@ -271,7 +271,19 @@ app.get('/api/orcamento', async (req, res) => {
 
             // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
             if (!ano || anoAlvo.toString() === ano.toString()) {
-                const chave = `${r.Codigo_plano}-${mesAlvo}`;
+                // Usa o MESMO identificador de linha do Demonstrativo (Origem_DFC),
+// pois um mesmo Codigo_plano pode aparecer em múltiplas origens.
+let codigoLinha = r.Codigo_plano;
+if (r.Origem_DFC) {
+    const m = String(r.Origem_DFC).trim().match(/^([0-9]+(?:\.[0-9]+)+)/);
+    if (m && m[1]) codigoLinha = m[1];
+    else {
+        // fallback: pega antes do hífen
+        const p = String(r.Origem_DFC).split('-')[0].trim();
+        if (p) codigoLinha = p;
+    }
+}
+const chave = `${codigoLinha}-${mesAlvo}`;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + (parseFloat(r.Valor_mov) || 0);
             }
         });
@@ -498,7 +510,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008","7.001.001"))';
+            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }
