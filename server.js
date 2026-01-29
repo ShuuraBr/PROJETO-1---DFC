@@ -246,7 +246,7 @@ app.get('/api/orcamento', async (req, res) => {
         // Busca um range de 2 anos para capturar boletos que podem transbordar o ano
         if (ano) { queryReal += ' AND (Ano = ? OR Ano = ?)'; paramsReal.push(ano, parseInt(ano) + 1); }
         // Somente Realizado (mesma regra da aba Dashboard): Baixa IS NOT NULL, exceto DINHEIRO/PIX
-        queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
+        queryReal += ' AND (Baixa IS NOT NULL OR';
         queryReal += ' ORDER BY Dt_mov';
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
