@@ -366,9 +366,8 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
          FROM dfc_analitica
          WHERE Baixa IS NULL
            AND Financeiro IS NOT NULL
-           AND (Codigo_plano = '1.001.006' OR Origem_DFC IN (` + origem02.map(() => '?').join(',') + `))
-         ORDER BY Ano`,
-        [...origem02]
+           AND (Codigo_plano = '1.001.006' OR (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%'))
+         ORDER BY Ano`
       );
       columns = (yearsRows || []).map(r => String(r.Ano)).filter(Boolean);
       headers = columns.slice();
@@ -410,10 +409,9 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
          FROM dfc_analitica
          WHERE Baixa IS NULL
            AND Financeiro IS NOT NULL
-           AND Origem_DFC IN (` + origem02.map(() => '?').join(',') + `)
+           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
          GROUP BY Ano, Mes
-         ORDER BY Ano, Mes`,
-        [...origem02]
+         ORDER BY Ano, Mes`
       );
       recRows = r1;
       pagRows = r2;
@@ -435,10 +433,10 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
          WHERE Ano = ?
            AND Baixa IS NULL
            AND Financeiro IS NOT NULL
-           AND Origem_DFC IN (` + origem02.map(() => '?').join(',') + `)
+           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
          GROUP BY Ano, Mes
          ORDER BY Mes`,
-        [anoSel, ...origem02]
+        [anoSel]
       );
       recRows = r1;
       pagRows = r2;

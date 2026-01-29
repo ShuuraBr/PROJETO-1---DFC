@@ -605,6 +605,9 @@ const app = {
 
     loadOrcamento: async () => {
         app.setLoading(true);
+        // evita render duplicado por chamadas concorrentes (orcamento)
+        app.__orcReqId = (app.__orcReqId || 0) + 1;
+        const __reqId = app.__orcReqId;
         const tbody = document.querySelector('#orcamento-table tbody');
         const kpiContainer = document.getElementById('kpi-orcamento-container');
 
@@ -618,7 +621,7 @@ const app = {
             const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}`);
             const data = await res.json();
             // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
-            if (__reqId !== app.__finReqId) return;
+            if (__reqId !== app.__orcReqId) return;
             if (data.error) throw new Error(data.error);
             
             app.dadosOrcamentoCache = data;

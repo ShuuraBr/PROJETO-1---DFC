@@ -102,7 +102,7 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.1); color: white; }
 .tooltip { 
     position: absolute; left: 70px; background: #374151; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; 
-    opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap; z-index: 100;
+    opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap; z-index: 999999;
 }
 .nav-btn:hover .tooltip { opacity: 1; left: 70px; }
 .user-profile { margin-top: auto; margin-bottom: 20px; }
@@ -405,7 +405,7 @@ table {
     white-space: nowrap;
     transition: bottom 1.0s ease-in-out; 
     bottom: 0%; 
-    z-index: 10;
+    z-index: 999999;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
@@ -1222,3 +1222,9 @@ table {
 .btn-toggle-password{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--text-muted);cursor:pointer;padding:6px;border-radius:8px;}
 .btn-toggle-password:hover{background:rgba(0,0,0,0.06);color:var(--text-dark);}
 .btn-toggle-password:focus{outline:2px solid rgba(37,99,235,0.35);outline-offset:2px;}
+
+
+/* Garantir tooltips por cima de tudo (charts/KPIs) */
+.chartjs-tooltip, .fc-tooltip, .tooltip-popover {
+    z-index: 999999 !important;
+}
