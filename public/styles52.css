@@ -1214,3 +1214,11 @@ table {
   .filters-row{ width:100%; }
   .filter-field{ width:100%; }
 }
+
+
+/* Toggle de visibilidade de senha */
+.password-field{position:relative;display:flex;align-items:center;}
+.password-field input{width:100%;padding-right:44px;}
+.btn-toggle-password{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--text-muted);cursor:pointer;padding:6px;border-radius:8px;}
+.btn-toggle-password:hover{background:rgba(0,0,0,0.06);color:var(--text-dark);}
+.btn-toggle-password:focus{outline:2px solid rgba(37,99,235,0.35);outline-offset:2px;}

@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles51.css">
+    <link rel="stylesheet" href="styles52.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -30,11 +30,17 @@
             <form id="form-reset">
                 <div class="input-wrapper">
                     <label>Nova Senha</label>
-                    <input type="password" id="nova-senha" required minlength="4">
+                    <div class="password-field">
+                        <input type="password" id="nova-senha" required minlength="4">
+                        <button type="button" class="btn-toggle-password" data-target="nova-senha" aria-label="Exibir senha"><i class="fa-solid fa-eye"></i></button>
+                    </div>
                 </div>
                 <div class="input-wrapper">
                     <label>Confirmar Nova Senha</label>
-                    <input type="password" id="confirma-senha" required minlength="4">
+                    <div class="password-field">
+                        <input type="password" id="confirma-senha" required minlength="4">
+                        <button type="button" class="btn-toggle-password" data-target="confirma-senha" aria-label="Exibir senha"><i class="fa-solid fa-eye"></i></button>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary">Confirmar Alteração</button>
                 <p id="msg-reset" class="error-text" style="text-align: center;"></p>
@@ -60,7 +66,10 @@
                 </div>
                 <div class="input-wrapper">
                     <label>Senha</label>
-                    <input type="password" id="password" required>
+                    <div class="password-field">
+                        <input type="password" id="password" required>
+                        <button type="button" class="btn-toggle-password" data-target="password" aria-label="Exibir senha"><i class="fa-solid fa-eye"></i></button>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary">Continuar</button>
             </form>
@@ -359,6 +368,6 @@
         </main>
     </div>
 
-    <script src="script55.js"></script>
+    <script src="script56.js"></script>
 </body>
 </html>

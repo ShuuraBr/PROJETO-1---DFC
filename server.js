@@ -14,6 +14,36 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SENHA_PADRAO = 'Obj@2026';
+// --- HASH DE SENHA (scrypt) ---
+// Formato armazenado: scrypt$<salt-hex>$<hash-hex>
+const hashPasswordScrypt = (plain) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(String(plain), salt, 64).toString('hex');
+    return `scrypt$${salt}$${hash}`;
+};
+
+const verifyPasswordScrypt = (plain, stored) => {
+    if (!stored) return false;
+
+    // migração: se for senha em texto puro, compara direto
+    if (!String(stored).startsWith('scrypt$')) {
+        return String(plain) === String(stored);
+    }
+
+    const parts = String(stored).split('$');
+    if (parts.length !== 3) return false;
+    const salt = parts[1];
+    const hash = parts[2];
+
+    const calc = crypto.scryptSync(String(plain), salt, 64).toString('hex');
+
+    // comparação segura
+    const a = Buffer.from(hash, 'hex');
+    const b = Buffer.from(calc, 'hex');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+};
+
 
 // --- LOGICA DE FERIADOS E DIAS ÚTEIS (NOVA) ---
 const getFeriados = (ano) => {
@@ -72,15 +102,24 @@ app.post('/api/login', async (req, res) => {
 
     try {
         const query = `
-            SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
+            SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha, U.Senha_prov, D.Nome_dep as Departamento 
             FROM usuarios U 
             LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep 
-            WHERE U.Email = ? AND U.Senha = ?
+            WHERE U.Email = ?
         `;
 
-        const [rows] = await pool.query(query, [email, password]);
+        const [rows] = await pool.query(query, [email]);
 
-        if (rows.length > 0) {
+        if (rows.length > 0 && verifyPasswordScrypt(password, rows[0].Senha)) {
+            // migração automática: se a senha ainda estiver em texto puro, converte para hash
+            if (rows[0].Senha && !String(rows[0].Senha).startsWith('scrypt$')) {
+                try {
+                    await pool.query('UPDATE usuarios SET Senha = ? WHERE Email = ?', [hashPasswordScrypt(password), email]);
+                } catch (e) {
+                    console.warn('[LOGIN] Falha ao migrar senha para hash:', e.message);
+                }
+            }
+
             const token = crypto.randomInt(100000, 999999).toString();
             await pool.query(
                 `INSERT INTO tokens_acesso (email, token, expira_em) 
@@ -154,7 +193,7 @@ app.post('/api/usuarios', async (req, res) => {
         await pool.query(
             `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
              VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
-            [nome, email, SENHA_PADRAO, SENHA_PADRAO, departamentoId, role, nivel]
+            [nome, email, hashPasswordScrypt(SENHA_PADRAO), hashPasswordScrypt(SENHA_PADRAO), departamentoId, role, nivel]
         );
         res.json({ success: true, message: 'Criado com sucesso' });
     } catch (e) { res.status(500).json({ success: false }); }
@@ -163,7 +202,7 @@ app.post('/api/usuarios', async (req, res) => {
 app.post('/api/definir-senha', async (req, res) => {
     const { email, novaSenha } = req.body;
     try {
-        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
+        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [hashPasswordScrypt(novaSenha), email]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });

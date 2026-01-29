@@ -102,6 +102,8 @@ const app = {
 
     init: () => {
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
+        // Ativa botões de mostrar/ocultar senha
+        app.bindPasswordToggles();
         
         app.carregarAnosDisponiveis();
 
@@ -615,7 +617,8 @@ const app = {
             
             const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}`);
             const data = await res.json();
-
+            // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
+            if (__reqId !== app.__finReqId) return;
             if (data.error) throw new Error(data.error);
             
             app.dadosOrcamentoCache = data;
@@ -1203,7 +1206,7 @@ setupFinanceStickyRows: () => {
 
         // Atualiza visibilidade/render da tabela Financeiro (só quando Tipo de Visão = Todos)
         if (typeof window.refreshFinanceiroIfNeeded === 'function') {
-            window.refreshFinanceiroIfNeeded();
+            window.refreshFinanceiroIfNeeded({ skipFetch: true });
         }
  
             
@@ -1335,6 +1338,9 @@ setTimeout(() => app.renderChart(data.grafico), 50);
     // - Só aparece quando Tipo de Visão = "todos"
     // =====================================================
     fetchFinanceiroData: async () => {
+        // evita render duplicado por chamadas concorrentes
+        app.__finReqId = (app.__finReqId || 0) + 1;
+        const __reqId = app.__finReqId;
         try {
             const statusSelect = document.getElementById('dashboard-status-view');
             const statusParam = statusSelect ? statusSelect.value : 'todos';
@@ -1449,6 +1455,25 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
         filhos.forEach(r => r.classList.toggle('hidden', !estaFechado));
         if (icon) icon.classList.toggle('rotated', estaFechado);
+    },
+
+    // --- Toggle de visibilidade de senha (Login e Alteração) ---
+    bindPasswordToggles: () => {
+        document.querySelectorAll('.btn-toggle-password').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (!input) return;
+                const icon = btn.querySelector('i');
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                if (icon) {
+                    icon.classList.toggle('fa-eye', !isHidden);
+                    icon.classList.toggle('fa-eye-slash', isHidden);
+                }
+                btn.setAttribute('aria-label', isHidden ? 'Ocultar senha' : 'Exibir senha');
+            });
+        });
     },
 };
 
@@ -1643,24 +1668,31 @@ document.addEventListener('DOMContentLoaded', app.init);
         });
     }
 
-    async function refreshFinanceiroIfNeeded() {
+    async function refreshFinanceiroIfNeeded(opts) {
         const status = getStatusSelecionado();
         const shouldShow = (status === 'todos');
 
         setFinanceiroVisible(shouldShow);
 
-        if (!shouldShow) {
-            clearFinanceiroTable();
-            return;
-        }
+        // Não "limpa" a tabela aqui para evitar piscar (flicker). A limpeza/ocultação é tratada
+        // pela lógica principal (app.fetchFinanceiroData) quando necessário.
+        if (!shouldShow) return;
+
+        // Quando chamado por mudanças de filtros (e não pelo fetch principal), atualiza os dados.
+        const skipFetch = opts && opts.skipFetch;
+        if (skipFetch) return;
 
         try {
+            if (window.app && typeof window.app.fetchFinanceiroData === 'function') {
+                await window.app.fetchFinanceiroData();
+                return;
+            }
+            // Fallback: mantém comportamento antigo se a função principal não existir
             const data = await fetchFinanceiroDashboard();
             renderFinanceiroDashboard(data);
         } catch (e) {
-            console.error('[Financeiro] Erro ao renderizar:', e);
-            // mostra painel mas com tabela vazia (para debug visual)
-            clearFinanceiroTable();
+            console.error('[Financeiro] Erro ao atualizar:', e);
+            // não limpar tabela para não piscar
         }
     }
 
