@@ -733,7 +733,7 @@ const representatividadeCols = zerarColunas();
 colunasKeys.forEach(col => {
   representatividadeCols[col] = FluxoGlobal[col];
 });
-tabelaRows.push({ conta: 'Representatividade de Caixa', ...representatividadeCols, tipo: 'info' });
+tabelaRows.push({ conta: 'Fluxo Caixa Livre - FCL', ...representatividadeCols, tipo: 'info' });
 
 // -----------------------------------------------------------------
 // SALDO FINAL (por coluna) = Saldo Inicial + Movimento Líquido do Período
