@@ -247,7 +247,7 @@ app.get('/api/orcamento', async (req, res) => {
         let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
         const paramsReal = [];
         // Buscamos um ano anterior para capturar boletos/cartões de 31/12 que caem no próximo dia útil (01/01)
-        queryReal += ' AND (Ano = ? OR ((Nome LIKE "%BOLETO%" OR Nome LIKE "%CARTÕES (DÉBITO E CRÉDITO)%") AND Ano = ?))';
+        queryReal += ' AND (Ano = ? OR (((LOWER(Nome) LIKE "%boleto%") OR (LOWER(Nome) LIKE "%cart%")) AND Ano = ?))';
         paramsReal.push(anoSel, anoSel - 1);
         queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
         queryReal += ' ORDER BY Dt_mov';
@@ -262,8 +262,10 @@ app.get('/api/orcamento', async (req, res) => {
             // Condição para Boletos - Afeta a competência (mês/ano)
             if (r.Nome && r.Nome.toLowerCase().includes('boleto') && r.Dt_mov) {
                 const dataUtil = getProximoDiaUtil(r.Dt_mov);
-                mesAlvo = dataUtil.getMonth() + 1;
-                anoAlvo = dataUtil.getFullYear();
+                if (dataUtil instanceof Date && !isNaN(dataUtil.getTime())) {
+                    mesAlvo = dataUtil.getMonth() + 1;
+                    anoAlvo = dataUtil.getFullYear();
+                }
             }
 
             // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
@@ -318,7 +320,7 @@ app.get('/api/orcamento', async (req, res) => {
         res.json(Object.values(grupos));
     } catch (e) { 
         console.error(e);
-        res.status(500).json({ error: 'Erro ao processar orçamento' }); 
+        res.status(500).json({ error: 'Erro ao processar orçamento', detail: String(e && e.message ? e.message : e) }); 
     }
 });
 
@@ -733,7 +735,7 @@ const representatividadeCols = zerarColunas();
 colunasKeys.forEach(col => {
   representatividadeCols[col] = FluxoGlobal[col];
 });
-tabelaRows.push({ conta: 'Fluxo Caixa Livre - FCL', ...representatividadeCols, tipo: 'info' });
+tabelaRows.push({ conta: 'Representatividade de Caixa', ...representatividadeCols, tipo: 'info' });
 
 // -----------------------------------------------------------------
 // SALDO FINAL (por coluna) = Saldo Inicial + Movimento Líquido do Período
