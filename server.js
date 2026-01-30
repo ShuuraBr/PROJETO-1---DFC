@@ -147,7 +147,7 @@ app.post('/api/login', async (req, res) => {
 
             } catch (mailErr) {
                 console.error("Erro ao enviar email:", mailErr);
-                res.status(500).json({ success: false, message: 'Erro envio email.' });
+                res.status(500).json({ success: false, message: 'Erro envio email.', detail: mailErr && mailErr.message ? mailErr.message : String(mailErr) });
             }
 
         } else {
@@ -155,7 +155,7 @@ app.post('/api/login', async (req, res) => {
         }
     } catch (e) {
         console.error("[LOGIN] Erro:", e.message);
-        res.status(500).json({ success: false, message: 'Erro BD.' });
+        res.status(500).json({ success: false, message: 'Erro BD.', detail: e.message });
     }
 });
 
@@ -218,9 +218,26 @@ app.get('/api/departamentos', async (req, res) => {
 
 app.get('/api/anos', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
-        res.json(rows);
-    } catch (e) { res.status(500).json([]); }
+        const [rows] = await pool.query(
+            'SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC'
+        );
+        return res.json(rows);
+    } catch (e1) {
+        // fallback 1: movimentos_contas
+        try {
+            const [rows2] = await pool.query(
+                'SELECT DISTINCT Ano FROM movimentos_contas WHERE Ano IS NOT NULL ORDER BY Ano DESC'
+            );
+            return res.json(rows2);
+        } catch (e2) {
+            console.error('[API /anos] erro dfc_analitica:', e1.message);
+            console.error('[API /anos] erro movimentos_contas:', e2.message);
+            return res.status(500).json({
+                error: 'Falha ao listar anos',
+                detail: (e2 && e2.message) ? e2.message : (e1 && e1.message) ? e1.message : 'erro desconhecido'
+            });
+        }
+    }
 });
 
 app.get('/api/orcamento', async (req, res) => {
