@@ -254,6 +254,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const [resRealRaw] = await pool.query(queryReal, paramsReal);
         const mapRealizado = {};
+    const mapRealizadoSaidas = {};
         
         resRealRaw.forEach(r => {
             let mesAlvo = r.Mes;
@@ -274,6 +275,14 @@ app.get('/api/orcamento', async (req, res) => {
                 const natureza = (r.Natureza || '').toString().toLowerCase();
                 const liquido = natureza.startsWith('sa') ? -absV : absV;
                 mapRealizado[chave] = (mapRealizado[chave] || 0) + liquido;
+                // Para Orçamento: Realizado deve representar consumo (somente saídas), sempre positivo
+                if (PLANOS_CAIXA.has(String(r.Codigo_plano))) {
+            // Para caixa/financeiro, considerar entradas e saídas como realizado (valor absoluto)
+            mapRealizadoSaidas[chave] = (mapRealizadoSaidas[chave] || 0) + absV;
+          } else if (natureza.startsWith('sa')) {
+            // Para demais planos, realizado no orçamento = consumo (somente saídas)
+            mapRealizadoSaidas[chave] = (mapRealizadoSaidas[chave] || 0) + absV;
+          }
             }
         });
 
@@ -298,8 +307,8 @@ app.get('/api/orcamento', async (req, res) => {
                 const mesNumero = index + 1;
                 let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
                 if (ocultarOrcado) valOrcado = 0;
-                const valRealizadoLiquido = mapRealizado[`${codigo}-${mesNumero}`] || 0;
-                const valRealizado = Math.abs(valRealizadoLiquido); // neutro: ignora sinal (entrada/saída) só na exibição/ comparação
+                const valRealizadoBruto = mapRealizadoSaidas[`${codigo}-${mesNumero}`] || 0;
+                const valRealizado = valRealizadoBruto; // neutro (ABS do líquido)
                 const diferenca = valOrcado - valRealizado;
                 dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
@@ -500,7 +509,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
+            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008";7.001.001"))';
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }
