@@ -1330,7 +1330,10 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
             const idGrupo = `orc-g-${idx}`;
             let colsHtmlGrupo = '';
             meses.forEach(m => {
-                const vals = grupo.dados[m];
+                const vals = (grupo.dados && grupo.dados[m]) ? grupo.dados[m] : { orcado: 0, realizado: 0, diferenca: 0 };
+                const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
+                const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
+                const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
@@ -1356,7 +1359,10 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 grupo.detalhes.forEach(item => {
                     let colsHtmlItem = '';
                     meses.forEach(m => {
-                        const vals = item.dados[m];
+                        const vals = (item.dados && item.dados[m]) ? item.dados[m] : { orcado: 0, realizado: 0, diferenca: 0 };
+                        const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
+                        const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
+                        const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
                         const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
