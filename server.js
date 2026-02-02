@@ -13,39 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PLANOS_CAIXA = new Set(['1.001.001','1.001.008']);
-
 const SENHA_PADRAO = 'Obj@2026';
-// --- HASH DE SENHA (scrypt) ---
-// Formato armazenado: scrypt$<salt-hex>$<hash-hex>
-const hashPasswordScrypt = (plain) => {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync(String(plain), salt, 64).toString('hex');
-    return `scrypt$${salt}$${hash}`;
-};
-
-const verifyPasswordScrypt = (plain, stored) => {
-    if (!stored) return false;
-
-    // migração: se for senha em texto puro, compara direto
-    if (!String(stored).startsWith('scrypt$')) {
-        return String(plain) === String(stored);
-    }
-
-    const parts = String(stored).split('$');
-    if (parts.length !== 3) return false;
-    const salt = parts[1];
-    const hash = parts[2];
-
-    const calc = crypto.scryptSync(String(plain), salt, 64).toString('hex');
-
-    // comparação segura
-    const a = Buffer.from(hash, 'hex');
-    const b = Buffer.from(calc, 'hex');
-    if (a.length !== b.length) return false;
-    return crypto.timingSafeEqual(a, b);
-};
-
 
 // --- LOGICA DE FERIADOS E DIAS ÚTEIS (NOVA) ---
 const getFeriados = (ano) => {
@@ -104,24 +72,15 @@ app.post('/api/login', async (req, res) => {
 
     try {
         const query = `
-            SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha, U.Senha_prov, D.Nome_dep as Departamento 
+            SELECT U.Email, U.Nome, U.Role, U.Nivel, U.Senha_prov, D.Nome_dep as Departamento 
             FROM usuarios U 
             LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep 
-            WHERE U.Email = ?
+            WHERE U.Email = ? AND U.Senha = ?
         `;
 
-        const [rows] = await pool.query(query, [email]);
+        const [rows] = await pool.query(query, [email, password]);
 
-        if (rows.length > 0 && verifyPasswordScrypt(password, rows[0].Senha)) {
-            // migração automática: se a senha ainda estiver em texto puro, converte para hash
-            if (rows[0].Senha && !String(rows[0].Senha).startsWith('scrypt$')) {
-                try {
-                    await pool.query('UPDATE usuarios SET Senha = ? WHERE Email = ?', [hashPasswordScrypt(password), email]);
-                } catch (e) {
-                    console.warn('[LOGIN] Falha ao migrar senha para hash:', e.message);
-                }
-            }
-
+        if (rows.length > 0) {
             const token = crypto.randomInt(100000, 999999).toString();
             await pool.query(
                 `INSERT INTO tokens_acesso (email, token, expira_em) 
@@ -147,7 +106,7 @@ app.post('/api/login', async (req, res) => {
 
             } catch (mailErr) {
                 console.error("Erro ao enviar email:", mailErr);
-                res.status(500).json({ success: false, message: 'Erro envio email.', detail: mailErr && mailErr.message ? mailErr.message : String(mailErr) });
+                res.status(500).json({ success: false, message: 'Erro envio email.' });
             }
 
         } else {
@@ -155,7 +114,7 @@ app.post('/api/login', async (req, res) => {
         }
     } catch (e) {
         console.error("[LOGIN] Erro:", e.message);
-        res.status(500).json({ success: false, message: 'Erro BD.', detail: e.message });
+        res.status(500).json({ success: false, message: 'Erro BD.' });
     }
 });
 
@@ -184,7 +143,7 @@ app.post('/api/validar-token', async (req, res) => {
 
 // =========================================================================
 // ROTAS DO SISTEMA
-// ========================================================================
+// =========================================================================
 
 app.post('/api/usuarios', async (req, res) => {
     const { nome, email, departamentoId, role, nivel } = req.body;
@@ -195,7 +154,7 @@ app.post('/api/usuarios', async (req, res) => {
         await pool.query(
             `INSERT INTO usuarios (ID, Nome, Email, Senha, Senha_prov, Pk_dep, Role, Nivel) 
              VALUES ((SELECT IFNULL(MAX(ID),0)+1 FROM usuarios AS U_temp), ?, ?, ?, ?, ?, ?, ?)`,
-            [nome, email, hashPasswordScrypt(SENHA_PADRAO), hashPasswordScrypt(SENHA_PADRAO), departamentoId, role, nivel]
+            [nome, email, SENHA_PADRAO, SENHA_PADRAO, departamentoId, role, nivel]
         );
         res.json({ success: true, message: 'Criado com sucesso' });
     } catch (e) { res.status(500).json({ success: false }); }
@@ -204,7 +163,7 @@ app.post('/api/usuarios', async (req, res) => {
 app.post('/api/definir-senha', async (req, res) => {
     const { email, novaSenha } = req.body;
     try {
-        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [hashPasswordScrypt(novaSenha), email]);
+        await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [novaSenha, email]);
         res.json({ success: true });
     } catch (e) { res.status(500).json({ success: false }); }
 });
@@ -218,126 +177,215 @@ app.get('/api/departamentos', async (req, res) => {
 
 app.get('/api/anos', async (req, res) => {
     try {
-        const [rows] = await pool.query(
-            'SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC'
-        );
-        return res.json(rows);
-    } catch (e1) {
-        // fallback 1: movimentos_contas
-        try {
-            const [rows2] = await pool.query(
-                'SELECT DISTINCT Ano FROM movimentos_contas WHERE Ano IS NOT NULL ORDER BY Ano DESC'
-            );
-            return res.json(rows2);
-        } catch (e2) {
-            console.error('[API /anos] erro dfc_analitica:', e1.message);
-            console.error('[API /anos] erro movimentos_contas:', e2.message);
-            return res.status(500).json({
-                error: 'Falha ao listar anos',
-                detail: (e2 && e2.message) ? e2.message : (e1 && e1.message) ? e1.message : 'erro desconhecido'
-            });
-        }
-    }
+        const [rows] = await pool.query('SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC');
+        res.json(rows);
+    } catch (e) { res.status(500).json([]); }
 });
 
+
 app.get('/api/orcamento', async (req, res) => {
-    const { email, ano } = req.query;
-    const anoSel = Number(ano) || new Date().getFullYear();
+    const { email, ano, visao } = req.query;
+
     try {
+        // --- valida usuário e restrição por departamento ---
         const [users] = await pool.query(
-            'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?', 
+            'SELECT Role, D.Nome_dep FROM usuarios U LEFT JOIN departamentos D ON U.Pk_dep = D.Id_dep WHERE Email = ?',
             [email]
         );
         if (users.length === 0) return res.status(401).json({ error: 'Usuário não encontrado' });
-        
+
         const user = users[0];
         const departamentoUsuario = user.Nome_dep || '';
         const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
-        let queryOrc = `SELECT Plano, Nome, Departamento1, Janeiro, Fevereiro, Marco, Abril, Maio, Junho, Julho, Agosto, Setembro, Outubro, Novembro, Dezembro FROM orcamento WHERE 1=1 `;
+        const anoSel = Number(ano) || (new Date()).getFullYear();
+        const view = (visao || 'orcamento').toString().toLowerCase(); // orcamento | receita | todos
+
+        const colunasBanco = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+        // --- 1) Base: orçamento (planejado) com restrição por dept (se necessário) ---
+        let queryOrc = `SELECT Plano, Nome, Departamento1, ${colunasBanco.join(', ')} FROM orcamento WHERE 1=1`;
         const paramsOrc = [];
         if (!isSuperUser) { queryOrc += ' AND Departamento1 = ?'; paramsOrc.push(departamentoUsuario); }
         queryOrc += ' ORDER BY Departamento1, Plano';
+        const [orcamentoBase] = await pool.query(queryOrc, paramsOrc);
 
-        const [orcamentoData] = await pool.query(queryOrc, paramsOrc);
+        // Mapa plano -> linha orçamento (para buscar planejado por mês)
+        const mapOrcRowByPlano = new Map();
+        orcamentoBase.forEach(r => mapOrcRowByPlano.set(String(r.Plano), r));
 
-        let queryReal = `SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa FROM dfc_analitica WHERE 1=1 `;
-        const paramsReal = [];
-        // Buscamos um ano anterior para capturar boletos/cartões de 31/12 que caem no próximo dia útil (01/01)
-        queryReal += ' AND (Ano = ? OR (((LOWER(Nome) LIKE "%boleto%") OR (LOWER(Nome) LIKE "%cart%")) AND Ano = ?))';
-        paramsReal.push(anoSel, anoSel - 1);
-        queryReal += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008"))';
-        queryReal += ' ORDER BY Dt_mov';
+        // --- 2) Descobre planos por tipo2 (Receita/Despesa) via dfc_analitica ---
+        const getPlanosPorTipo2 = async (tipo2) => {
+            const [rows] = await pool.query(
+                `SELECT DISTINCT Codigo_plano
+                 FROM dfc_analitica
+                 WHERE Ano = ? AND Tipo_2 = ? AND Codigo_plano IS NOT NULL`,
+                [anoSel, tipo2]
+            );
+            return new Set(rows.map(r => String(r.Codigo_plano)));
+        };
 
-        const [resRealRaw] = await pool.query(queryReal, paramsReal);
-        const mapRealizado = {};
-        
-        resRealRaw.forEach(r => {
-            let mesAlvo = r.Mes;
-            let anoAlvo = r.Ano;
+        const planosReceita = await getPlanosPorTipo2('Receita');
+        const planosDespesa = await getPlanosPorTipo2('Despesa');
 
-            // Condição para Boletos - Afeta a competência (mês/ano)
-            if (r.Nome && r.Nome.toLowerCase().includes('boleto') && r.Dt_mov) {
-                const dataUtil = getProximoDiaUtil(r.Dt_mov);
-                if (dataUtil instanceof Date && !isNaN(dataUtil.getTime())) {
+        // --- 3) Realizado: soma líquida por Natureza, depois exibe como ABS (neutro) quando necessário ---
+        const sqlReal = `
+            SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza
+            FROM dfc_analitica
+            WHERE (Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL
+            ORDER BY Dt_mov
+        `;
+
+        const somarRealizado = (targetSet, tipo2) => new Map(); // placeholder
+
+        const buildRealMap = async (tipo2, planosAlvoSet) => {
+            const [rows] = await pool.query(sqlReal, [anoSel, anoSel + 1, tipo2]);
+
+            const map = new Map(); // chave = plano-mes -> liquido (pode +/-)
+            rows.forEach(r => {
+                const plano = String(r.Codigo_plano);
+
+                // se temos a lista de planos, filtra para não puxar planos que não estão no orçamento do usuário
+                if (planosAlvoSet && planosAlvoSet.size && !planosAlvoSet.has(plano)) return;
+                if (!mapOrcRowByPlano.has(plano)) return; // garante que existe no orçamento (e que respeita dept)
+
+                let mesAlvo = Number(r.Mes);
+                let anoAlvo = Number(r.Ano);
+
+                // Condição para Boletos - desloca competência para o próximo dia útil
+                if (r.Nome && String(r.Nome).toLowerCase().includes('boleto') && r.Dt_mov) {
+                    const dataUtil = getProximoDiaUtil(r.Dt_mov);
                     mesAlvo = dataUtil.getMonth() + 1;
                     anoAlvo = dataUtil.getFullYear();
                 }
-            }
 
-            // Atribui ao mapa apenas se, após a postergação, pertencer ao ano filtrado
-            if (anoAlvo === anoSel) {
-                const chave = `${r.Codigo_plano}-${mesAlvo}`;
-                const v = parseFloat(r.Valor_mov) || 0;
-                const absV = Math.abs(v);
+                // só contabiliza no ano filtrado após ajuste
+                if (anoAlvo !== anoSel) return;
+
+                const valor = Math.abs(parseFloat(r.Valor_mov) || 0);
                 const natureza = (r.Natureza || '').toString().toLowerCase();
-                const liquido = natureza.startsWith('sa') ? -absV : absV;
-                mapRealizado[chave] = (mapRealizado[chave] || 0) + liquido;
-            }
-        });
+                const liquido = natureza.startsWith('sa') ? -valor : valor;
 
-        const colunasBanco = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-        const chavesFrontend = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+                const key = `${plano}-${mesAlvo}`;
+                map.set(key, (map.get(key) || 0) + liquido);
+            });
+            return map;
+        };
+
+        const realReceita = await buildRealMap('Receita', planosReceita);
+        const realDespesa = await buildRealMap('Despesa', planosDespesa);
+
+        // --- 4) Monta estrutura final no mesmo formato do front (grupos por departamento) ---
+        const initGrupo = (depto) => {
+            const g = { conta: depto, tipo: 'grupo', dados: {}, detalhes: [] };
+            chavesFrontend.forEach(k => g.dados[k] = { orcado: 0, realizado: 0, diferenca: 0 });
+            return g;
+        };
+
         const grupos = {};
-        const ocultarOrcado = (anoSel.toString() === '2025');
+        const meta = { ano: anoSel, visao: view };
 
-        orcamentoData.forEach(row => {
-            const codigo = row.Plano;
+        const addLinhaDetalhe = (depto, contaFormatada, dadosMesesItem) => {
+            if (!grupos[depto]) grupos[depto] = initGrupo(depto);
+            grupos[depto].detalhes.push({ conta: contaFormatada, tipo: 'item', dados: dadosMesesItem });
+        };
+
+        const addTotaisGrupo = (depto, chaveFront, orcado, realizado, diferenca) => {
+            if (!grupos[depto]) grupos[depto] = initGrupo(depto);
+            grupos[depto].dados[chaveFront].orcado += orcado;
+            grupos[depto].dados[chaveFront].realizado += realizado;
+            grupos[depto].dados[chaveFront].diferenca += diferenca;
+        };
+
+        // Para gráfico "todos": queremos séries separadas (Realizado Receita x Realizado Despesa)
+        const totalsSeries = {
+            receita: { realizado: Array(12).fill(0), planejado: Array(12).fill(0) },
+            despesa: { realizado: Array(12).fill(0), planejado: Array(12).fill(0) },
+        };
+
+        orcamentoBase.forEach(row => {
+            const plano = String(row.Plano);
             const nome = row.Nome;
             const depto = row.Departamento1 || 'Sem Departamento';
-            const contaFormatada = `${codigo} - ${nome}`;
+            const contaFormatada = `${plano} - ${nome}`;
 
-            if (!grupos[depto]) {
-                grupos[depto] = { conta: depto, tipo: 'grupo', dados: {}, detalhes: [] };
-                chavesFrontend.forEach(k => grupos[depto].dados[k] = { orcado: 0, realizado: 0, diferenca: 0 });
-            }
+            const isPlanoReceita = planosReceita.has(plano);
+            const isPlanoDespesa = planosDespesa.has(plano);
+
+            // filtra conforme tipo de visão
+            if (view === 'receita' && !isPlanoReceita) return;
+            if (view === 'orcamento' && !isPlanoDespesa) return;
+
+            // view === 'todos' usa ambos (receita e despesa)
+            if (view === 'todos' && !(isPlanoReceita || isPlanoDespesa)) return;
+
             const dadosMesesItem = {};
-            chavesFrontend.forEach((chaveFront, index) => {
-                const nomeColunaBanco = colunasBanco[index];
-                const mesNumero = index + 1;
-                let valOrcado = parseFloat(row[nomeColunaBanco]) || 0;
-                if (ocultarOrcado) valOrcado = 0;
-                const valRealizadoLiquido = mapRealizado[`${codigo}-${mesNumero}`] || 0;
-                const valRealizado = Math.abs(valRealizadoLiquido); // neutro: ABS do líquido (entrada/saída)
-                const diferenca = valOrcado - valRealizado;
-                dadosMesesItem[chaveFront] = { orcado: valOrcado, realizado: valRealizado, diferenca: diferenca };
 
-                grupos[depto].dados[chaveFront].orcado += valOrcado;
-                grupos[depto].dados[chaveFront].realizado += valRealizado;
-                grupos[depto].dados[chaveFront].diferenca += diferenca;
+            chavesFrontend.forEach((chaveFront, idxMes) => {
+                const mesNumero = idxMes + 1;
+                const colBanco = colunasBanco[idxMes];
+
+                const planejado = Math.abs(parseFloat(row[colBanco]) || 0);
+
+                // Realizado: sempre neutro (ABS do líquido) por plano
+                const mapReal = isPlanoReceita ? realReceita : realDespesa;
+                const liquido = mapReal.get(`${plano}-${mesNumero}`) || 0;
+                const realizadoNeutro = Math.abs(liquido);
+
+                if (view === 'todos') {
+                    // para todos, planejado e realizado serão SALDO (Receitas - Despesas)
+                    // Aqui, no detalhe, a gente monta linha como o valor do plano (receita positivo, despesa negativo)
+                    const sinal = isPlanoReceita ? 1 : -1;
+
+                    const orc = sinal * planejado;
+                    const real = sinal * realizadoNeutro;
+
+                    dadosMesesItem[chaveFront] = { orcado: orc, realizado: real, diferenca: (orc - real) };
+
+                    // totais do grupo serão acumulados
+                    addTotaisGrupo(depto, chaveFront, orc, real, (orc - real));
+
+                    // séries para gráfico (totais globais)
+                    if (isPlanoReceita) {
+                        totalsSeries.receita.planejado[idxMes] += planejado;
+                        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
+                    } else {
+                        totalsSeries.despesa.planejado[idxMes] += planejado;
+                        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
+                    }
+                } else {
+                    // receita/orçamento padrão: planejado sempre positivo, realizado sempre positivo
+                    const diferenca = planejado - realizadoNeutro;
+                    dadosMesesItem[chaveFront] = { orcado: planejado, realizado: realizadoNeutro, diferenca };
+
+                    addTotaisGrupo(depto, chaveFront, planejado, realizadoNeutro, diferenca);
+
+                    // séries para gráfico (totais globais)
+                    if (isPlanoReceita) {
+                        totalsSeries.receita.planejado[idxMes] += planejado;
+                        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
+                    } else {
+                        totalsSeries.despesa.planejado[idxMes] += planejado;
+                        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
+                    }
+                }
             });
-            grupos[depto].detalhes.push({ conta: contaFormatada, tipo: 'item', dados: dadosMesesItem });
+
+            addLinhaDetalhe(depto, contaFormatada, dadosMesesItem);
         });
 
-        // Lógica de Ordenação Crescente Numérica (Aba Orçamento)
+        // Ordenação dos detalhes (mantém comportamento anterior)
         Object.values(grupos).forEach(grupo => {
             grupo.detalhes.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true, sensitivity: 'base' }));
         });
 
-        res.json(Object.values(grupos));
-    } catch (e) { 
+        meta.series = totalsSeries;
+
+        res.json({ grupos: Object.values(grupos), meta });
+    } catch (e) {
         console.error(e);
-        res.status(500).json({ error: 'Erro ao processar orçamento', detail: String(e && e.message ? e.message : e) }); 
+        res.status(500).json({ error: 'Erro ao processar orçamento' });
     }
 });
 
@@ -352,149 +400,110 @@ app.get('/api/orcamento', async (req, res) => {
 //   1- Previsões a Receber: 1.001.006 - BOLETOS
 //   2- Previsões a Pagar:  2.001.001 / 2.001.002 / 2.001.003
 // =========================================================================
-// =========================================================================
-// FINANCEIRO (Dashboard) — Tabela de Previsões (somente quando Tipo de Visão = "Todos")
-// Regras:
-// - Baixa IS NULL
-// - Financeiro IS NOT NULL
-// - Hierarquia:
-//   1- Previsões a Receber: 1.001.006 - BOLETOS
-//   2- Previsões a Pagar:  02- Saídas Operacionais (apenas este item + total)
-// - Respeita filtros: view (mensal/trimestral/anual) e ano (quando aplicável)
-// =========================================================================
 app.get('/api/financeiro-dashboard', async (req, res) => {
-  try {
-    const now = new Date();
-    const anoSel = Number(req.query.ano) || now.getFullYear();
-    const view = String(req.query.view || req.query.periodo || 'mensal').toLowerCase();
+    try {
+        const { ano, view } = req.query;
+        const params = [];
 
-    const origem02 = [
-      '02- Saídas Operacionais',
-      '02- Saidas Operacionais',
-      '02- saídas operacionais',
-      '02- saidas operacionais',
-      '02-saidas operacionais',
-      '02-saídas operacionais'
-    ];
+        // Regras:
+        // - Baixa IS NULL
+        // - Financeiro IS NOT NULL
+        // - Valores por mês (jan..dez)
+        // - Hierarquia: Grupo -> Plano (igual comportamento de clique da DFC, mas tabela separada)
+        let sql = `
+            SELECT 
+                Codigo_plano,
+                Nome,
+                Mes,
+                Ano,
+                Valor_mov
+            FROM dfc_analitica
+            WHERE Baixa IS NULL
+              AND Financeiro IS NOT NULL
+        `;
 
-    // Define colunas/headers e bucket
-    let columns = [];
-    let headers = [];
-    const bucket = (mes, ano) => {
-      const m = Number(mes || 0);
-      if (view === 'trimestral') return `Q${Math.ceil(m / 3)}`;
-      if (view === 'anual') return (ano != null ? String(ano) : null);
-      const map = {1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez'};
-      return map[m] || null;
-    };
+        if (ano) {
+            sql += ' AND Ano = ?';
+            params.push(ano);
+        }
 
-    if (view === 'anual') {
-      // anual: colunas por ano existente (ignora filtro de ano)
-      const [yearsRows] = await pool.query(
-        `SELECT DISTINCT Ano
-         FROM dfc_analitica
-         WHERE Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND (Codigo_plano = '1.001.006' OR (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%'))
-         ORDER BY Ano`
-      );
-      columns = (yearsRows || []).map(r => String(r.Ano)).filter(Boolean);
-      headers = columns.slice();
-    } else if (view === 'trimestral') {
-      columns = ['Q1','Q2','Q3','Q4'];
-      headers = ['1º Trim','2º Trim','3º Trim','4º Trim'];
-    } else {
-      columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-      headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const [rows] = await pool.query(sql, params);
+
+        let columns = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        let headers = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+        const mapaMes = { 1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez' };
+
+        if (view === 'trimestral') {
+            columns = ['Q1','Q2','Q3','Q4'];
+            headers = ['1º Trim','2º Trim','3º Trim','4º Trim'];
+        } else if (view === 'anual') {
+            // se vier anual, retorna colunas por ano presente no resultado (ou ano filtrado)
+            const anos = [...new Set(rows.map(r => r.Ano).filter(a => a != null))].sort((a,b)=>a-b);
+            columns = anos.map(a => a.toString());
+            headers = columns;
+        }
+
+        const zerar = () => {
+            const o = {};
+            columns.forEach(c => o[c] = 0);
+            return o;
+        };
+
+        const grupos = {
+            receber: { conta: '1- Previsões a Receber', tipo: 'grupo', total: zerar(), planosMap: {} },
+            pagar:   { conta: '2- Previsões a Pagar',   tipo: 'grupo', total: zerar(), planosMap: {} }
+        };
+
+        const planosReceber = new Set(['1.001.006']);
+        const planosPagar   = new Set(['2.001.001','2.001.002','2.001.003']);
+
+        rows.forEach(r => {
+            const codigo = (r.Codigo_plano || '').toString().trim();
+            const codigoBase = codigo.split(' ')[0]; // segurança
+            const nome = (r.Nome || '').toString().trim();
+            let mesKey = mapaMes[parseInt(r.Mes, 10)];
+            const mesNum = parseInt(r.Mes, 10);
+            const anoNum = (r.Ano != null) ? r.Ano.toString() : '';
+            if (view === 'trimestral') mesKey = `Q${Math.ceil(mesNum / 3)}`;
+            else if (view === 'anual') mesKey = anoNum;
+            if (!mesKey) return;
+
+            const valor = parseFloat(r.Valor_mov) || 0;
+
+            let grupoKey = null;
+            if (planosReceber.has(codigoBase)) grupoKey = 'receber';
+            else if (planosPagar.has(codigoBase)) grupoKey = 'pagar';
+            else return;
+
+            const g = grupos[grupoKey];
+
+            if (!g.planosMap[codigoBase]) {
+                g.planosMap[codigoBase] = { conta: `${codigoBase} - ${nome}`, tipo: 'item', ...zerar() };
+            }
+
+            g.planosMap[codigoBase][mesKey] += valor;
+            g.total[mesKey] += valor;
+        });
+
+        // Monta rows hierárquicas (Grupo -> Planos)
+        const rowsOut = [];
+        const ordem = ['receber','pagar'];
+        ordem.forEach(k => {
+            const g = grupos[k];
+            const detalhes = Object.values(g.planosMap)
+                .sort((a,b) => a.conta.localeCompare(b.conta, undefined, { numeric:true, sensitivity:'base' }));
+
+            // Grupo com totais (opcional, como DFC). Mantém "mesma forma" visual.
+            rowsOut.push({ conta: g.conta, tipo: 'grupo', ...g.total, detalhes });
+        });
+
+        return res.json({ tabela: { rows: rowsOut, columns, headers } });
+    } catch (err) {
+        console.error('Erro /api/financeiro-dashboard:', err);
+        return res.status(500).json({ error: 'Erro Financeiro Dashboard' });
     }
-
-    const sumBuckets = (rows) => {
-      const acc = {};
-      columns.forEach(c => acc[c] = 0);
-      (rows || []).forEach(r => {
-        const k = bucket(r.Mes, r.Ano);
-        if (!k || acc[k] === undefined) return;
-        acc[k] += Number(r.valor || 0);
-      });
-      return acc;
-    };
-
-    // Queries
-    let recRows = [];
-    let pagRows = [];
-
-    if (view === 'anual') {
-      const [r1] = await pool.query(
-        `SELECT Ano, Mes, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND Codigo_plano = '1.001.006'
-         GROUP BY Ano, Mes
-         ORDER BY Ano, Mes`
-      );
-      const [r2] = await pool.query(
-        `SELECT Ano, Mes, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
-         GROUP BY Ano, Mes
-         ORDER BY Ano, Mes`
-      );
-      recRows = r1;
-      pagRows = r2;
-    } else {
-      const [r1] = await pool.query(
-        `SELECT Mes, Ano, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Ano = ?
-           AND Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND Codigo_plano = '1.001.006'
-         GROUP BY Ano, Mes
-         ORDER BY Mes`,
-        [anoSel]
-      );
-      const [r2] = await pool.query(
-        `SELECT Mes, Ano, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Ano = ?
-           AND Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
-         GROUP BY Ano, Mes
-         ORDER BY Mes`,
-        [anoSel]
-      );
-      recRows = r1;
-      pagRows = r2;
-    }
-
-    const boletos = sumBuckets(recRows);
-    const saidas02 = sumBuckets(pagRows);
-
-    const childReceber = { conta: '1.001.006 - BOLETOS', ...boletos, detalhes: [] };
-    const childPagar   = { conta: '02- Saídas Operacionais', ...saidas02, detalhes: [] };
-
-    const parentFromChildren = (children) => {
-      const out = {};
-      columns.forEach(c => out[c] = 0);
-      children.forEach(ch => columns.forEach(c => out[c] += Number(ch[c] || 0)));
-      return out;
-    };
-
-    const groupReceber = { conta: '1- Previsões a Receber', ...parentFromChildren([childReceber]), detalhes: [childReceber] };
-    const groupPagar   = { conta: '2- Previsões a Pagar', ...parentFromChildren([childPagar]), detalhes: [childPagar] };
-
-    return res.json({ tabela: { rows: [groupReceber, groupPagar], columns, headers } });
-  } catch (err) {
-    console.error('Erro /api/financeiro-dashboard:', err);
-    return res.status(500).json({ error: 'Erro Financeiro Dashboard' });
-  }
 });
-
-
 
 
 
@@ -639,94 +648,7 @@ app.get('/api/dashboard', async (req, res) => {
 
         const ordemDesejada = ['01- Entradas Operacionais', '02- Saídas Operacionais', '03- Operações Financeiras', '04- Ativo Imobilizado', '06- Movimentações de Sócios', '07- Caixas da Loja'];
 
-        // -----------------------------------------------------------------
-// SALDO INICIAL (por coluna) — calculado a partir de movimentos_contas
-// - Mensal/Trimestral: saldo acumulado até o início de cada período do ano selecionado
-// - Anual: saldo acumulado até o início de cada ano exibido
-// -----------------------------------------------------------------
-const saldoInicialCols = zerarColunas();
-
-const sqlMov = `
-  SELECT Ano, Mes,
-         SUM(CASE
-             WHEN LOWER(Natureza) LIKE 'sa%' THEN -ABS(valor)
-             ELSE ABS(valor)
-         END) AS liquido
-  FROM movimentos_contas
-  WHERE
-    (
-      ? = 'anual' AND Ano <= ?
-    ) OR (
-      ? <> 'anual' AND (Ano < ? OR (Ano = ? AND Mes BETWEEN 1 AND 12))
-    )
-  GROUP BY Ano, Mes
-`;
-
-const hoje = new Date();
-const anoSel = Number(ano) || hoje.getFullYear();
-
-let movRows = [];
-try {
-  if (view === 'anual') {
-    const years = colunasKeys.map(y => parseInt(y, 10)).filter(Number.isFinite);
-    const maxY = years.length ? Math.max(...years) : anoSel;
-    const [r] = await pool.query(sqlMov, ['anual', maxY, 'anual', anoSel, anoSel]);
-    movRows = r;
-
-    const netByYear = new Map();
-    movRows.forEach(x => {
-      const y = Number(x.Ano);
-      netByYear.set(y, (netByYear.get(y) || 0) + Number(x.liquido || 0));
-    });
-
-    let prefix = 0;
-    years.sort((a,b)=>a-b).forEach(y => {
-      saldoInicialCols[y.toString()] = prefix;
-      prefix += (netByYear.get(y) || 0);
-    });
-  } else if (view === 'trimestral') {
-    const [r] = await pool.query(sqlMov, [view || 'mensal', 0, view || 'mensal', anoSel, anoSel]);
-    movRows = r;
-
-    let base = 0;
-    const netMes = new Map();
-    movRows.forEach(x => {
-      if (Number(x.Ano) < anoSel) base += Number(x.liquido || 0);
-      if (Number(x.Ano) === anoSel) netMes.set(Number(x.Mes), (netMes.get(Number(x.Mes)) || 0) + Number(x.liquido || 0));
-    });
-
-    const quarterMonths = { Q1: [1,2,3], Q2: [4,5,6], Q3: [7,8,9], Q4: [10,11,12] };
-    let running = base;
-    colunasKeys.forEach(q => {
-      saldoInicialCols[q] = running;
-      const months = quarterMonths[q] || [];
-      let netQ = 0;
-      months.forEach(m => netQ += (netMes.get(m) || 0));
-      running += netQ;
-    });
-  } else {
-    const [r] = await pool.query(sqlMov, [view || 'mensal', 0, view || 'mensal', anoSel, anoSel]);
-    movRows = r;
-
-    let base = 0;
-    const netMes = new Map();
-    movRows.forEach(x => {
-      if (Number(x.Ano) < anoSel) base += Number(x.liquido || 0);
-      if (Number(x.Ano) === anoSel) netMes.set(Number(x.Mes), (netMes.get(Number(x.Mes)) || 0) + Number(x.liquido || 0));
-    });
-
-    let running = base;
-    for (let m = 1; m <= 12; m++) {
-      const key = mapaMeses[m];
-      saldoInicialCols[key] = running;
-      running += (netMes.get(m) || 0);
-    }
-  }
-} catch (e) {
-  console.error('Erro ao calcular saldo inicial (movimentos_contas):', e.message);
-}
-
-let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }];
+        let tabelaRows = [{ conta: 'Saldo Inicial', ...zerarColunas(), tipo: 'info' }];
 
         ordemDesejada.forEach(titulo => {
             const g = grupos[titulo];
@@ -744,36 +666,23 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }]
         const totalEntradasOperacionais = grupos['01- Entradas Operacionais'] ? Object.values(grupos['01- Entradas Operacionais'].total).reduce((a, b) => a + b, 0) : 0;
         const totalSaidasOperacionais = grupos['02- Saídas Operacionais'] ? Math.abs(Object.values(grupos['02- Saídas Operacionais'].total).reduce((a, b) => a + b, 0)) : 0;
 
-        // -----------------------------------------------------------------
-// REPRESENTATIVIDADE DE CAIXA (fixa): soma da coluna exceto "Saldo Inicial"
-// OBS: aqui equivale ao movimento líquido do período (FluxoGlobal)
-// -----------------------------------------------------------------
-const representatividadeCols = zerarColunas();
-colunasKeys.forEach(col => {
-  representatividadeCols[col] = FluxoGlobal[col];
-});
-tabelaRows.push({ conta: 'Fluxo Caixa Livre - FCL', ...representatividadeCols, tipo: 'info' });
+        const linhaSaldoFinal = zerarColunas();
+        const graficoData = [];
+        colunasKeys.forEach(col => {
+            linhaSaldoFinal[col] = FluxoGlobal[col];
+            graficoData.push(FluxoOperacional[col]);
+        });
 
-// -----------------------------------------------------------------
-// SALDO FINAL (por coluna) = Saldo Inicial + Movimento Líquido do Período
-// -----------------------------------------------------------------
-const linhaSaldoFinal = zerarColunas();
-const graficoData = [];
-colunasKeys.forEach(col => {
-  linhaSaldoFinal[col] = (saldoInicialCols[col] || 0) + (FluxoGlobal[col] || 0);
-  graficoData.push(FluxoOperacional[col]);
-});
-
-tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
+        tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
         const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
 
         res.json({
             cards: {
-                saldoInicial: (saldoInicialCols[colunasKeys[0]] || 0), 
+                saldoInicial: 0, 
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: (linhaSaldoFinal[colunasKeys[colunasKeys.length - 1]] || 0)
+                saldoFinal: Object.values(FluxoGlobal).reduce((a, b) => a + b, 0)
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
@@ -790,5 +699,117 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+/* =========================================================================
+   API — FINANCEIRO (Dashboard)
+   - Fonte: dfc_analitica (exclusivo)
+   - "1- Previsões a Receber" -> Codigo_plano = '1.001.006' (BOLETOS) | Baixa IS NULL
+   - "2- Previsões a Pagar"   -> Origem_DFC = '02- Saídas Operacionais' (variações) | Baixa IS NULL
+   - Respeita filtros: ano + view (mensal/trimestral/anual)
+   ========================================================================= */
+
+function buildFinanceiroPeriod(viewRaw) {
+  const view = String(viewRaw || 'mensal').toLowerCase();
+  if (view === 'trimestral') {
+    return {
+      view: 'trimestral',
+      headers: ['1º Tri', '2º Tri', '3º Tri', '4º Tri'],
+      columns: ['t1', 't2', 't3', 't4'],
+      bucket: (mes) => {
+        const m = Number(mes || 0);
+        if (m >= 1 && m <= 3) return 't1';
+        if (m >= 4 && m <= 6) return 't2';
+        if (m >= 7 && m <= 9) return 't3';
+        if (m >= 10 && m <= 12) return 't4';
+        return null;
+      }
+    };
+  }
+  if (view === 'anual') {
+    return { view: 'anual', headers: ['Ano'], columns: ['ano'], bucket: () => 'ano' };
+  }
+  return {
+    view: 'mensal',
+    headers: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+    columns: ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'],
+    bucket: (mes) => {
+      const map = {1:'jan',2:'fev',3:'mar',4:'abr',5:'mai',6:'jun',7:'jul',8:'ago',9:'set',10:'out',11:'nov',12:'dez'};
+      return map[Number(mes)] || null;
+    }
+  };
+}
+
+function sumBuckets(rows, periodCfg) {
+  const acc = {};
+  for (const k of periodCfg.columns) acc[k] = 0;
+  for (const r of rows) {
+    const k = periodCfg.bucket(r.Mes);
+    if (!k) continue;
+    acc[k] += Number(r.valor || 0);
+  }
+  return acc;
+}
+
+function parentFromChildren(children, periodCfg) {
+  const out = {};
+  for (const k of periodCfg.columns) out[k] = 0;
+  for (const ch of children) {
+    for (const k of periodCfg.columns) out[k] += Number(ch[k] || 0);
+  }
+  return out;
+}
+
+app.get('/api/financeiro-dashboard', async (req, res) => {
+  try {
+    const ano = Number(req.query.ano) || new Date().getFullYear();
+    const period = buildFinanceiroPeriod(req.query.view || req.query.periodo || 'mensal');
+
+    const origem02 = [
+      '02- Saídas Operacionais',
+      '02- Saidas Operacionais',
+      '02- saídas operacionais',
+      '02- saidas operacionais',
+      '02-saidas operacionais',
+      '02-saídas operacionais'
+    ];
+
+    const [recRows] = await pool.query(
+      `SELECT Mes, Ano, SUM(Valor_mov) AS valor
+       FROM dfc_analitica
+       WHERE Ano = ?
+         AND Baixa IS NULL
+         AND Financeiro IS NOT NULL
+         AND Codigo_plano = '1.001.006'
+       GROUP BY Ano, Mes
+       ORDER BY Mes`,
+      [ano]
+    );
+
+    const [pagRows] = await pool.query(
+      `SELECT Mes, Ano, SUM(Valor_mov) AS valor
+       FROM dfc_analitica
+       WHERE Ano = ?
+         AND Baixa IS NULL
+         AND Financeiro IS NOT NULL
+         AND Origem_DFC IN (` + origem02.map(() => '?').join(',') + `)
+       GROUP BY Ano, Mes
+       ORDER BY Mes`,
+      [ano, ...origem02]
+    );
+
+    const boletos = sumBuckets(recRows, period);
+    const saidas02 = sumBuckets(pagRows, period);
+
+    const childReceber = { conta: '1.001.006 - BOLETOS', level: 1, isGroup: false, detailsOpen: false, ...boletos, detalhes: [] };
+    const childPagar   = { conta: '02- Saídas Operacionais', level: 1, isGroup: false, detailsOpen: false, ...saidas02, detalhes: [] };
+
+    const groupReceber = { conta: '1- Previsões a Receber', level: 0, isGroup: true, detailsOpen: true, ...parentFromChildren([childReceber], period), detalhes: [childReceber] };
+    const groupPagar   = { conta: '2- Previsões a Pagar', level: 0, isGroup: true, detailsOpen: true, ...parentFromChildren([childPagar], period), detalhes: [childPagar] };
+
+    res.json({ tabela: { headers: period.headers, columns: period.columns, rows: [groupReceber, groupPagar] } });
+  } catch (err) {
+    console.error('Erro /api/financeiro-dashboard:', err);
+    res.status(500).json({ error: 'Erro ao carregar Financeiro' });
+  }
+});
 
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
