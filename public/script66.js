@@ -1033,7 +1033,16 @@ if (v === 'todos') {
             }
 
 
-    app.orcamentoChart = new Chart(ctx, {
+    const ctx = canvas.getContext('2d');
+const gradientOrc = ctx.createLinearGradient(0, 0, 0, canvas.height);
+gradientOrc.addColorStop(0, 'rgba(24, 150, 41, 0.35)');
+gradientOrc.addColorStop(1, 'rgba(24, 150, 41, 0)');
+
+const gradientReal = ctx.createLinearGradient(0, 0, 0, canvas.height);
+gradientReal.addColorStop(0, 'rgba(14, 116, 144, 0.35)');
+gradientReal.addColorStop(1, 'rgba(14, 116, 144, 0)');
+
+        app.orcamentoChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartLabels,
@@ -1325,16 +1334,16 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
+                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-green' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-red' : '');
                 } else {
-                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
                 }
-                let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
+                let difPerc = ((vals && vals.orcado !== undefined) ? vals.orcado : 0) !== 0 ? (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) / ((vals && vals.orcado !== undefined) ? vals.orcado : 0)) * 100 : (vals.realizado > 0 ? -100 : 0);
                 
                 colsHtmlGrupo += `
-                    <td class="col-orc" style="font-weight:bold;">${fmt(vals.orcado)}</td>
+                    <td class="col-orc" style="font-weight:bold;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td>
                     <td class="col-real" style="font-weight:bold;">${fmt(vals.realizado)}</td>
-                    <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(vals.diferenca))}</td>
+                    <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td>
                     <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
             });
 
@@ -1351,13 +1360,13 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                         const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
+                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-green' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-red' : '');
                 } else {
-                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
                 }
-                        let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
+                        let difPerc = ((vals && vals.orcado !== undefined) ? vals.orcado : 0) !== 0 ? (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) / ((vals && vals.orcado !== undefined) ? vals.orcado : 0)) * 100 : (vals.realizado > 0 ? -100 : 0);
                         
-                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(vals.orcado)}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(vals.diferenca))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
                     });
                     html += `<tr class="child-row hidden pai-${idGrupo}">
                             <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
