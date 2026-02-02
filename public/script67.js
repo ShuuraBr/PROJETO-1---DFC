@@ -1338,12 +1338,12 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 } else {
                     clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
                 }
-                let difPerc = ((vals && vals.orcado !== undefined) ? vals.orcado : 0) !== 0 ? (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) / ((vals && vals.orcado !== undefined) ? vals.orcado : 0)) * 100 : (vals.realizado > 0 ? -100 : 0);
+                let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
                 
                 colsHtmlGrupo += `
                     <td class="col-orc" style="font-weight:bold;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td>
-                    <td class="col-real" style="font-weight:bold;">${fmt(vals.realizado)}</td>
-                    <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td>
+                    <td class="col-real" style="font-weight:bold;">${fmt(real)}</td>
+                    <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(dif))}</td>
                     <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
             });
 
@@ -1364,9 +1364,9 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 } else {
                     clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
                 }
-                        let difPerc = ((vals && vals.orcado !== undefined) ? vals.orcado : 0) !== 0 ? (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) / ((vals && vals.orcado !== undefined) ? vals.orcado : 0)) * 100 : (vals.realizado > 0 ? -100 : 0);
+                        let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
                         
-                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(real)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
                     });
                     html += `<tr class="child-row hidden pai-${idGrupo}">
                             <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
