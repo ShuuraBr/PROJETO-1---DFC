@@ -1237,3 +1237,20 @@ table {
 
 /* Preferência: KPI de dias úteis (badge oculto) */
 .dias-uteis-badge{display:none !important;}
+
+/* --- Layout dos filtros da Aba Orçamento --- */
+.orcamento-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.orcamento-filters .filter-group {
+  min-width: 180px;
+}
+
+
+/* Orçamento: filtros em linha, mesmo design */
+.filters-row-orcamento{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:flex-start;}
+.filters-row-orcamento .filter-group{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1;}
+.filters-row-orcamento .filter-group select{width:100%;}

@@ -725,7 +725,7 @@ toggleThermometer: (show) => {
         }
 },
 
-    renderThermometer: (data) => {
+    renderThermometer: (data, view) => {
         const fillEl = document.getElementById('thermometer-fill');
         const bulbEl = document.getElementById('thermometer-bulb-color');
         const titleGoal = document.getElementById('thermometer-goal-title');
@@ -1382,6 +1382,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
             const yZero = yAxis.getPixelForValue(0); 
             const height = chartArea.bottom - chartArea.top;
             let offset = (chartArea.bottom - yZero) / height;
+            if (!Number.isFinite(offset)) offset = 0.5;
             offset = Math.min(Math.max(offset, 0), 1);
             const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
             if (isBackground) {
