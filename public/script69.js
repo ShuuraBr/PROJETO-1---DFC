@@ -1019,57 +1019,114 @@ if (v === 'todos') {
     const serieReceita = meta && meta.series && meta.series.receita && meta.series.receita.realizado;
     const serieDespesa = meta && meta.series && meta.series.despesa && meta.series.despesa.realizado;
 
-    const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12) ? serieReceita.map(Number) : new Array(12).fill(0);
-    const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12) ? serieDespesa.map(Number) : new Array(12).fill(0);
+    // evita decimais e valores não-finítos no gráfico
+    const toSafeNumber = (x) => {
+        const n = Number(x || 0);
+        return Number.isFinite(n) ? n : 0;
+    };
 
-            let chartLabels = mesLabels;
-            let dataReceitaPlot = dataReceita;
-            let dataDespesaPlot = dataDespesa;
-            if (selectedMonth) {
-                const idxSel = selectedMonth - 1;
-                chartLabels = [mesLabels[idxSel]];
-                dataReceitaPlot = [dataReceita[idxSel]];
-                dataDespesaPlot = [dataDespesa[idxSel]];
-            }
+    const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12)
+        ? serieReceita.map(v => Math.abs(toSafeNumber(v)))
+        : new Array(12).fill(0);
 
+    const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12)
+        ? serieDespesa.map(v => Math.abs(toSafeNumber(v)))
+        : new Array(12).fill(0);
+
+    let chartLabels = mesLabels;
+    let dataReceitaPlot = dataReceita;
+    let dataDespesaPlot = dataDespesa;
+
+    if (selectedMonth) {
+        const idxSel = selectedMonth - 1;
+        chartLabels = [mesLabels[idxSel]];
+        dataReceitaPlot = [dataReceita[idxSel]];
+        dataDespesaPlot = [dataDespesa[idxSel]];
+    }
+
+    if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
     const ctx = canvas.getContext('2d');
-const gradientOrc = ctx.createLinearGradient(0, 0, 0, canvas.height);
-gradientOrc.addColorStop(0, 'rgba(24, 150, 41, 0.35)');
-gradientOrc.addColorStop(1, 'rgba(24, 150, 41, 0)');
 
-const gradientReal = ctx.createLinearGradient(0, 0, 0, canvas.height);
-gradientReal.addColorStop(0, 'rgba(14, 116, 144, 0.35)');
-gradientReal.addColorStop(1, 'rgba(14, 116, 144, 0)');
+    // Gradientes (mesmo padrão visual dos outros gráficos)
+    const gradReceita = ctx.createLinearGradient(0, 0, 0, 400);
+    gradReceita.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
+    gradReceita.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
 
-        app.orcamentoChart = new Chart(ctx, {
+    const gradDespesa = ctx.createLinearGradient(0, 0, 0, 400);
+    gradDespesa.addColorStop(0, 'rgba(239, 68, 68, 0.30)');
+    gradDespesa.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+
+    app.orcamentoChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartLabels,
             datasets: [
-                { label: 'Realizado (Receitas)', data: dataReceitaPlot, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false },
-                { label: 'Realizado (Despesas)', data: dataDespesaPlot, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false }
+                {
+                    label: 'Realizado (Receitas)',
+                    data: dataReceitaPlot,
+                    borderColor: '#2563eb',
+                    backgroundColor: gradReceita,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 2
+                },
+                {
+                    label: 'Realizado (Despesas)',
+                    data: dataDespesaPlot,
+                    borderColor: '#ef4444',
+                    backgroundColor: gradDespesa,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderWidth: 2
+                }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { display: true },
-                tooltip: {
-                    callbacks: {
-                        label: (c2) => {
-                            const v2 = Number(c2.parsed.y || 0);
-                            const fmt = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
-                            return `${c2.dataset.label}: ${fmt.format(v2)}`;
-                        }
+                legend: { position: 'top', labels: { usePointStyle: true } },
+                tooltip: { enabled: false },
+                datalabels: {
+                    display: function(context) { return window.innerWidth > 768; },
+                    align: 'top',
+                    anchor: 'end',
+                    offset: 8,
+                    clamp: true,
+                    color: '#111827',
+                    font: { weight: 'bold', size: 12 },
+                    formatter: function(value) {
+                        const v = Number(value || 0);
+                        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
                     }
                 }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grace: '50%',
+                    grid: { borderDash: [5, 5], color: '#f3f4f6' },
+                    ticks: {
+                        callback: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v)
+                    }
+                },
+                x: { offset: true, grid: { display: false } }
             }
         }
     });
+
     return;
 }
+
 const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 

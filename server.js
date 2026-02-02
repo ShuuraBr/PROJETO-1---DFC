@@ -253,9 +253,7 @@ app.get('/api/orcamento', async (req, res) => {
 
         const user = users[0];
         const departamentoUsuario = user.Nome_dep || '';
-        const isSuperUser =
-            user.Role === 'admin' ||
-            (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
+        const isSuperUser = user.Role === 'admin' || (departamentoUsuario && departamentoUsuario.toLowerCase().includes('planejamento'));
 
         const anoSel = Number(ano) || (new Date()).getFullYear();
         const view = (visao || 'orcamento').toString().toLowerCase(); // orcamento | receita | todos
@@ -270,86 +268,70 @@ app.get('/api/orcamento', async (req, res) => {
         queryOrc += ' ORDER BY Departamento1, Plano';
         const [orcamentoBase] = await pool.query(queryOrc, paramsOrc);
 
-        // Mapa plano -> linha orçamento (para filtrar rápido o realizado)
-        const planosOrcamento = new Set();
-        orcamentoBase.forEach(r => planosOrcamento.add(String(r.Plano)));
+        // Mapa plano -> linha orçamento (para buscar planejado por mês)
+        const mapOrcRowByPlano = new Map();
+        orcamentoBase.forEach(r => mapOrcRowByPlano.set(String(r.Plano), r));
 
-        // --- 2) Descobre planos por tipo2 (Receita/Despesa) via dfc_analitica (com fallback por prefixo) ---
-        // Motivo: alguns planos podem não ter movimento no ano e ficavam "zerados" por não entrarem no set.
+        // --- 2) Descobre planos por tipo2 (Receita/Despesa) via dfc_analitica ---
         const getPlanosPorTipo2 = async (tipo2) => {
             const [rows] = await pool.query(
                 `SELECT DISTINCT Codigo_plano
                  FROM dfc_analitica
-                 WHERE (Ano = ? OR Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL`,
-                [anoSel, anoSel - 1, anoSel + 1, tipo2]
+                 WHERE Ano = ? AND Tipo_2 = ? AND Codigo_plano IS NOT NULL`,
+                [anoSel, tipo2]
             );
             return new Set(rows.map(r => String(r.Codigo_plano)));
         };
 
-        const planosReceitaDb = await getPlanosPorTipo2('Receita');
-        const planosDespesaDb = await getPlanosPorTipo2('Despesa');
+        const planosReceita = await getPlanosPorTipo2('Receita');
+        const planosDespesa = await getPlanosPorTipo2('Despesa');
 
-        const inferTipoPlano = (plano) => {
-            const p = String(plano || '');
-            const prefix = p.split('.')[0]; // "1" ou "2" geralmente
-            const isReceita = planosReceitaDb.has(p) || prefix === '1';
-            const isDespesa = planosDespesaDb.has(p) || prefix === '2';
-            return { isReceita, isDespesa };
-        };
-
-        // --- 3) Realizado: soma líquida por Natureza (entrada + / saída -), depois apresenta como ABS (neutro) ---
-        // Observação: usamos 3 anos (ano-1, ano, ano+1) para capturar "transbordo" (boleto/cartão no 1º dia útil)
+        // --- 3) Realizado: soma líquida por Natureza, depois exibe como ABS (neutro) quando necessário ---
         const sqlReal = `
-            SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Tipo_2
+            SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza
             FROM dfc_analitica
-            WHERE (Ano = ? OR Ano = ? OR Ano = ?)
-              AND Tipo_2 IN ('Receita','Despesa')
-              AND Codigo_plano IS NOT NULL
+            WHERE (Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL
             ORDER BY Dt_mov
         `;
 
-        const [rowsReal] = await pool.query(sqlReal, [anoSel, anoSel - 1, anoSel + 1]);
+        const somarRealizado = (targetSet, tipo2) => new Map(); // placeholder
 
-        const realReceita = new Map(); // key: plano-mes -> liquido
-        const realDespesa = new Map(); // key: plano-mes -> liquido
+        const buildRealMap = async (tipo2, planosAlvoSet) => {
+            const [rows] = await pool.query(sqlReal, [anoSel, anoSel + 1, tipo2]);
 
-        rowsReal.forEach(r => {
-            const plano = String(r.Codigo_plano);
+            const map = new Map(); // chave = plano-mes -> liquido (pode +/-)
+            rows.forEach(r => {
+                const plano = String(r.Codigo_plano);
 
-            // só planos que existem no orçamento (e respeitam dept do usuário, pois orcamentoBase já respeita)
-            if (!planosOrcamento.has(plano)) return;
+                // se temos a lista de planos, filtra para não puxar planos que não estão no orçamento do usuário
+                if (planosAlvoSet && planosAlvoSet.size && !planosAlvoSet.has(plano)) return;
+                if (!mapOrcRowByPlano.has(plano)) return; // garante que existe no orçamento (e que respeita dept)
 
-            let mesAlvo = Number(r.Mes);
-            let anoAlvo = Number(r.Ano);
+                let mesAlvo = Number(r.Mes);
+                let anoAlvo = Number(r.Ano);
 
-            // Condição para Boletos/Cartões - desloca competência para o próximo dia útil
-            // (mantém comportamento anterior e evita perder registros de 31/12)
-            const nomeLower = (r.Nome || '').toString().toLowerCase();
-            if ((nomeLower.includes('boleto') || nomeLower.includes('cart')) && r.Dt_mov) {
-                const dataUtil = getProximoDiaUtil(r.Dt_mov);
-                if (dataUtil instanceof Date && !isNaN(dataUtil.getTime())) {
+                // Condição para Boletos - desloca competência para o próximo dia útil
+                if (r.Nome && String(r.Nome).toLowerCase().includes('boleto') && r.Dt_mov) {
+                    const dataUtil = getProximoDiaUtil(r.Dt_mov);
                     mesAlvo = dataUtil.getMonth() + 1;
                     anoAlvo = dataUtil.getFullYear();
                 }
-            }
 
-            // só contabiliza no ano filtrado após ajuste
-            if (anoAlvo !== anoSel) return;
-            if (!(mesAlvo >= 1 && mesAlvo <= 12)) return;
+                // só contabiliza no ano filtrado após ajuste
+                if (anoAlvo !== anoSel) return;
 
-            const valor = Math.abs(parseFloat(r.Valor_mov) || 0);
-            const natureza = (r.Natureza || '').toString().toLowerCase();
-            const liquido = natureza.startsWith('sa') ? -valor : valor;
+                const valor = Math.abs(parseFloat(r.Valor_mov) || 0);
+                const natureza = (r.Natureza || '').toString().toLowerCase();
+                const liquido = natureza.startsWith('sa') ? -valor : valor;
 
-            const key = `${plano}-${mesAlvo}`;
-            const tipo2 = (r.Tipo_2 || '').toString();
+                const key = `${plano}-${mesAlvo}`;
+                map.set(key, (map.get(key) || 0) + liquido);
+            });
+            return map;
+        };
 
-            if (tipo2 === 'Receita') {
-                realReceita.set(key, (realReceita.get(key) || 0) + liquido);
-            } else if (tipo2 === 'Despesa') {
-                realDespesa.set(key, (realDespesa.get(key) || 0) + liquido);
-            }
-        });
+        const realReceita = await buildRealMap('Receita', planosReceita);
+        const realDespesa = await buildRealMap('Despesa', planosDespesa);
 
         // --- 4) Monta estrutura final no mesmo formato do front (grupos por departamento) ---
         const initGrupo = (depto) => {
@@ -373,13 +355,11 @@ app.get('/api/orcamento', async (req, res) => {
             grupos[depto].dados[chaveFront].diferenca += diferenca;
         };
 
-        // Séries para gráficos
+        // Para gráfico "todos": queremos séries separadas (Realizado Receita x Realizado Despesa)
         const totalsSeries = {
             receita: { realizado: Array(12).fill(0), planejado: Array(12).fill(0) },
             despesa: { realizado: Array(12).fill(0), planejado: Array(12).fill(0) },
         };
-
-        const deptFiltro = (typeof dept === 'string' && dept.trim()) ? dept.trim() : '';
 
         orcamentoBase.forEach(row => {
             const plano = String(row.Plano);
@@ -387,12 +367,15 @@ app.get('/api/orcamento', async (req, res) => {
             const depto = row.Departamento1 || 'Sem Departamento';
             const contaFormatada = `${plano} - ${nome}`;
 
-            const { isReceita, isDespesa } = inferTipoPlano(plano);
+            const isPlanoReceita = planosReceita.has(plano);
+            const isPlanoDespesa = planosDespesa.has(plano);
 
             // filtra conforme tipo de visão
-            if (view === 'receita' && !isReceita) return;
-            if (view === 'orcamento' && !isDespesa) return;
-            if (view === 'todos' && !(isReceita || isDespesa)) return;
+            if (view === 'receita' && !isPlanoReceita) return;
+            if (view === 'orcamento' && !isPlanoDespesa) return;
+
+            // view === 'todos' usa ambos (receita e despesa)
+            if (view === 'todos' && !(isPlanoReceita || isPlanoDespesa)) return;
 
             const dadosMesesItem = {};
 
@@ -402,49 +385,50 @@ app.get('/api/orcamento', async (req, res) => {
 
                 const planejado = Math.abs(parseFloat(row[colBanco]) || 0);
 
-                // Realizado: neutro (ABS do líquido) por plano
-                const mapReal = isReceita ? realReceita : realDespesa;
+                // Realizado: sempre neutro (ABS do líquido) por plano
+                const mapReal = isPlanoReceita ? realReceita : realDespesa;
                 const liquido = mapReal.get(`${plano}-${mesNumero}`) || 0;
                 const realizadoNeutro = Math.abs(liquido);
 
                 if (view === 'todos') {
-                    // Para "todos": saldo (Receitas - Despesas)
-                    const sinal = isReceita ? 1 : -1;
+                    // para todos, planejado e realizado serão SALDO (Receitas - Despesas)
+                    // Aqui, no detalhe, a gente monta linha como o valor do plano (receita positivo, despesa negativo)
+                    const sinal = isPlanoReceita ? 1 : -1;
 
                     const orc = sinal * planejado;
                     const real = sinal * realizadoNeutro;
-                    const dif = (orc - real);
 
-                    dadosMesesItem[chaveFront] = { orcado: orc, realizado: real, diferenca: dif };
-                    addTotaisGrupo(depto, chaveFront, orc, real, dif);
+                    dadosMesesItem[chaveFront] = { orcado: orc, realizado: real, diferenca: (orc - real) };
 
-                    // séries para gráfico (totais globais ou filtrados por departamento)
-                    const aplicaNoTotal = !deptFiltro || deptFiltro === depto;
-                    if (aplicaNoTotal) {
-                        if (isReceita) {
-                            totalsSeries.receita.planejado[idxMes] += planejado;
-                            totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
-                        } else {
-                            totalsSeries.despesa.planejado[idxMes] += planejado;
-                            totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
-                        }
-                    }
-                } else {
-                    // Receita/Orçamento: planejado sempre positivo, realizado sempre positivo
-                    const dif = (planejado - realizadoNeutro);
-                    dadosMesesItem[chaveFront] = { orcado: planejado, realizado: realizadoNeutro, diferenca: dif };
-                    addTotaisGrupo(depto, chaveFront, planejado, realizadoNeutro, dif);
+                    // totais do grupo serão acumulados
+                    addTotaisGrupo(depto, chaveFront, orc, real, (orc - real));
 
-                    // séries (totais globais ou filtrados por departamento)
-                    const aplicaNoTotal = !deptFiltro || deptFiltro === depto;
-                    if (aplicaNoTotal) {
-                        if (isReceita) {
-                            totalsSeries.receita.planejado[idxMes] += planejado;
-                            totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
-                        } else {
-                            totalsSeries.despesa.planejado[idxMes] += planejado;
-                            totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
-                        }
+
+// séries para gráfico (totais globais ou filtrados por departamento)
+const deptFiltro = (typeof dept === 'string' && dept.trim()) ? dept.trim() : '';
+const aplicaNoTotal = !deptFiltro || deptFiltro === depto;
+if (aplicaNoTotal) {
+    if (isPlanoReceita) {
+        totalsSeries.receita.planejado[idxMes] += planejado;
+        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
+    } else {
+        totalsSeries.despesa.planejado[idxMes] += planejado;
+        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
+    }
+}
+// receita/orçamento padrão: planejado sempre positivo, realizado sempre positivo
+                    const diferenca = planejado - realizadoNeutro;
+                    dadosMesesItem[chaveFront] = { orcado: planejado, realizado: realizadoNeutro, diferenca };
+
+                    addTotaisGrupo(depto, chaveFront, planejado, realizadoNeutro, diferenca);
+
+                    // séries para gráfico (totais globais)
+                    if (isPlanoReceita) {
+                        totalsSeries.receita.planejado[idxMes] += planejado;
+                        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
+                    } else {
+                        totalsSeries.despesa.planejado[idxMes] += planejado;
+                        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
                     }
                 }
             });
@@ -458,6 +442,7 @@ app.get('/api/orcamento', async (req, res) => {
         });
 
         meta.series = totalsSeries;
+
         res.json({ grupos: Object.values(grupos), meta });
     } catch (e) {
         console.error(e);
