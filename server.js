@@ -241,7 +241,7 @@ app.get('/api/anos', async (req, res) => {
 });
 
 app.get('/api/orcamento', async (req, res) => {
-    const { email, ano, visao } = req.query;
+    const { email, ano, visao, dept } = req.query;
 
     try {
         // --- valida usuário e restrição por departamento ---
@@ -403,16 +403,20 @@ app.get('/api/orcamento', async (req, res) => {
                     // totais do grupo serão acumulados
                     addTotaisGrupo(depto, chaveFront, orc, real, (orc - real));
 
-                    // séries para gráfico (totais globais)
-                    if (isPlanoReceita) {
-                        totalsSeries.receita.planejado[idxMes] += planejado;
-                        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
-                    } else {
-                        totalsSeries.despesa.planejado[idxMes] += planejado;
-                        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
-                    }
-                } else {
-                    // receita/orçamento padrão: planejado sempre positivo, realizado sempre positivo
+
+// séries para gráfico (totais globais ou filtrados por departamento)
+const deptFiltro = (typeof dept === 'string' && dept.trim()) ? dept.trim() : '';
+const aplicaNoTotal = !deptFiltro || deptFiltro === depto;
+if (aplicaNoTotal) {
+    if (isPlanoReceita) {
+        totalsSeries.receita.planejado[idxMes] += planejado;
+        totalsSeries.receita.realizado[idxMes] += realizadoNeutro;
+    } else {
+        totalsSeries.despesa.planejado[idxMes] += planejado;
+        totalsSeries.despesa.realizado[idxMes] += realizadoNeutro;
+    }
+}
+// receita/orçamento padrão: planejado sempre positivo, realizado sempre positivo
                     const diferenca = planejado - realizadoNeutro;
                     dadosMesesItem[chaveFront] = { orcado: planejado, realizado: realizadoNeutro, diferenca };
 

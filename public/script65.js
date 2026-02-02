@@ -676,7 +676,7 @@ toggleThermometer: (show) => {
             const email = app.user.Email;
             const anoParam = app.yearOrcamento; 
             
-                        const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}`);
+                        const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}&dept=${encodeURIComponent((document.getElementById('filtro-dep-orcamento')?.value)||'')}`);
                         if (!res.ok) {
                             const txt = await res.text();
                             throw new Error(`HTTP ${res.status} - ${txt}`);
@@ -740,32 +740,40 @@ toggleThermometer: (show) => {
     },
     
     aplicarFiltrosOrcamento: () => {
-        if(!app.dadosOrcamentoCache) return;
+    if (!app.dadosOrcamentoCache) return;
 
-        const select = document.getElementById('filtro-dep-orcamento');
-        const deptSelecionado = select ? select.value : "";
+    const select = document.getElementById('filtro-dep-orcamento');
+    const deptSelecionado = select ? select.value : "";
 
-        let dadosFiltrados = app.dadosOrcamentoCache;
+    let dadosFiltrados = app.dadosOrcamentoCache;
 
-        if (deptSelecionado !== "") {
-            dadosFiltrados = app.dadosOrcamentoCache.filter(grupo => grupo.conta === deptSelecionado);
-        }
+    if (deptSelecionado !== "") {
+        dadosFiltrados = app.dadosOrcamentoCache.filter(grupo => grupo.conta === deptSelecionado);
+    }
 
-        app.updateOrcamentoTableHeader();
-        app.renderOrcamentoTable(dadosFiltrados);
-        app.renderOrcamentoKPIs(dadosFiltrados);
-        const view = app.orcamentoView || 'orcamento';
-        app.renderOrcamentoChart(dadosFiltrados, view);
-        if (view === 'todos') {
-            app.toggleThermometer(false);
-        } else {
-            app.toggleThermometer(true);
-            app.renderThermometer(dadosFiltrados, view);
+    app.updateOrcamentoTableHeader();
+    app.renderOrcamentoTable(dadosFiltrados);
+    app.renderOrcamentoKPIs(dadosFiltrados);
+
+    const view = (app.orcamentoView || 'orcamento').toLowerCase();
+    app.renderOrcamentoChart(dadosFiltrados, view);
+
+    // Termômetro não deve aparecer na visão "Todos"
+    if (view === 'todos') {
+        app.toggleThermometer(false);
+    } else {
+        app.toggleThermometer(true);
+        app.renderThermometer(dadosFiltrados, view);
+    }
+
+    // Mantém lógica existente de colunas (se houver)
+    if (typeof app.toggleOrcamentoColumns === 'function') {
         app.toggleOrcamentoColumns();
-        }
-},
+    }
+    },
 
     renderThermometer: (data, view) => {
+        const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
         const fillEl = document.getElementById('thermometer-fill');
         const bulbEl = document.getElementById('thermometer-bulb-color');
         const titleGoal = document.getElementById('thermometer-goal-title');
@@ -932,7 +940,9 @@ toggleThermometer: (show) => {
 
         const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
-        const corDif = diferencaValor >= 0 ? 'text-green' : 'text-red';
+        const corDif = (view === 'receita')
+            ? (diferencaValor <= 0 ? 'text-green' : 'text-red')
+            : (diferencaValor >= 0 ? 'text-green' : 'text-red');
 
         let cardDias = '---';
         let cardMeta = '---';
@@ -1000,6 +1010,9 @@ toggleThermometer: (show) => {
 const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
 const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+        const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
+
+
 // --- VISÃO TODOS: apenas linhas de Realizado (Receitas) e Realizado (Despesas) ---
 if (v === 'todos') {
     const meta = app.dadosOrcamentoMeta || null;
@@ -1009,13 +1022,24 @@ if (v === 'todos') {
     const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12) ? serieReceita.map(Number) : new Array(12).fill(0);
     const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12) ? serieDespesa.map(Number) : new Array(12).fill(0);
 
+            let chartLabels = mesLabels;
+            let dataReceitaPlot = dataReceita;
+            let dataDespesaPlot = dataDespesa;
+            if (selectedMonth) {
+                const idxSel = selectedMonth - 1;
+                chartLabels = [mesLabels[idxSel]];
+                dataReceitaPlot = [dataReceita[idxSel]];
+                dataDespesaPlot = [dataDespesa[idxSel]];
+            }
+
+
     app.orcamentoChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: mesLabels,
+            labels: chartLabels,
             datasets: [
-                { label: 'Realizado (Receitas)', data: dataReceita, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false },
-                { label: 'Realizado (Despesas)', data: dataDespesa, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false }
+                { label: 'Realizado (Receitas)', data: dataReceitaPlot, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false },
+                { label: 'Realizado (Despesas)', data: dataDespesaPlot, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false }
             ]
         },
         options: {
@@ -1038,6 +1062,9 @@ if (v === 'todos') {
     return;
 }
 const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+
+
         const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         
         const arrOrcado = new Array(12).fill(0);
@@ -1051,6 +1078,18 @@ const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov
                 }
             });
         });
+
+        
+
+let chartLabels = labels;
+let dataOrcado = arrOrcado;
+let dataRealizado = arrRealizado;
+if (selectedMonth) {
+    const idxSel = selectedMonth - 1;
+    chartLabels = [labels[idxSel]];
+    dataOrcado = [arrOrcado[idxSel]];
+    dataRealizado = [arrRealizado[idxSel]];
+}
 
         if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
@@ -1066,11 +1105,11 @@ const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov
         app.orcamentoChart = new Chart(ctx, {
             type: 'line', 
             data: {
-                labels: labels,
+                labels: chartLabels,
                 datasets: [
                     {
                         label: 'Orçado',
-                        data: arrOrcado,
+                        data: dataOrcado,
                         borderColor: '#189629ff', 
                         backgroundColor: gradientOrc, 
                         borderWidth: 2,
@@ -1081,7 +1120,7 @@ const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov
                     },
                     {
                         label: 'Realizado',
-                        data: arrRealizado,
+                        data: dataRealizado,
                         borderColor: '#2563eb', 
                         backgroundColor: gradientReal, 
                         borderWidth: 3,
@@ -1283,7 +1322,13 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
             let colsHtmlGrupo = '';
             meses.forEach(m => {
                 const vals = grupo.dados[m];
-                let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                const view = (app.orcamentoView || 'orcamento').toLowerCase();
+                let clsDif;
+                if (view === 'receita') {
+                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
+                } else {
+                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                }
                 let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
                 
                 colsHtmlGrupo += `
@@ -1303,7 +1348,13 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                     let colsHtmlItem = '';
                     meses.forEach(m => {
                         const vals = item.dados[m];
-                        let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                        const view = (app.orcamentoView || 'orcamento').toLowerCase();
+                let clsDif;
+                if (view === 'receita') {
+                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
+                } else {
+                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
+                }
                         let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
                         
                         colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(vals.orcado)}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(vals.diferenca))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
