@@ -1254,3 +1254,14 @@ table {
 .filters-row-orcamento{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:flex-start;}
 .filters-row-orcamento .filter-group{display:flex;flex-direction:column;gap:6px;min-width:180px;flex:1;}
 .filters-row-orcamento .filter-group select{width:100%;}
+
+
+/* Garantia: filtros em linha (inclui Orçamento) */
+.actions{flex-wrap:wrap;}
+.actions .filter-field{display:flex;flex-direction:column;gap:6px;min-width:180px;}
+.actions .filter-field .filter-label{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.7;}
+.actions .filter-field select{width:100%;}
+
+
+/* Ocultar colunas do orçamento quando filtro de Mês ativo */
+.hide-col{display:none !important;}

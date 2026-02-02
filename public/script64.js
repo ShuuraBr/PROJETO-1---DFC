@@ -185,6 +185,27 @@ const app = {
             filtroDept.addEventListener('change', () => {
                 app.aplicarFiltrosOrcamento();
             });
+
+
+// --- LISTENER: Tipo de Visão (Todos / Receita / Orçamento) ---
+const filtroView = document.getElementById('orcamento-view');
+if (filtroView) {
+    filtroView.addEventListener('change', (e) => {
+        app.orcamentoView = e.target.value || 'orcamento';
+        app.updateOrcamentoUIForView(app.orcamentoView);
+        // Visão muda a base (receita/despesa/todos) -> recarrega do servidor
+        app.loadOrcamento();
+    });
+}
+
+// --- LISTENER: Mês (impacta KPIs/termômetro do orçamento) ---
+const filtroMesOrc = document.getElementById('orcamento-month');
+if (filtroMesOrc) {
+    filtroMesOrc.addEventListener('change', (e) => {
+        app.orcamentoMesSel = Number(e.target.value || 0);
+        app.aplicarFiltrosOrcamento();
+    });
+}
         }
 
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -601,6 +622,7 @@ if (data.success && data.require2fa) {
         }
 
         if (tab === 'reports') {
+            app.updateOrcamentoUIForView(app.orcamentoView);
             app.loadOrcamento();
         } else if (tab === 'dashboard') {
             app.fetchData();
@@ -701,6 +723,22 @@ toggleThermometer: (show) => {
         }
     },
 
+    
+    toggleOrcamentoColumns: () => {
+        const mesSel = app.orcamentoMesSel || 0; // 0 = Auto (mostrar todas)
+        const table = document.getElementById('orcamento-table');
+        if (!table) return;
+        const cells = table.querySelectorAll('[data-mes]');
+        cells.forEach(c => {
+            const m = Number(c.getAttribute('data-mes'));
+            if (mesSel === 0 || m === mesSel) {
+                c.classList.remove('hide-col');
+            } else {
+                c.classList.add('hide-col');
+            }
+        });
+    },
+    
     aplicarFiltrosOrcamento: () => {
         if(!app.dadosOrcamentoCache) return;
 
@@ -713,6 +751,7 @@ toggleThermometer: (show) => {
             dadosFiltrados = app.dadosOrcamentoCache.filter(grupo => grupo.conta === deptSelecionado);
         }
 
+        app.updateOrcamentoTableHeader();
         app.renderOrcamentoTable(dadosFiltrados);
         app.renderOrcamentoKPIs(dadosFiltrados);
         const view = app.orcamentoView || 'orcamento';
@@ -722,6 +761,7 @@ toggleThermometer: (show) => {
         } else {
             app.toggleThermometer(true);
             app.renderThermometer(dadosFiltrados, view);
+        app.toggleOrcamentoColumns();
         }
 },
 
@@ -1193,17 +1233,49 @@ setupFinanceStickyRows: () => {
         setTimeout(() => app.setupFinanceStickyRows(), 0);
     },
 
+    
+updateOrcamentoTableHeader: () => {
+    const thead = document.querySelector('#orcamento-table thead');
+    if (!thead) return;
+
+    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const selected = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
+
+    let html = '';
+    html += '<tr class="header-months">';
+    html += '<th class="sticky-col" rowspan="2">Departamento</th>';
+
+    if (selected) {
+        html += `<th colspan="4">${monthNames[selected-1]}</th>`;
+    } else {
+        for (let i = 0; i < 12; i++) html += `<th colspan="4">${monthNames[i]}</th>`;
+    }
+    html += '</tr>';
+
+    html += '<tr class="header-sub">';
+    const repeat = selected ? 1 : 12;
+    for (let i = 0; i < repeat; i++) {
+        html += '<th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>';
+    }
+    html += '</tr>';
+
+    thead.innerHTML = html;
+},
+
     renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="49" style="text-align:center; padding:20px;">Nenhum registro encontrado.</td></tr>';
-            return;
-        }
-
-        const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
+    const colspan = 1 + (selectedMonth ? 4 : 48);
+    tbody.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center; padding:20px;">Nenhum registro encontrado.</td></tr>`;
+    return;
+}
+const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(v) + '%';
-        const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const mesesAll = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
+        const meses = selectedMonth ? [mesesAll[selectedMonth-1]] : mesesAll;
 
         let html = '';
         data.forEach((grupo, idx) => {
