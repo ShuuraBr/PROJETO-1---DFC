@@ -605,7 +605,7 @@ const app = {
 
     loadOrcamento: async () => {
         app.setLoading(true);
-        // evita render duplicado por chamadas concorrentes (orcamento)
+        // evita render duplicado por chamadas concorrente (orcamento)
         app.__orcReqId = (app.__orcReqId || 0) + 1;
         const __reqId = app.__orcReqId;
         const tbody = document.querySelector('#orcamento-table tbody');

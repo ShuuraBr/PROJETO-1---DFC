@@ -1192,7 +1192,7 @@ table {
    PATCH (FINAL v2)
    - Labels acima dos filtros (Dashboard + Orçamento)
    - Filtros lado a lado (layout antigo)
-   ========================================================= */
+   ======================================================== */
 .filters-row{
   display:flex;
   align-items:flex-end;
