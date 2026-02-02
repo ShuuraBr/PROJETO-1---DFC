@@ -179,17 +179,7 @@ const app = {
             });
         }
         
-        
-        const filtroViewOrc = document.getElementById('orcamento-view');
-        if (filtroViewOrc) {
-            filtroViewOrc.addEventListener('change', () => {
-                app.orcamentoView = filtroViewOrc.value || 'orcamento';
-                // mantém filtros atuais
-                app.loadOrcamento();
-            });
-        }
-
-const filtroDept = document.getElementById('filtro-dep-orcamento');
+        const filtroDept = document.getElementById('filtro-dep-orcamento');
         if(filtroDept) {
             filtroDept.addEventListener('change', () => {
                 app.aplicarFiltrosOrcamento();
@@ -414,10 +404,10 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
             
-            if (data.success && data.require2fa) {
+                        const grupos = Array.isArray(data) ? data : (data.grupos || []);
+            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
+if (data.success && data.require2fa) {
                 app.emailTemp = data.email;
                 document.getElementById('loginForm').classList.add('hidden');
                 document.getElementById('tokenForm').classList.remove('hidden');
@@ -478,8 +468,6 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
                 body: JSON.stringify({ email: app.emailTemp, token: token })
             });
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
 
             if (data.success) {
                 if (app.timer) clearInterval(app.timer); 
@@ -529,8 +517,6 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
                 body: JSON.stringify({ email: app.user.Email, novaSenha: s1 })
             });
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
             if (data.success) {
                 alert("Senha atualizada!");
                 document.getElementById('modal-reset').classList.add('hidden');
@@ -620,6 +606,38 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
         }
     },
 
+
+updateOrcamentoUIForView: (view) => {
+    const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
+    const title = document.getElementById('orcamento-title');
+    const subtitle = document.getElementById('orcamento-subtitle');
+    if (title) {
+        if (v === 'receita') title.textContent = 'Metas vs Realizado';
+        else if (v === 'todos') title.textContent = 'Receitas vs Despesas';
+        else title.textContent = 'Orçamento vs Realizado';
+    }
+    if (subtitle) {
+        if (v === 'receita') subtitle.textContent = 'Visão de receitas (metas e realizado).';
+        else if (v === 'todos') subtitle.textContent = 'Comparativo de receitas e despesas (realizado).';
+        else subtitle.textContent = 'Visão de despesas (orçado e realizado).';
+    }
+    // Atualiza cabeçalhos da tabela (Planejado/Metas/Orçado)
+    const thPlanejado = document.querySelector('#orcamento-table thead th.th-planejado');
+    if (thPlanejado) {
+        if (v === 'receita') thPlanejado.textContent = 'Metas';
+        else if (v === 'todos') thPlanejado.textContent = 'Planejado';
+        else thPlanejado.textContent = 'Orçado';
+    }
+    const thReal = document.querySelector('#orcamento-table thead th.th-realizado');
+    if (thReal) thReal.textContent = 'Realizado';
+},
+
+toggleThermometer: (show) => {
+    const el = document.getElementById('thermometer-container');
+    if (!el) return;
+    el.classList.toggle('hidden', !show);
+},
+
     loadOrcamento: async () => {
         app.setLoading(true);
         // evita render duplicado por chamadas concorrente (orcamento)
@@ -635,19 +653,15 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
             const email = app.user.Email;
             const anoParam = app.yearOrcamento; 
             
-            const visaoParam = app.orcamentoView || 'orcamento';
-            const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(visaoParam)}`);
+            const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}`);
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
             // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
             if (__reqId !== app.__orcReqId) return;
             if (data.error) throw new Error(data.error);
             
             app.dadosOrcamentoCache = grupos;
             app.updateOrcamentoUIForView(app.orcamentoView);
-
-            app.povoarFiltroDepartamentos(data);
+            app.povoarFiltroDepartamentos(grupos);
             app.aplicarFiltrosOrcamento();
 
         } catch (err) {
@@ -681,8 +695,6 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
     aplicarFiltrosOrcamento: () => {
         if(!app.dadosOrcamentoCache) return;
 
-        const view = app.orcamentoView || 'orcamento';
-
         const select = document.getElementById('filtro-dep-orcamento');
         const deptSelecionado = select ? select.value : "";
 
@@ -692,185 +704,24 @@ const filtroDept = document.getElementById('filtro-dep-orcamento');
             dadosFiltrados = app.dadosOrcamentoCache.filter(grupo => grupo.conta === deptSelecionado);
         }
 
-        app.renderOrcamentoTable(dadosFiltrados, view);
-        app.renderOrcamentoKPIs(dadosFiltrados, view);
-
-        // Gráficos variam por tipo de visão
+        app.renderOrcamentoTable(dadosFiltrados);
+        app.renderOrcamentoKPIs(dadosFiltrados);
+        const view = app.orcamentoView || 'orcamento';
+        app.renderOrcamentoChart(dadosFiltrados, view);
         if (view === 'todos') {
-            app.renderOrcamentoChart(dadosFiltrados, view);
             app.toggleThermometer(false);
         } else {
-            app.renderOrcamentoChart(dadosFiltrados, view);
             app.toggleThermometer(true);
             app.renderThermometer(dadosFiltrados, view);
         }
-    },
-
-    renderOrcamentoChart: (data, view) => {
-    const canvas = document.getElementById('orcamentoChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (typeof Chart === 'undefined') return;
-
-    // destrói chart anterior
-    const existing = Chart.getChart(canvas);
-    if (existing) existing.destroy();
-    if (app.orcamentoChart) { try { app.orcamentoChart.destroy(); } catch(e){} app.orcamentoChart = null; }
-
-    const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-    const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
-
-    // Helper: soma planejado/realizado por mês a partir da tabela
-    const sumByMonth = (field) => {
-        const keys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        const arr = new Array(12).fill(0);
-        (data || []).forEach(grupo => {
-            if (!grupo || !grupo.dados) return;
-            keys.forEach((k, i) => {
-                const cell = grupo.dados[k];
-                if (!cell) return;
-                const val = Number(cell[field] || 0);
-                arr[i] += isFinite(val) ? val : 0;
-            });
-        });
-        return arr;
-    };
-
-    // Quando visao = TODOS: mostrar apenas linhas de Realizado de Receitas e Realizado de Despesas
-    if (v === 'todos') {
-        const meta = app.dadosOrcamentoMeta || null;
-        const serieReceita = meta?.series?.receita?.realizado;
-        const serieDespesa = meta?.series?.despesa?.realizado;
-
-        // Fallback: tenta somar realizado do dataset filtrado (caso meta não venha)
-        const fallbackReal = sumByMonth('realizado').map(x => Math.abs(x));
-
-        const dataReceita = Array.isArray(serieReceita) && serieReceita.length === 12 ? serieReceita.map(Number) : fallbackReal;
-        const dataDespesa = Array.isArray(serieDespesa) && serieDespesa.length === 12 ? serieDespesa.map(Number) : fallbackReal.map(x => -Math.abs(x));
-
-        app.orcamentoChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: mesLabels,
-                datasets: [
-                    {
-                        label: 'Realizado (Receitas)',
-                        data: dataReceita,
-                        tension: 0.35,
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        fill: false
-                    },
-                    {
-                        label: 'Realizado (Despesas)',
-                        data: dataDespesa,
-                        tension: 0.35,
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        fill: false
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx2) => {
-                                const v2 = Number(ctx2.parsed.y || 0);
-                                const fmt = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
-                                return `${ctx2.dataset.label}: ${fmt.format(v2)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        ticks: {
-                            callback: (value) => {
-                                const fmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' });
-                                return fmt.format(Number(value || 0));
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        return;
-    }
-
-    // Outras visoes: mantém gráfico de linhas com Planejado vs Realizado (um dataset por série)
-    const planejado = sumByMonth('orcado').map(x => Math.abs(x));
-    const realizado = sumByMonth('realizado').map(x => Math.abs(x));
-
-    const labelPlanejado = (v === 'receita') ? 'Metas' : 'Orçado';
-    const labelRealizado = 'Realizado';
-
-    app.orcamentoChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: mesLabels,
-            datasets: [
-                {
-                    label: labelPlanejado,
-                    data: planejado,
-                    tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    fill: false
-                },
-                {
-                    label: labelRealizado,
-                    data: realizado,
-                    tension: 0.35,
-                    borderWidth: 2,
-                    pointRadius: 3,
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx2) => {
-                            const v2 = Number(ctx2.parsed.y || 0);
-                            const fmt = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
-                            return `${ctx2.dataset.label}: ${fmt.format(v2)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    ticks: {
-                        callback: (value) => {
-                            const fmt = new Intl.NumberFormat('pt-BR', { notation: 'compact' });
-                            return fmt.format(Number(value || 0));
-                        }
-                    }
-                }
-            }
-        }
-    });
 },
 
-renderThermometer: (data, view) => {
+    renderThermometer: (data) => {
         const fillEl = document.getElementById('thermometer-fill');
         const bulbEl = document.getElementById('thermometer-bulb-color');
         const titleGoal = document.getElementById('thermometer-goal-title');
-        const v = view || 'orcamento';
-        if (titleGoal) {
-            titleGoal.textContent = (v === 'receita') ? 'Meta de Receitas (Mês)' : 'Meta Orçamentária (Mês)';
-        }
-
+        const vView = (view || app.orcamentoView || 'orcamento').toLowerCase();
+        if (titleGoal) titleGoal.textContent = (vView === 'receita') ? 'Meta de Receitas (Mês)' : 'Meta Orçamentária (Mês)';
         const tooltipLeft = document.getElementById('tooltip-left');
         const tooltipRight = document.getElementById('tooltip-right');
         const lblPercent = document.getElementById('lbl-porcentagem');
@@ -903,6 +754,9 @@ renderThermometer: (data, view) => {
         const diasTotais = dias.totais || 1;
         const diasDecorridos = dias.decorridos || 1; 
         const diasRestantes = diasTotais - diasDecorridos;
+
+        const badgeVal = document.getElementById('dias-uteis-value');
+        if (badgeVal) badgeVal.textContent = `${diasDecorridos}/${diasTotais}`;
 
         let gastoDiario = totalRealizado / diasDecorridos;
         let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
@@ -993,94 +847,344 @@ renderThermometer: (data, view) => {
         return { totais: uteisTotais, decorridos: uteisDecorridos };
     },
 
-    renderOrcamentoKPIs: (data, view) => {
+    renderOrcamentoKPIs: (data) => {
         const container = document.getElementById('kpi-orcamento-container');
         if (!container || !data) return;
 
-        const v = view || 'orcamento';
-
         const hoje = new Date();
-        const mesIndex = hoje.getMonth();
-        const anoAnalise = app.yearOrcamento;
-
+        const mesIndex = hoje.getMonth(); 
+        const anoAnalise = app.yearOrcamento; 
+        
         const chavesMeses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         const nomeMes = nomesMeses[mesIndex];
         const keyMes = chavesMeses[mesIndex];
 
-        let totalPlanejado = 0;
+
+        const view = (app.orcamentoView || 'orcamento').toLowerCase();
+        const labelPlanejado = (view === 'receita') ? 'Metas' : (view === 'todos') ? 'Planejado' : 'Orçado';
+        let totalOrcado = 0;
         let totalRealizado = 0;
 
         data.forEach(grupo => {
             if (grupo.dados && grupo.dados[keyMes]) {
-                totalPlanejado += Math.abs(grupo.dados[keyMes].orcado || 0);
-                totalRealizado += Math.abs(grupo.dados[keyMes].realizado || 0);
+                totalOrcado += Math.abs(grupo.dados[keyMes].orcado || 0);
+                totalRealizado += (grupo.dados[keyMes].realizado || 0);
             }
         });
 
-        const diferencaValor = totalPlanejado - totalRealizado;
+        const diferencaValor = totalOrcado - totalRealizado; 
         let diferencaPerc = 0;
-        if (totalPlanejado !== 0) {
-            diferencaPerc = (diferencaValor / totalPlanejado) * 100;
+        if (totalOrcado !== 0) {
+            diferencaPerc = (diferencaValor / totalOrcado) * 100;
         } else if (totalRealizado > 0) {
-            diferencaPerc = -100;
+            diferencaPerc = -100; 
         }
 
         const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
+        const corDif = diferencaValor >= 0 ? 'text-green' : 'text-red';
 
-        // Dias úteis agora fica na barra translúcida (não é mais KPI)
-        const badge = document.getElementById('orcamento-dias-uteis');
-        if (badge) {
+        let cardDias = '---';
+        let cardMeta = '---';
+        let cardGasto = '---';
+        let cardProj = '---';
+        let corGasto = '';
+        let rodapeDias = 'Selecione um ano';
+
+        if (anoAnalise) {
             const dias = app.getDiasUteis(mesIndex, anoAnalise);
-            badge.innerHTML = `Dias úteis: <strong>${dias.decorridos}/${dias.totais}</strong>`;
+            rodapeDias = 'Decorridos / Totais';
+            cardDias = `${dias.decorridos} / ${dias.totais}`;
+            
+            const diasRestantes = dias.totais - dias.decorridos;
+
+            let metaDiaria = 0;
+            if (dias.totais > 0) metaDiaria = totalOrcado / dias.totais;
+
+            let gastoDiario = 0;
+            if (dias.decorridos > 0) gastoDiario = totalRealizado / dias.decorridos;
+
+            let projecaoTotal = (gastoDiario * diasRestantes) + totalRealizado;
+
+            cardMeta = fmt(metaDiaria);
+            cardGasto = fmt(gastoDiario);
+            cardProj = fmt(projecaoTotal);
+            corGasto = (gastoDiario > metaDiaria) ? 'text-red' : 'text-green';
         }
 
-        // Configura rótulos por tipo de visão
-        const labelPlanejado = (v === 'receita') ? 'Metas' : (v === 'todos') ? 'Planejado' : 'Orçado';
-
-        if (v === 'todos') {
-            // 5 KPI's: Metas (Receita planejada), Realizado (Receita realizado),
-            // Orçado (Despesa planejada), Realizado (Despesa realizado), Diferença (Receita Real - Despesa Real)
-            // Para manter compatibilidade, o backend em "todos" envia planejado/realizado como saldo líquido.
-            const desempenho = totalRealizado; // saldo líquido do mês
-            const corDesempenho = desempenho >= 0 ? 'text-green' : 'text-red';
-            const tituloDesempenho = desempenho >= 0 ? 'Desempenho Favorável' : 'Desempenho Desfavorável';
-
-            container.style.gridTemplateColumns = 'repeat(5, minmax(0, 1fr))';
-            container.innerHTML = `
-                <div class="kpi-card"><div class="kpi-title">Planejado</div><div class="kpi-value">${fmt(totalPlanejado)}</div><div class="kpi-foot">Saldo planejado • ${nomeMes}</div></div>
-                <div class="kpi-card"><div class="kpi-title">Realizado</div><div class="kpi-value">${fmt(totalRealizado)}</div><div class="kpi-foot">Saldo realizado • ${nomeMes}</div></div>
-                <div class="kpi-card"><div class="kpi-title">Diferença</div><div class="kpi-value ${diferencaValor >= 0 ? 'text-green':'text-red'}">${fmt(Math.abs(diferencaValor))}</div><div class="kpi-foot">Planejado - Realizado</div></div>
-                <div class="kpi-card"><div class="kpi-title">Dif.%</div><div class="kpi-value ${diferencaValor >= 0 ? 'text-green':'text-red'}">${fmtPerc(Math.abs(diferencaPerc))}</div><div class="kpi-foot">Variação</div></div>
-                <div class="kpi-card"><div class="kpi-title">${tituloDesempenho}</div><div class="kpi-value ${corDesempenho}">${fmt(Math.abs(desempenho))}</div><div class="kpi-foot">Saldo realizado (Receitas - Despesas)</div></div>
-            `;
-            return;
-        }
-
-        // Receita / Orçamento: mantém grade (sem Dias Úteis)
-        container.style.gridTemplateColumns = 'repeat(6, minmax(0, 1fr))';
-
-        // Regra de cor por visão
-        let clsDif = '';
-        if (v === 'orcamento') {
-            clsDif = diferencaValor >= 0 ? 'text-green' : 'text-red';
-        } else {
-            // receita: abaixo da meta = vermelho; acima = verde
-            clsDif = diferencaValor >= 0 ? 'text-red' : 'text-green';
-        }
-
-        container.innerHTML = `
-            <div class="kpi-card"><div class="kpi-title">${labelPlanejado}</div><div class="kpi-value">${fmt(totalPlanejado)}</div><div class="kpi-foot">${nomeMes}</div></div>
-            <div class="kpi-card"><div class="kpi-title">Realizado</div><div class="kpi-value">${fmt(totalRealizado)}</div><div class="kpi-foot">${nomeMes}</div></div>
-            <div class="kpi-card"><div class="kpi-title">Diferença</div><div class="kpi-value ${clsDif}">${fmt(Math.abs(diferencaValor))}</div><div class="kpi-foot">${labelPlanejado} - Realizado</div></div>
-            <div class="kpi-card"><div class="kpi-title">Dif. %</div><div class="kpi-value ${clsDif}">${fmtPerc(Math.abs(diferencaPerc))}</div><div class="kpi-foot">${labelPlanejado} - Realizado</div></div>
-            <div class="kpi-card"><div class="kpi-title">Atingimento</div><div class="kpi-value">${totalPlanejado ? fmtPerc((totalRealizado/totalPlanejado)*100) : '0%'}</div><div class="kpi-foot">Realizado / ${labelPlanejado}</div></div>
-            <div class="kpi-card"><div class="kpi-title">Saldo</div><div class="kpi-value ${totalRealizado - totalPlanejado >= 0 ? 'text-green':'text-red'}">${fmt(Math.abs(totalRealizado - totalPlanejado))}</div><div class="kpi-foot">Realizado - ${labelPlanejado}</div></div>
+        const mkCard = (titulo, valor, corTexto, rodape = '') => `
+            <div class="card">
+                <div class="card-title">${titulo}</div>
+                <div class="card-value ${corTexto}">${valor}</div>
+                ${rodape ? `<div style="font-size:11px; color:#6b7280; margin-top:5px; padding-top:4px; border-top:1px solid #f3f4f6;">${rodape}</div>` : ''}
+            </div>
         `;
+
+        const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
+
+        container.innerHTML = 
+            mkCard(`${labelPlanejado} ${labelMes}`, fmt(totalOrcado), 'col-orc') +
+            mkCard(`Realizado ${labelMes}`, fmt(totalRealizado), 'col-real') +
+            mkCard(`Diferença R$`, fmt(Math.abs(diferencaValor)), corDif) +
+            mkCard(`Diferença %`, fmtPerc(Math.abs(diferencaPerc)), corDif) +
+            mkCard(`Dias Úteis (${anoAnalise || '-'})`, cardDias, 'text-dark', rodapeDias) +
+            mkCard(`Meta Diária`, cardMeta, 'col-orc', 'Teto de gasto') +
+            mkCard(`Gasto Diário`, cardGasto, corGasto, 'Média realizada') +
+            mkCard(`Projeção Final`, cardProj, 'text-primary', 'Tendência');
     },
 
-    renderOrcamentoTable: (data, view) => {
+    renderOrcamentoChart: (data, view) => {
+        const canvas = document.getElementById('orcamentoChart');
+        if(!canvas) return;
+        if (typeof Chart === 'undefined') return;
+
+        const customLegend = document.getElementById('custom-chart-legend');
+        if(customLegend) customLegend.remove();
+
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) existingChart.destroy();
+        if (app.orcamentoChart) { app.orcamentoChart.destroy(); app.orcamentoChart = null; }
+
+        
+
+const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
+const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// --- VISÃO TODOS: apenas linhas de Realizado (Receitas) e Realizado (Despesas) ---
+if (v === 'todos') {
+    const meta = app.dadosOrcamentoMeta || null;
+    const serieReceita = meta && meta.series && meta.series.receita && meta.series.receita.realizado;
+    const serieDespesa = meta && meta.series && meta.series.despesa && meta.series.despesa.realizado;
+
+    const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12) ? serieReceita.map(Number) : new Array(12).fill(0);
+    const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12) ? serieDespesa.map(Number) : new Array(12).fill(0);
+
+    app.orcamentoChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: mesLabels,
+            datasets: [
+                { label: 'Realizado (Receitas)', data: dataReceita, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false },
+                { label: 'Realizado (Despesas)', data: dataDespesa, tension: 0.35, borderWidth: 2, pointRadius: 3, fill: false }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true },
+                tooltip: {
+                    callbacks: {
+                        label: (c2) => {
+                            const v2 = Number(c2.parsed.y || 0);
+                            const fmt = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+                            return `${c2.dataset.label}: ${fmt.format(v2)}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    return;
+}
+const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        
+        const arrOrcado = new Array(12).fill(0);
+        const arrRealizado = new Array(12).fill(0);
+
+        data.forEach(grupo => {
+            chaves.forEach((key, idx) => {
+                if(grupo.dados && grupo.dados[key]) {
+                    arrOrcado[idx] += Math.abs(grupo.dados[key].orcado || 0);
+                    arrRealizado[idx] += Math.abs(grupo.dados[key].realizado || 0);
+                }
+            });
+        });
+
+        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
+
+        const ctx = canvas.getContext('2d');
+        const gradientReal = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientReal.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
+        gradientReal.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
+
+        const gradientOrc = ctx.createLinearGradient(0, 0, 0, 400);
+        gradientOrc.addColorStop(0, 'rgba(121, 182, 97, 0.46)');
+        gradientOrc.addColorStop(1, 'rgba(95, 145, 80, 0.53)');
+
+        app.orcamentoChart = new Chart(ctx, {
+            type: 'line', 
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Orçado',
+                        data: arrOrcado,
+                        borderColor: '#189629ff', 
+                        backgroundColor: gradientOrc, 
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true, 
+                        order: 2,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Realizado',
+                        data: arrRealizado,
+                        borderColor: '#2563eb', 
+                        backgroundColor: gradientReal, 
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true, 
+                        order: 1,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#fff'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true } },
+                    tooltip: { enabled: false }, 
+                    datalabels: {
+                        display: function(context) { return window.innerWidth > 768; },
+                        align: 'top', anchor: 'end', offset: 8, clamp: true,       
+                        color: function(context) { return context.dataset.data[context.dataIndex] >= 0 ? '#059669' : '#dc2626'; },
+                        font: { weight: 'bold', size: 12 },
+                        formatter: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(value); }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, grace: '50%', grid: { borderDash: [5, 5], color: '#f3f4f6' }, ticks: { callback: v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(v) } },
+                    x: { offset: true, grid: { display: false } }
+                }
+            }
+        });
+    },
+
+
+
+// Mantém "Saldo Inicial" fixo no topo (abaixo do cabeçalho) e "Saldo Final" fixo no rodapé dentro do scroll da tabela
+setupFinanceStickyRows: () => {
+    const table = document.getElementById('finance-table');
+    if (!table) return;
+
+    const thead = table.querySelector('thead');
+    const tbody = table.querySelector('tbody');
+    if (!thead || !tbody) return;
+
+    // Calcula a altura real do cabeçalho para posicionar o "Saldo Inicial" logo abaixo
+    const theadH = Math.ceil(thead.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--finance-thead-h', `${theadH}px`);
+
+    // Marca as linhas de saldo para ficarem sticky
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach(tr => {
+        tr.classList.remove('sticky-saldo-top', 'sticky-saldo-bottom');
+
+        const firstCell = tr.querySelector('td:first-child');
+        if (!firstCell) return;
+
+        const txt = (firstCell.innerText || '').trim().toLowerCase();
+        if (txt === 'saldo inicial') tr.classList.add('sticky-saldo-top');
+        if (txt === 'saldo final') tr.classList.add('sticky-saldo-bottom');
+    });
+},
+
+    renderTable: (data) => {
+        const rows = data.rows;
+        const columns = data.columns; 
+        const headers = data.headers;
+
+        const tbody = document.querySelector('#finance-table tbody');
+        const thead = document.querySelector('#finance-table thead');
+        
+        if(!tbody || !thead) return;
+
+        let thHtml = `<tr>
+            <th>Plano Financeiro</th>`;
+        headers.forEach(h => {
+            thHtml += `<th>${h}</th>`;
+        });
+        thHtml += `</tr>`;
+        thead.innerHTML = thHtml;
+
+        if(!rows || rows.length===0) { tbody.innerHTML='<tr><td colspan="15">Sem dados</td></tr>'; return; }
+
+        const fmt = v => v ? new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v) : '-';
+
+        let html = '';
+        rows.forEach((row, idx1) => {
+            const idNivel1 = `L1-${idx1}`; 
+            let trStyle = ''; 
+            let tdClass = ''; 
+            let icon = '';
+            let clickAction = '';
+            let rowClass = '';
+
+            if (row.tipo === 'saldo' || row.tipo === 'info') {
+                trStyle = 'background-color: #eff6ff; font-weight: 800; color: #1e3a8a; border-top: 2px solid #bfdbfe;';
+            } else if (row.tipo === 'grupo') {
+                rowClass = 'hover-row';
+                trStyle = 'font-weight: 600; cursor: pointer; background-color: #fff;'; 
+                icon = '<i class="fa-solid fa-chevron-right toggle-icon"></i> ';
+                clickAction = `onclick="app.toggleGroup('${idNivel1}', this)"`;
+                if (row.conta.includes('Entradas')) tdClass = 'text-green';
+                if (row.conta.includes('Saídas')) tdClass = 'text-red';
+            }
+
+            let tdsValores = '';
+            columns.forEach(colKey => {
+                tdsValores += `<td class="${tdClass}">${fmt(row[colKey])}</td>`;
+            });
+
+            html += `<tr style="${trStyle}" class="${rowClass}" ${clickAction}>
+                    <td style="text-align:left; padding-left:10px;">${icon}<span class="${tdClass}">${row.conta}</span></td>
+                    ${tdsValores}
+                </tr>`;
+
+            if (row.detalhes && row.detalhes.length > 0) {
+                row.detalhes.forEach((subgrupo, idx2) => {
+                    const idNivel2 = `L2-${idx1}-${idx2}`; 
+                    
+                    let tdsSub = '';
+                    columns.forEach(colKey => {
+                        tdsSub += `<td>${fmt(subgrupo[colKey])}</td>`;
+                    });
+
+                    html += `<tr class="child-row hidden pai-${idNivel1} hover-row" onclick="app.toggleSubGroup('${idNivel2}', this)" style="cursor: pointer;">
+                            <td style="text-align:left; padding-left: 25px; font-weight: 600;">
+                                <i class="fa-solid fa-chevron-right toggle-icon"></i> ${subgrupo.conta}
+                            </td>
+                            ${tdsSub}
+                        </tr>`;
+                    if (subgrupo.detalhes) {
+                        subgrupo.detalhes.forEach(item => {
+                            let tdsItem = '';
+                            columns.forEach(colKey => {
+                                tdsItem += `<td>${fmt(item[colKey])}</td>`;
+                            });
+
+                            html += `<tr class="child-row hidden pai-${idNivel2} avo-${idNivel1}">
+                                    <td style="text-align:left; padding-left: 50px; color: #555;">${item.conta}</td>
+                                    ${tdsItem}
+                                </tr>`;
+                        });
+                    }
+                });
+            }
+        });
+        tbody.innerHTML = html;
+            // Aplica sticky nas linhas de saldo após renderizar
+        setTimeout(() => app.setupFinanceStickyRows(), 0);
+    },
+
+    renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
         if (!data || data.length === 0) {
@@ -1098,13 +1202,7 @@ renderThermometer: (data, view) => {
             let colsHtmlGrupo = '';
             meses.forEach(m => {
                 const vals = grupo.dados[m];
-                let clsDif = '';
-                if ((view || 'orcamento') === 'orcamento') {
-                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
-                } else {
-                    // Receita / Todos: abaixo do planejado = vermelho, acima = verde
-                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
-                }
+                let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
                 let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
                 
                 colsHtmlGrupo += `
@@ -1124,13 +1222,7 @@ renderThermometer: (data, view) => {
                     let colsHtmlItem = '';
                     meses.forEach(m => {
                         const vals = item.dados[m];
-                        let clsDif = '';
-                if ((view || 'orcamento') === 'orcamento') {
-                    clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
-                } else {
-                    // Receita / Todos: abaixo do planejado = vermelho, acima = verde
-                    clsDif = vals.diferenca < 0 ? 'text-green' : (vals.diferenca > 0 ? 'text-red' : '');
-                }
+                        let clsDif = vals.diferenca < 0 ? 'text-red' : (vals.diferenca > 0 ? 'text-green' : '');
                         let difPerc = vals.orcado !== 0 ? (vals.diferenca / vals.orcado) * 100 : (vals.realizado > 0 ? -100 : 0);
                         
                         colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(vals.orcado)}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(vals.realizado)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(vals.diferenca))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
@@ -1200,8 +1292,6 @@ renderThermometer: (data, view) => {
             
             const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`);
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
             if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
@@ -1368,8 +1458,6 @@ setTimeout(() => app.renderChart(data.grafico), 50);
 
             const res = await fetch(`/api/financeiro-dashboard?ano=${encodeURIComponent(anoParam)}&view=${encodeURIComponent(viewParam)}`);
             const data = await res.json();
-            const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
             if (data.error) throw new Error(data.error);
 
             if (data && data.tabela) {

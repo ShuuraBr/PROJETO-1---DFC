@@ -123,34 +123,6 @@ body { background: var(--bg-body); color: var(--text-dark); height: 100vh; overf
 
 .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 
-/* ==========================
-   ORÇAMENTO - BARRA TRANSLÚCIDA (FILTROS + DIAS ÚTEIS)
-   ========================== */
-.translucent-bar{
-    background: rgba(255,255,255,0.65);
-    border: 1px solid rgba(229,231,235,0.8);
-    backdrop-filter: blur(6px);
-    padding: 10px 12px;
-    border-radius: 12px;
-    gap: 12px !important;
-    align-items: flex-end !important;
-}
-
-.dias-uteis-badge{
-    display:flex;
-    align-items:center;
-    gap: 6px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(17,24,39,0.05);
-    border: 1px solid rgba(229,231,235,0.9);
-    font-size: 12px;
-    font-weight: 700;
-    color: #111827;
-    white-space: nowrap;
-}
-
-
 /* ================================
    FILTROS (rótulos acima / lado a lado)
    ================================ */
@@ -1256,3 +1228,12 @@ table {
 .chartjs-tooltip, .fc-tooltip, .tooltip-popover {
     z-index: 999999 !important;
 }
+
+
+/* Orçamento: badge de dias úteis na faixa de filtros */
+.dias-uteis-badge{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);color:#e5e7eb;font-size:12px;margin-left:auto;}
+.dias-uteis-badge .label{opacity:.85;}
+.dias-uteis-badge .value{font-weight:700;}
+
+/* Preferência: KPI de dias úteis (badge oculto) */
+.dias-uteis-badge{display:none !important;}

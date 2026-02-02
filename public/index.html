@@ -7,12 +7,12 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles54.css">
+    <link rel="stylesheet" href="styles55.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <script src="script.js"></script>
+    <script src="test_script.js"></script>
 </head>
 <body>
 
@@ -183,40 +183,35 @@
             <section id="page-reports" class="page-section">
                 <header class="top-bar">
                     <div class="titles">
-                        <h1 id="orcamento-title">Orçamento vs Realizado</h1>
-                        <p id="orcamento-subtitle">Acompanhamento detalhado por Departamento</p>
+                        <h1><span id="orcamento-title">Orçamento vs Realizado</span><div id="orcamento-subtitle" class="subtitle"> </div></h1>
+                        <p>Acompanhamento detalhado por Departamento</p>
                         <p style="margin-top: 4px; font-size: 14px; color: #4b5563;">
                             Responsável: <span id="user-info-orcamento" style="font-weight:600;">...</span>
                         </p>
                     </div>
-                    <div class="actions translucent-bar">
+                    <div class="actions" style="display: flex; gap: 15px; align-items: flex-end;">
 	                        <div class="filter-field">
 	                            <div class="filter-label">Departamento</div>
-	                            <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+	                            
+<div class="filter-group">
+    <label for="orcamento-view">Tipo de Visão</label>
+    <select id="orcamento-view">
+        <option value="todos">Todos</option>
+        <option value="receita">Receita</option>
+        <option value="orcamento" selected>Orçamento</option>
+    </select>
+</div>
+
+<select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
 	                                <option value="">Todos Departamentos</option>
 	                            </select>
 	                        </div>
-
-                            <div class="filter-field">
-                                <div class="filter-label">Tipo de Visão</div>
-                                <select id="orcamento-view" class="select-ano" style="min-width: 170px;">
-                                    <option value="todos">Todos</option>
-                                    <option value="receita">Receita</option>
-                                    <option value="orcamento" selected>Orçamento</option>
-                                </select>
-                            </div>
-
 
 	                        <div class="filter-field">
 	                            <div class="filter-label">Ano</div>
 	                            <select id="ano-orcamento" class="select-ano"></select>
 	                        </div>
-                        
-                        <div class="dias-uteis-badge" id="orcamento-dias-uteis">
-                            Dias úteis: <strong>--/--</strong>
-                        </div>
-
-<img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
@@ -374,6 +369,6 @@
         </main>
     </div>
 
-    <script src="script60.js"></script>
+    <script src="script61.js"></script>
 </body>
 </html>
