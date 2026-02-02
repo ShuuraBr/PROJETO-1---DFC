@@ -125,81 +125,82 @@
                         <p>Bem-vindo, <span id="user-info" style="font-weight:600;">...</span></p>
                     </div>
                     <div class="actions" style="display: flex; gap: 15px; align-items: center;">
-<div class="search-wrapper">
-<i class="fa-solid fa-magnifying-glass search-icon"></i>
-<input autocomplete="off" id="dashboard-search" placeholder="Buscar conta ou código..." type="text"/>
-<i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
-</div>
-<div class="filter-field"><span class="filter-label">Tipo de Visão</span><select class="select-ano" id="dashboard-status-view">
-<option selected="" value="todos">Todos</option>
-<option value="realizado">Somente Realizado</option>
-</select></div>
-<div class="filter-field"><span class="filter-label">Período</span><select class="select-ano" id="dashboard-view-type">
-<option selected="" value="mensal">Mensal</option>
-<option value="trimestral">Trimestral</option>
-<option value="anual">Anual</option>
-</select></div>
-<div class="filter-field"><span class="filter-label">Ano</span><select class="select-ano" id="ano-dashboard">
-</select></div>
-<img alt="Logotipo" class="header-logo" onerror="this.style.display='none'" src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png"/>
-</div>
-</header>
-<div class="kpi-grid" id="kpi-container"></div>
-<div class="dashboard-split" style="display: block !important;">
-<div class="panel table-panel" style="margin-bottom: 30px;">
-<div class="panel-head"><h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa</h3></div>
-<div class="table-wrapper">
-<table id="finance-table">
-<thead></thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
-<div class="panel table-panel" id="financeiro-panel" style="margin-bottom: 30px; display:none;">
-<div class="panel-head"><h3><i class="fa-solid fa-table"></i> Financeiro</h3></div>
-<div class="table-wrapper financeiro-wrapper">
-<table id="financeiro-table">
-<thead></thead>
-<tbody></tbody>
-</table>
-</div>
-</div>
-<div class="panel chart-panel">
-<div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
-<div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
-</div>
-</div>
-</section>
-<section class="page-section" id="page-reports">
-<header class="top-bar">
-<div class="titles">
-<h1><span id="orcamento-title">Orçamento vs Realizado</span><div class="subtitle" id="orcamento-subtitle"> </div></h1>
-<p>Acompanhamento detalhado por Departamento</p>
-<p style="margin-top: 4px; font-size: 14px; color: #4b5563;">
+                        <div class="search-wrapper">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="dashboard-search" placeholder="Buscar conta ou código..." autocomplete="off">
+                            <i class="fa-solid fa-xmark clear-icon hidden" id="btn-clear-search"></i>
+                        </div>
+
+                        <div class="filter-field"><span class="filter-label">Tipo de Visão</span><select id="dashboard-status-view" class="select-ano">
+                            <option value="todos" selected>Todos</option>
+                            <option value="realizado">Somente Realizado</option>
+                        </select></div>
+
+                        <div class="filter-field"><span class="filter-label">Período</span><select id="dashboard-view-type" class="select-ano">
+                            <option value="mensal" selected>Mensal</option>
+                            <option value="trimestral">Trimestral</option>
+                            <option value="anual">Anual</option>
+                        </select></div>
+
+                        <div class="filter-field"><span class="filter-label">Ano</span><select id="ano-dashboard" class="select-ano">
+                        </select></div>
+                        
+                        <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                             alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
+                    </div>
+                </header>
+                
+                <div class="kpi-grid" id="kpi-container"></div>
+                
+                <div class="dashboard-split" style="display: block !important;">
+                    <div class="panel table-panel" style="margin-bottom: 30px;">
+                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Demonstrativo de Fluxo de Caixa</h3></div>
+                        <div class="table-wrapper">
+                            <table id="finance-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="panel table-panel" id="financeiro-panel" style="margin-bottom: 30px; display:none;">
+                        <div class="panel-head"><h3><i class="fa-solid fa-table"></i> Financeiro</h3></div>
+                        <div class="table-wrapper financeiro-wrapper">
+                            <table id="financeiro-table">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="panel chart-panel">
+                        <div class="panel-head"><h3><i class="fa-solid fa-chart-area"></i> Gráfico Superávit/Déficit </h3></div>
+                        <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-reports" class="page-section">
+                <header class="top-bar">
+                    <div class="titles">
+                        <h1>Orçamento vs Realizado</h1>
+                        <p>Acompanhamento detalhado por Departamento</p>
+                        <p style="margin-top: 4px; font-size: 14px; color: #4b5563;">
                             Responsável: <span id="user-info-orcamento" style="font-weight:600;">...</span>
-</p>
-</div>
-<div class="actions" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;"><div class="filter-field"><div class="filter-label">Departamento</div><select class="select-ano" id="filtro-dep-orcamento" style="min-width: 150px;">
-<option value="">Todos Departamentos</option>
-</select></div><div class="filter-field"><div class="filter-label">Tipo de Visão</div><select class="select-ano" id="orcamento-view">
-<option value="todos">Todos</option>
-<option value="receita">Receita</option>
-<option selected="" value="orcamento">Orçamento</option>
-</select></div><div class="filter-field"><div class="filter-label">Mês</div><select class="select-ano" id="orcamento-month">
-<option selected="" value="0">Auto</option>
-<option value="1">Janeiro</option>
-<option value="2">Fevereiro</option>
-<option value="3">Março</option>
-<option value="4">Abril</option>
-<option value="5">Maio</option>
-<option value="6">Junho</option>
-<option value="7">Julho</option>
-<option value="8">Agosto</option>
-<option value="9">Setembro</option>
-<option value="10">Outubro</option>
-<option value="11">Novembro</option>
-<option value="12">Dezembro</option>
-</select></div><div class="filter-field"><div class="filter-label">Ano</div><select class="select-ano" id="ano-orcamento"></select></div>
+                        </p>
+                    </div>
+                    <div class="actions" style="display: flex; gap: 15px; align-items: flex-end;">
+	                        <div class="filter-field">
+	                            <div class="filter-label">Departamento</div>
+	                            <select id="filtro-dep-orcamento" class="select-ano" style="min-width: 150px;">
+	                                <option value="">Todos Departamentos</option>
+	                            </select>
+	                        </div>
+
+	                        <div class="filter-field">
+	                            <div class="filter-label">Ano</div>
+	                            <select id="ano-orcamento" class="select-ano"></select>
+	                        </div>
                         <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>

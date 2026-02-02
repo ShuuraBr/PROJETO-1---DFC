@@ -304,6 +304,7 @@ app.get('/api/orcamento', async (req, res) => {
             FROM dfc_analitica
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
               AND Tipo_2 IN ('Receita','Despesa')
+              AND Baixa IS NOT NULL
               AND Codigo_plano IS NOT NULL
             ORDER BY Dt_mov
         `;
