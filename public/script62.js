@@ -96,6 +96,7 @@ const app = {
     yearDashboard: ANO_ATUAL, 
     yearOrcamento: ANO_ATUAL,
     orcamentoView: 'orcamento',
+    orcamentoMesSel: 0,
     viewType: "mensal", 
     
     // CACHE
@@ -653,16 +654,24 @@ toggleThermometer: (show) => {
             const email = app.user.Email;
             const anoParam = app.yearOrcamento; 
             
-            const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}`);
-            const data = await res.json();
-            // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
-            if (__reqId !== app.__orcReqId) return;
-            if (data.error) throw new Error(data.error);
-            
-            app.dadosOrcamentoCache = grupos;
-            app.updateOrcamentoUIForView(app.orcamentoView);
-            app.povoarFiltroDepartamentos(grupos);
-            app.aplicarFiltrosOrcamento();
+                        const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}`);
+                        if (!res.ok) {
+                            const txt = await res.text();
+                            throw new Error(`HTTP ${res.status} - ${txt}`);
+                        }
+                        const data = await res.json();
+                        // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
+                        if (__reqId !== app.__orcReqId) return;
+                        if (data && data.error) throw new Error(data.error);
+
+                        const grupos = Array.isArray(data) ? data : (data.grupos || []);
+                        app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
+
+                        app.dadosOrcamentoCache = grupos;
+                        app.updateOrcamentoUIForView(app.orcamentoView);
+                        app.povoarFiltroDepartamentos(grupos);
+                        app.aplicarFiltrosOrcamento();
+
 
         } catch (err) {
             console.error(err);
@@ -730,7 +739,7 @@ toggleThermometer: (show) => {
         if (!fillEl || !data) return;
 
         const hoje = new Date();
-        const mesIndex = hoje.getMonth(); 
+        const mesIndex = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? (app.orcamentoMesSel - 1) : hoje.getMonth(); 
         const mesChaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const chaveMes = mesChaves[mesIndex];
         const anoAtual = hoje.getFullYear();
@@ -852,7 +861,7 @@ toggleThermometer: (show) => {
         if (!container || !data) return;
 
         const hoje = new Date();
-        const mesIndex = hoje.getMonth(); 
+        const mesIndex = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? (app.orcamentoMesSel - 1) : hoje.getMonth(); 
         const anoAnalise = app.yearOrcamento; 
         
         const chavesMeses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
