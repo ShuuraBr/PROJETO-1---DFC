@@ -1431,18 +1431,25 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
                 const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
                 const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
+                       // Cores conforme Tipo de Visão:
+                // - Receita: acima da meta (real > orc) = verde; abaixo = vermelho
+                // - Orçamento: acima do orçamento/despesa (real > orc) = vermelho; abaixo = verde
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
-                let clsDif;
-                if (view === 'receita') {
-                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
-                } else {
-                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
-                }
+
+                const clsReal = (view === 'receita')
+                    ? (real >= orc ? 'text-green' : 'text-red')
+                    : (real > orc ? 'text-red' : 'text-green');
+
+                // Diferença = orc - real (vem do backend). Para Receita: dif < 0 = acima (verde). Para Orçamento: dif < 0 = estouro (vermelho)
+                const clsDif = (view === 'receita')
+                    ? (dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : ''))
+                    : (dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : ''));
+
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
                 colsHtmlGrupo += `
                     <td class="col-orc" style="font-weight:bold;">${fmtV(orc)}</td>
-                    <td class="col-real" style="font-weight:bold;">${fmtV(real)}</td>
+                    <td class="col-real ${clsReal}" style="font-weight:bold;">${fmtV(real)}</td>
                     <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(dif))}</td>
                     <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>
                 `;
@@ -1472,18 +1479,23 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                         const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
                         const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
                         const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
-                        const view = (app.orcamentoView || 'orcamento').toLowerCase();
-                        let clsDif;
-                        if (view === 'receita') {
-                            clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
-                        } else {
-                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
-                        }
+                        // Cores conforme Tipo de Visão (itens):
+                        // Receita: realizado >= meta => verde, senão vermelho
+                        // Orçamento: realizado > orçamento => vermelho, senão verde
+                        const clsReal = (viewAtual === 'receita')
+                            ? (real >= orc ? 'text-green' : 'text-red')
+                            : (real > orc ? 'text-red' : 'text-green');
+
+                        // Diferença = orc - real
+                        const clsDif = (viewAtual === 'receita')
+                            ? (dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : ''))
+                            : (dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : ''));
+
                         let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
                         colsHtmlItem += `
                             <td class="col-orc" style="background-color:#fff;">${fmtV(orc)}</td>
-                            <td class="col-real" style="background-color:#f9fafb;">${fmtV(real)}</td>
+                            <td class="col-real ${clsReal}" style="background-color:#f9fafb;">${fmtV(real)}</td>
                             <td class="col-dif ${clsDif}">${fmt(Math.abs(dif))}</td>
                             <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>
                         `;
@@ -2192,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', app.init);
           return; // não deixa o original renderizar KPIs extras
         }
 
-        // Para Receita/Orçamento: deixa o original fazer as contas, e só corrige textos/cores no DO
+        // Para Receita/Orçamento: deixa o original fazer as contas, e só corrige textos/cores no DOM
         _oldKPIs(data);
 
         if (!container) return;
