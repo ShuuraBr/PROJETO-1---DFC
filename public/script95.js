@@ -637,7 +637,7 @@ updateOrcamentoUIForView: (view) => {
     if (title) {
         if (v === 'receita') title.textContent = 'Metas vs Realizado';
         else if (v === 'todos') title.textContent = 'Receitas vs Despesas';
-        else title.textContent = 'Orçamento vs Realizado';
+        else title.textContent = 'Orçado vs Realizado';
     }
     if (subtitle) {
         if (v === 'receita') subtitle.textContent = 'Visão de receitas (metas e realizado).';
@@ -666,7 +666,8 @@ if (title) {
 },
 
 toggleThermometer: (show) => {
-    const el = document.getElementById('thermometer-container');
+    // Corrigido: seu HTML usa class="thermometer-section"
+    const el = document.querySelector('#page-reports .thermometer-section');
     if (!el) return;
     el.classList.toggle('hidden', !show);
 },
@@ -1100,7 +1101,7 @@ if (view === 'todos') {
         datasetReal = (Array.isArray(sReal) && sReal.length === 12) ? sReal.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
         datasetOrc  = (Array.isArray(sOrc) && sOrc.length === 12) ? sOrc.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
         labelReal = 'Realizado';
-        labelOrc = 'Orçamento';
+        labelOrc = 'Orçado';
     } else {
         // TODOS: Azul = Metas Realizadas (Receitas); Verde (área) = Despesas Realizadas
         const sRec = series && series.receita && series.receita.realizado;
@@ -2264,7 +2265,7 @@ if (view === "orcamento") {
     const t = normalize(el.textContent);
 
     if (t.includes("orçado") || t.includes("orcado") || t.includes("planejado") || t.includes("metas"))
-      el.textContent = "Orçamento (Mês atual)";
+      el.textContent = "Orçado (Mês atual)";
 
     if (t.includes("real"))
       el.textContent = "Realizado (Mês atual)";
