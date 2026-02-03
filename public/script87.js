@@ -2114,3 +2114,51 @@ document.addEventListener('DOMContentLoaded', app.init);
   }
 })();
 
+
+
+/* =========================================================
+   PATCH CORRETIVO — DASHBOARD (FINANCEIRO)
+   - Não remove nem reduz nada do seu código.
+   - Garante que a tabela/painel Financeiro do Dashboard consiga buscar e renderizar dados.
+   - Usa o endpoint padrão /api/financeiro (já existente no seu código original).
+   ========================================================= */
+(function () {
+  try {
+    if (!window.app || typeof window.app !== 'object') return;
+
+    // Se a função original existir, não sobrescreve.
+    if (typeof window.app.fetchFinanceiroData === 'function') return;
+
+    window.app.fetchFinanceiroData = async function fetchFinanceiroData() {
+      const ano = window.app.yearDashboard || (new Date().getFullYear());
+      try {
+        // reutiliza as funções originais do arquivo
+        if (typeof window.fetchFinanceiroDashboard === 'function' && typeof window.renderFinanceiroDashboard === 'function') {
+          const data = await window.fetchFinanceiroDashboard(ano);
+          window.renderFinanceiroDashboard(data);
+          return data;
+        }
+      } catch (e) {
+        console.error('[PATCH] Erro ao buscar/render Financeiro (/api/financeiro):', e);
+      }
+      return null;
+    };
+
+    // Se já existir o helper refreshFinanceiroIfNeeded, força uma atualização quando possível
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        if (typeof window.refreshFinanceiroIfNeeded === 'function') {
+          window.refreshFinanceiroIfNeeded();
+        } else {
+          // fallback: tenta buscar diretamente
+          window.app.fetchFinanceiroData();
+        }
+      } catch (e) {
+        console.warn('[PATCH] Não foi possível atualizar Financeiro no load:', e);
+      }
+    });
+
+  } catch (e) {
+    console.warn('[PATCH] falha geral:', e);
+  }
+})();
