@@ -927,6 +927,9 @@ toggleThermometer: (show) => {
         const container = document.getElementById('kpi-orcamento-container');
         if (!container || !data) return;
 
+        // Helpers (declared early to avoid TDZ errors)
+
+
         const hoje = new Date();
         const mesIndex = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? (app.orcamentoMesSel - 1) : hoje.getMonth(); 
         const anoAnalise = app.yearOrcamento; 
@@ -990,8 +993,6 @@ if (view === 'todos') {
         } else if (totalRealizado > 0) {
             diferencaPerc = -100; 
         }
-
-        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
         const corDif = (view === 'receita')
             ? (diferencaValor <= 0 ? 'text-green' : 'text-red')
@@ -1046,19 +1047,7 @@ if (view === 'todos') {
             mkCard(`Meta Diária`, cardMeta, 'col-orc') +
             mkCard(`${(view === 'receita') ? 'Ganhos Diários' : 'Gastos Diários'}`, cardGasto, corGasto, 'Média do período') +
             mkCard(`Projeção Final`, cardProj, 'text-primary', 'Tendência');
-},
 
-    renderOrcamentoChart: (data, view) => {
-        const canvas = document.getElementById('orcamentoChart');
-        if(!canvas) return;
-        if (typeof Chart === 'undefined') return;
-
-        const customLegend = document.getElementById('custom-chart-legend');
-        if(customLegend) customLegend.remove();
-
-        const existingChart = Chart.getChart(canvas);
-        if (existingChart) existingChart.destroy();
-        if (app.orcamentoChart) { app.orcamentoChart.destroy(); app.orcamentoChart = null; }
 
         
 
@@ -2142,7 +2131,6 @@ document.addEventListener('DOMContentLoaded', app.init);
         if (periodo) periodo.addEventListener('change', () => refreshFinanceiroIfNeeded());
     });
 })();
-
 
 // === CORREÇÃO DE NOMENCLATURA DAS COLUNAS DA TABELA (override seguro) ===
 (function(){
