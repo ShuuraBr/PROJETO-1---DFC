@@ -1418,8 +1418,14 @@ updateOrcamentoTableHeader: () => {
 
     html += '<tr class="header-sub">';
     const repeat = selected ? 1 : 12;
+    const view = (app.orcamentoView || 'orcamento');
+    const col1 = (view === 'receita') ? 'Metas' : (view === 'orcamento') ? 'Despesas' : 'Metas/Despesas';
+    const col2 = 'Realizado';
+    const col3 = 'Diferença';
+    const col4 = 'Diferença %';
+
     for (let i = 0; i < repeat; i++) {
-        html += '<th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>';
+        html += `<th>${col1}</th><th>${col2}</th><th>${col3}</th><th>${col4}</th>`;
     }
     html += '</tr>';
 
@@ -2072,4 +2078,28 @@ document.addEventListener('DOMContentLoaded', app.init);
         if (periodo) periodo.addEventListener('change', () => refreshFinanceiroIfNeeded());
     });
 })();
+// === CORREÇÃO DE NOMENCLATURA DAS COLUNAS DA TABELA (override seguro) ===
+(function(){
+  function atualizarCabecalhosTabela(){
+    const view = window.app?.orcamentoView || document.getElementById('orcamento-view')?.value;
+    const ths = document.querySelectorAll('#orcamento-table thead th');
+    if(!ths || ths.length < 4) return;
 
+    if(view === 'receita'){
+      ths[1].textContent = 'Metas';
+      ths[2].textContent = 'Realizado';
+      ths[3].textContent = 'Diferença';
+      if(ths[4]) ths[4].textContent = 'Diferença %';
+    } else if(view === 'orcamento'){
+      ths[1].textContent = 'Despesas';
+      ths[2].textContent = 'Realizado';
+      ths[3].textContent = 'Diferença';
+      if(ths[4]) ths[4].textContent = 'Diferença %';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    atualizarCabecalhosTabela();
+    const sel = document.getElementById('orcamento-view');
+    if(sel) sel.addEventListener('change', atualizarCabecalhosTabela);
+  });
+})();
