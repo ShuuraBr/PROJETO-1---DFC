@@ -2180,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', app.init);
           const despesasRealizadasMes = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
 
           const diferenca = metasRealizadasMes - despesasRealizadasMes; // aqui é o que você pediu
-          const corDif = diferenca < 0 ? "text-red" : "text-green";
+          const corDif = diferenca < 0 ? "text-green" : "text-red";
 
           container.innerHTML =
             mkCardSafe(`Metas (Mês atual) ${labelMes}`, fmt(metasMes), "col-orc") +
@@ -2247,8 +2247,8 @@ if (view === "receita") {
 
     // Diferença: abaixo = vermelho / acima = verde
     if (title.includes("diferença")) {
-      vEl.classList.toggle("text-red", num < 0);
-      vEl.classList.toggle("text-green", num >= 0);
+      vEl.classList.toggle("text-green", num < 0);
+      vEl.classList.toggle("text-red", num >= 0);
     }
 
     // Ganhos Diários: acima da meta = verde / abaixo = vermelho
@@ -2302,8 +2302,8 @@ if (view === "orcamento") {
 
     // Diferença: abaixo = verde / acima = vermelho
     if (title.includes("diferença")) {
-      vEl.classList.toggle("text-green", num < 0);
-      vEl.classList.toggle("text-red", num >= 0);
+      vEl.classList.toggle("text-red", num < 0);
+      vEl.classList.toggle("text-green", num >= 0);
     }
 
     // Gastos Diários: acima da meta = vermelho / abaixo = verde
