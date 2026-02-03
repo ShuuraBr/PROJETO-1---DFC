@@ -1265,3 +1265,9 @@ table {
 
 /* Ocultar colunas do orçamento quando filtro de Mês ativo */
 .hide-col{display:none !important;}
+
+
+/* Sublinhado do título por tipo de visão (Orçamento) */
+#orcamento-title.view-receita { border-bottom: 4px solid #16a34a; padding-bottom: 6px; display: inline-block; }
+#orcamento-title.view-orcamento { border-bottom: 4px solid #ef4444; padding-bottom: 6px; display: inline-block; }
+#orcamento-title.view-todos { border-bottom: 4px solid transparent; padding-bottom: 6px; display: inline-block; }

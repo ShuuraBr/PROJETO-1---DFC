@@ -653,6 +653,16 @@ updateOrcamentoUIForView: (view) => {
     }
     const thReal = document.querySelector('#orcamento-table thead th.th-realizado');
     if (thReal) thReal.textContent = 'Realizado';
+
+
+// Sublinhado do título conforme tipo de visão
+if (title) {
+    title.classList.remove('view-receita', 'view-orcamento', 'view-todos');
+    if (v === 'receita') title.classList.add('view-receita');
+    else if (v === 'todos') title.classList.add('view-todos');
+    else title.classList.add('view-orcamento');
+}
+
 },
 
 toggleThermometer: (show) => {
@@ -920,13 +930,42 @@ toggleThermometer: (show) => {
 
         const view = (app.orcamentoView || 'orcamento').toLowerCase();
         const labelPlanejado = (view === 'receita') ? 'Metas' : (view === 'todos') ? 'Planejado' : 'Orçado';
+
+// KPIs específicos para "Todos" (5 KPIs): 2 receitas, 2 despesas, 1 diferença (Receita - Despesa)
+if (view === 'todos') {
+    const meta = app.dadosOrcamentoMeta && app.dadosOrcamentoMeta.series ? app.dadosOrcamentoMeta.series : null;
+    const safe = (v) => {
+        const n = Number(v || 0);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const receitaMetas = meta && meta.receita ? Math.abs(safe(meta.receita.planejado[mesIndex])) : 0;
+    const receitaReal = meta && meta.receita ? Math.abs(safe(meta.receita.realizado[mesIndex])) : 0;
+
+    const despOrcado = meta && meta.despesa ? Math.abs(safe(meta.despesa.planejado[mesIndex])) : 0;
+    const despReal = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
+
+    const desempenho = receitaReal - despReal; // positivo = favorável
+    const corDesempenho = desempenho >= 0 ? 'text-green' : 'text-red';
+
+    const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
+
+    container.innerHTML =
+        mkCard(`Metas (Receitas) ${labelMes}`, fmt(receitaMetas), 'col-orc') +
+        mkCard(`Metas Realizadas (Receitas) ${labelMes}`, fmt(receitaReal), 'col-real') +
+        mkCard(`Orçado (Despesas) ${labelMes}`, fmt(despOrcado), 'col-orc') +
+        mkCard(`Despesa Realizada ${labelMes}`, fmt(despReal), 'col-real') +
+        mkCard(`Diferença (Receita - Despesa)`, fmt(Math.abs(desempenho)), corDesempenho);
+    return;
+}
+
         let totalOrcado = 0;
         let totalRealizado = 0;
 
         data.forEach(grupo => {
             if (grupo.dados && grupo.dados[keyMes]) {
                 totalOrcado += Math.abs(grupo.dados[keyMes].orcado || 0);
-                totalRealizado += (grupo.dados[keyMes].realizado || 0);
+                totalRealizado += Math.abs(grupo.dados[keyMes].realizado || 0);
             }
         });
 
@@ -1377,6 +1416,9 @@ updateOrcamentoTableHeader: () => {
     return;
 }
 const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
+const viewAtual = (app.orcamentoView || 'orcamento').toLowerCase();
+const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(v) + '%';
         const mesesAll = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
@@ -1401,8 +1443,8 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
                 
                 colsHtmlGrupo += `
-                    <td class="col-orc" style="font-weight:bold;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td>
-                    <td class="col-real" style="font-weight:bold;">${fmt(real)}</td>
+                    <td class="col-orc" style="font-weight:bold;">${fmtV(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td>
+                    <td class="col-real" style="font-weight:bold;">${fmtV(real)}</td>
                     <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(dif))}</td>
                     <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
             });
@@ -1429,7 +1471,7 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
                 }
                         let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
                         
-                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmt(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmt(real)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmtV(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmtV(real)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
                     });
                     html += `<tr class="child-row hidden pai-${idGrupo}">
                             <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
