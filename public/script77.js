@@ -1557,7 +1557,11 @@ colsHtmlGrupo += `
                             difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
                         }
 
-colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmtV(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmtV(real)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+if (view === 'todos') {
+                    colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmtV(colA)}</td><td class="col-real" style="background-color:#f9fafb;">${fmtV(colB)}</td><td class="col-dif ${clsDif}">${fmtV(dif)}</td><td class="col-perc ${clsDif}">${fmtPerc(difPerc)}</td>`;
+                } else {
+                    colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmtV(colA)}</td><td class="col-real" style="background-color:#f9fafb;">${fmtV(colB)}</td><td class="col-dif ${clsDif}">${fmtV(dif)}</td><td class="col-perc ${clsDif}">${fmtPerc(difPerc)}</td>`;
+                }
                     });
                     html += `<tr class="child-row hidden pai-${idGrupo}">
                             <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
@@ -2138,6 +2142,7 @@ document.addEventListener('DOMContentLoaded', app.init);
         if (periodo) periodo.addEventListener('change', () => refreshFinanceiroIfNeeded());
     });
 })();
+
 
 // === CORREÇÃO DE NOMENCLATURA DAS COLUNAS DA TABELA (override seguro) ===
 (function(){
