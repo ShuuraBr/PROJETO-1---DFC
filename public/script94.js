@@ -1093,14 +1093,14 @@ if (view === 'todos') {
         datasetReal = (Array.isArray(sReal) && sReal.length === 12) ? sReal.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
         datasetOrc  = (Array.isArray(sOrc) && sOrc.length === 12) ? sOrc.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
         labelReal = 'Realizado';
-        labelOrc = 'Orçado';
+        labelOrc = 'Metas';
     } else if (v === 'orcamento') {
         const sReal = series && series.despesa && series.despesa.realizado;
         const sOrc = series && series.despesa && series.despesa.planejado;
         datasetReal = (Array.isArray(sReal) && sReal.length === 12) ? sReal.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
         datasetOrc  = (Array.isArray(sOrc) && sOrc.length === 12) ? sOrc.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
         labelReal = 'Realizado';
-        labelOrc = 'Orçado';
+        labelOrc = 'Orçamento';
     } else {
         // TODOS: Azul = Metas Realizadas (Receitas); Verde (área) = Despesas Realizadas
         const sRec = series && series.receita && series.receita.realizado;
