@@ -17,14 +17,13 @@ const PLANOS_CAIXA = new Set(['1.001.001','1.001.008']);
 
 // Planos que entram como 'realizado' mesmo sem Baixa (regra global)
 const REALIZADO_EXCECOES = [
-    '1.001.001', // DINHEIRO
-    '1.001.008', // PIX
-    '7.001.001',
-    '3.002.001',
-    '2.010.006',
-    '2.011.009'
+  '1.001.001', // DINHEIRO
+  '1.001.008', // PIX
+  '7.001.001',
+  '3.002.001',
+  '2.010.006',
+  '2.011.009'
 ];
-
 
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
@@ -291,8 +290,7 @@ app.get('/api/orcamento', async (req, res) => {
             const [rows] = await pool.query(
                 `SELECT DISTINCT Codigo_plano
                  FROM dfc_analitica
-                 WHERE (Ano = ? OR Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL
-              AND Baixa IS NOT NULL`,
+                 WHERE (Ano = ? OR Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL`,
                 [anoSel, anoSel - 1, anoSel + 1, tipo2]
             );
             return new Set(rows.map(r => String(r.Codigo_plano)));
@@ -315,7 +313,6 @@ app.get('/api/orcamento', async (req, res) => {
             SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa, Tipo_2
             FROM dfc_analitica
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
-              AND Tipo_2 IN ('Receita','Despesa')
               AND Codigo_plano IS NOT NULL
               AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))
             ORDER BY Dt_mov
@@ -357,9 +354,14 @@ app.get('/api/orcamento', async (req, res) => {
             const key = `${plano}-${mesAlvo}`;
             const tipo2 = (r.Tipo_2 || '').toString();
 
-            if (tipo2 === 'Receita') {
+            // Decide tipo priorizando Tipo_2; se vier vazio, usa inferência (tipo2 no DFC ou prefixo do plano)
+            let { isReceita, isDespesa } = inferTipoPlano(plano);
+            if (tipo2 === 'Receita') { isReceita = true; isDespesa = false; }
+            if (tipo2 === 'Despesa') { isDespesa = true; isReceita = false; }
+
+            if (isReceita) {
                 realReceita.set(key, (realReceita.get(key) || 0) + liquido);
-            } else if (tipo2 === 'Despesa') {
+            } else if (isDespesa) {
                 realDespesa.set(key, (realDespesa.get(key) || 0) + liquido);
             }
         });
