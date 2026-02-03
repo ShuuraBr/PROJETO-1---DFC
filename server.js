@@ -220,34 +220,35 @@ app.post('/api/definir-senha', async (req, res) => {
 });
 
 app.get('/api/departamentos', async (req, res) => {
-    try {
-        const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
-        res.json(rows);
-    } catch (e) { res.status(500).json([]); }
+  try {
+    const [rows] = await pool.query('SELECT Id_dep, Nome_dep FROM departamentos');
+    return res.json(rows);
+  } catch (e) {
+    console.error('[API /departamentos] erro:', e?.message || e);
+    return res.status(500).json({ error: 'Erro interno', detail: e?.message || String(e) });
+  }
 });
 
 app.get('/api/anos', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC'
+    );
+    const anos = rows.map(r => r.Ano).filter(Boolean);
+    return res.json(anos);
+  } catch (e) {
+    console.error('[API /anos] erro:', e?.message || e);
     try {
-        const [rows] = await pool.query(
-            'SELECT DISTINCT Ano FROM dfc_analitica WHERE Ano IS NOT NULL ORDER BY Ano DESC'
-        );
-        return res.json(rows);
-    } catch (e1) {
-        // fallback 1: movimentos_contas
-        try {
-            const [rows2] = await pool.query(
-                'SELECT DISTINCT Ano FROM movimentos_contas WHERE Ano IS NOT NULL ORDER BY Ano DESC'
-            );
-            return res.json(rows2);
-        } catch (e2) {
-            console.error('[API /anos] erro dfc_analitica:', e1.message);
-            console.error('[API /anos] erro movimentos_contas:', e2.message);
-            return res.status(500).json({
-                error: 'Falha ao listar anos',
-                detail: (e2 && e2.message) ? e2.message : (e1 && e1.message) ? e1.message : 'erro desconhecido'
-            });
-        }
+      const [rows2] = await pool.query(
+        'SELECT DISTINCT Ano FROM movimentos_contas WHERE Ano IS NOT NULL ORDER BY Ano DESC'
+      );
+      const anos2 = rows2.map(r => r.Ano).filter(Boolean);
+      return res.json(anos2);
+    } catch (e2) {
+      console.error('[API /anos] fallback erro:', e2?.message || e2);
+      return res.status(500).json({ error: 'Erro interno', detail: (e2?.message || e?.message || String(e2)) });
     }
+  }
 });
 
 app.get('/api/orcamento', async (req, res) => {
@@ -948,3 +949,11 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta http://192.168.3.67:${PORT}`));
+
+
+// Handler de erro global (última middleware)
+app.use((err, req, res, next) => {
+  console.error('[Express] erro não tratado:', err?.message || err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'Erro interno', detail: err?.message || String(err) });
+});
