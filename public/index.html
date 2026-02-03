@@ -7,7 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles57.css">
+    <link rel="stylesheet" href="styles58.css">
     <link rel="icon" href="assets/Favicon.png" type="image/png">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -201,7 +201,35 @@
 	                            <div class="filter-label">Ano</div>
 	                            <select id="ano-orcamento" class="select-ano"></select>
 	                        </div>
-                        <img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
+                        
+                        <div class="filter-field">
+                            <div class="filter-label">Tipo de Visão</div>
+                            <select id="orcamento-view" class="select-ano" style="min-width: 170px;">
+                                <option value="todos">Todos</option>
+                                <option value="receita">Receita</option>
+                                <option value="orcamento" selected>Orçamento</option>
+                            </select>
+                        </div>
+
+                        <div class="filter-field">
+                            <div class="filter-label">Mês</div>
+                            <select id="orcamento-month" class="select-ano" style="min-width: 140px;">
+                                <option value="0">Todos</option>
+                                <option value="1">Janeiro</option>
+                                <option value="2">Fevereiro</option>
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+<img src="assets/Logotipo-cores-institucionais-vetorizada-removebg-preview.png" 
                              alt="Logotipo" class="header-logo" onerror="this.style.display='none'">
                     </div>
                 </header>
@@ -359,6 +387,6 @@
         </main>
     </div>
 
-    <script src="script70.js"></script>
+    <script src="script71.js"></script>
 </body>
 </html>

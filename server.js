@@ -280,7 +280,8 @@ app.get('/api/orcamento', async (req, res) => {
             const [rows] = await pool.query(
                 `SELECT DISTINCT Codigo_plano
                  FROM dfc_analitica
-                 WHERE (Ano = ? OR Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL`,
+                 WHERE (Ano = ? OR Ano = ? OR Ano = ?) AND Tipo_2 = ? AND Codigo_plano IS NOT NULL
+              AND Baixa IS NOT NULL`,
                 [anoSel, anoSel - 1, anoSel + 1, tipo2]
             );
             return new Set(rows.map(r => String(r.Codigo_plano)));
@@ -300,7 +301,7 @@ app.get('/api/orcamento', async (req, res) => {
         // --- 3) Realizado: soma líquida por Natureza (entrada + / saída -), depois apresenta como ABS (neutro) ---
         // Observação: usamos 3 anos (ano-1, ano, ano+1) para capturar "transbordo" (boleto/cartão no 1º dia útil)
         const sqlReal = `
-            SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Tipo_2
+            SELECT Codigo_plano, Nome, Mes, Ano, Dt_mov, Valor_mov, Natureza, Baixa, Tipo_2
             FROM dfc_analitica
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
               AND Tipo_2 IN ('Receita','Despesa')
