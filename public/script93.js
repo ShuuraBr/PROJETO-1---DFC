@@ -1038,96 +1038,119 @@ if (view === 'todos') {
     },
 
     renderOrcamentoChart: (data, view) => {
-        const canvas = document.getElementById('orcamentoChart');
-        if(!canvas) return;
-        if (typeof Chart === 'undefined') return;
+    const canvas = document.getElementById('orcamentoChart');
+    if (!canvas) return;
+    if (typeof Chart === 'undefined') return;
 
-        const customLegend = document.getElementById('custom-chart-legend');
-        if(customLegend) customLegend.remove();
+    const customLegend = document.getElementById('custom-chart-legend');
+    if (customLegend) customLegend.remove();
 
-        const existingChart = Chart.getChart(canvas);
-        if (existingChart) existingChart.destroy();
-        if (app.orcamentoChart) { app.orcamentoChart.destroy(); app.orcamentoChart = null; }
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) existingChart.destroy();
+    if (app.orcamentoChart) { app.orcamentoChart.destroy(); app.orcamentoChart = null; }
 
-        
+    const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
+    const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
-const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    // REGRA: filtro de "Mês" NÃO altera o gráfico (gráfico sempre mostra 12 meses).
+    // Os demais filtros (Departamento, Ano, Tipo de Visão) continuam valendo via meta.series.
+    // Portanto aqui ignoramos app.orcamentoMesSel propositalmente.
 
-        const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
-
-
-// --- VISÃO TODOS: apenas linhas de Realizado (Receitas) e Realizado (Despesas) ---
-if (v === 'todos') {
-    const meta = app.dadosOrcamentoMeta || null;
-    const serieReceita = meta && meta.series && meta.series.receita && meta.series.receita.realizado;
-    const serieDespesa = meta && meta.series && meta.series.despesa && meta.series.despesa.realizado;
-
-    // evita decimais e valores não-finítos no gráfico
     const toSafeNumber = (x) => {
         const n = Number(x || 0);
         return Number.isFinite(n) ? n : 0;
     };
 
-    const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12)
-        ? serieReceita.map(v => Math.abs(toSafeNumber(v)))
-        : new Array(12).fill(0);
+    const formatCompactBRL = (value) => {
+        const v = Math.abs(Number(value || 0));
+        if (!Number.isFinite(v) || v === 0) return 'R$ 0';
 
-    const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12)
-        ? serieDespesa.map(v => Math.abs(toSafeNumber(v)))
-        : new Array(12).fill(0);
+        if (v >= 1_000_000) {
+            const mi = v / 1_000_000;
+            const txt = (mi % 1 === 0) ? String(Math.round(mi)) : mi.toFixed(1).replace('.', ',');
+            return `R$ ${txt} mi`;
+        }
+        if (v >= 1_000) {
+            const mil = v / 1_000;
+            const txt = (mil % 1 === 0) ? String(Math.round(mil)) : mil.toFixed(1).replace('.', ',');
+            return `R$ ${txt} mil`;
+        }
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+    };
 
-    let chartLabels = mesLabels;
-    let dataReceitaPlot = dataReceita;
-    let dataDespesaPlot = dataDespesa;
+    const meta = app.dadosOrcamentoMeta || null;
+    const series = meta && meta.series ? meta.series : null;
 
-    if (selectedMonth) {
-        const idxSel = selectedMonth - 1;
-        chartLabels = [mesLabels[idxSel]];
-        dataReceitaPlot = [dataReceita[idxSel]];
-        dataDespesaPlot = [dataDespesa[idxSel]];
+    let datasetReal = new Array(12).fill(0);
+    let datasetOrc = new Array(12).fill(0);
+
+    let labelReal = 'Realizado';
+    let labelOrc = 'Orçado';
+
+    if (v === 'receita') {
+        const sReal = series && series.receita && series.receita.realizado;
+        const sOrc = series && series.receita && series.receita.planejado;
+        datasetReal = (Array.isArray(sReal) && sReal.length === 12) ? sReal.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
+        datasetOrc  = (Array.isArray(sOrc) && sOrc.length === 12) ? sOrc.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
+        labelReal = 'Realizado';
+        labelOrc = 'Orçado';
+    } else if (v === 'orcamento') {
+        const sReal = series && series.despesa && series.despesa.realizado;
+        const sOrc = series && series.despesa && series.despesa.planejado;
+        datasetReal = (Array.isArray(sReal) && sReal.length === 12) ? sReal.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
+        datasetOrc  = (Array.isArray(sOrc) && sOrc.length === 12) ? sOrc.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
+        labelReal = 'Realizado';
+        labelOrc = 'Orçado';
+    } else {
+        // TODOS: Azul = Metas Realizadas (Receitas); Verde (área) = Despesas Realizadas
+        const sRec = series && series.receita && series.receita.realizado;
+        const sDesp = series && series.despesa && series.despesa.realizado;
+        datasetReal = (Array.isArray(sRec) && sRec.length === 12) ? sRec.map(x => Math.abs(toSafeNumber(x))) : datasetReal;
+        datasetOrc  = (Array.isArray(sDesp) && sDesp.length === 12) ? sDesp.map(x => Math.abs(toSafeNumber(x))) : datasetOrc;
+        labelReal = 'Metas Realizadas';
+        labelOrc = 'Despesas Realizadas';
     }
 
     if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
     const ctx = canvas.getContext('2d');
 
-    // Gradientes (mesmo padrão visual dos outros gráficos)
-    const gradReceita = ctx.createLinearGradient(0, 0, 0, 400);
-    gradReceita.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
-    gradReceita.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
-
-    const gradDespesa = ctx.createLinearGradient(0, 0, 0, 400);
-    gradDespesa.addColorStop(0, 'rgba(239, 68, 68, 0.30)');
-    gradDespesa.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+    // Gradiente verde (área)
+    const gradGreen = ctx.createLinearGradient(0, 0, 0, 420);
+    gradGreen.addColorStop(0, 'rgba(34, 197, 94, 0.30)');
+    gradGreen.addColorStop(1, 'rgba(34, 197, 94, 0.06)');
 
     app.orcamentoChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: chartLabels,
+            labels,
             datasets: [
                 {
-                    label: 'Realizado (Receitas)',
-                    data: dataReceitaPlot,
+                    label: labelReal,
+                    data: datasetReal,
                     borderColor: '#2563eb',
-                    backgroundColor: gradReceita,
+                    backgroundColor: 'rgba(37, 99, 235, 0.10)',
                     borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
+                    tension: 0.45,
+                    fill: false,
                     pointRadius: 4,
-                    pointBackgroundColor: '#fff',
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#2563eb',
                     pointBorderWidth: 2
                 },
                 {
-                    label: 'Realizado (Despesas)',
-                    data: dataDespesaPlot,
-                    borderColor: '#ef4444',
-                    backgroundColor: gradDespesa,
-                    borderWidth: 3,
-                    tension: 0.4,
+                    label: labelOrc,
+                    data: datasetOrc,
+                    borderColor: '#16a34a',
+                    backgroundColor: gradGreen,
+                    borderWidth: 2,
+                    tension: 0.45,
                     fill: true,
                     pointRadius: 4,
-                    pointBackgroundColor: '#fff',
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#16a34a',
                     pointBorderWidth: 2
                 }
             ]
@@ -1135,135 +1158,54 @@ if (v === 'todos') {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
+            layout: { padding: { top: 6, bottom: 6, left: 6, right: 6 } },
             interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', labels: { usePointStyle: true } },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'center',
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        padding: 16
+                    }
+                },
                 tooltip: { enabled: false },
                 datalabels: {
-                    display: function(context) { return window.innerWidth > 768; },
+                    display: () => window.innerWidth > 900,
                     align: 'top',
                     anchor: 'end',
                     offset: 8,
                     clamp: true,
-                    color: '#111827',
-                    font: { weight: 'bold', size: 12 },
-                    formatter: function(value) {
-                        const v = Number(value || 0);
-                        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
-                    }
+                    font: { weight: '700', size: 12 },
+                    color: (ctx) => (ctx.datasetIndex === 0 ? '#2563eb' : '#16a34a'),
+                    formatter: (value) => formatCompactBRL(value)
                 }
             },
             scales: {
+                x: { grid: { display: false } },
                 y: {
                     beginAtZero: true,
-                    grace: '50%',
-                    grid: { borderDash: [5, 5], color: '#f3f4f6' },
+                    grace: '10%',
+                    grid: { color: '#eef2f7' },
                     ticks: {
-                        callback: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v)
+                        callback: (val) => {
+                            const v = Number(val || 0);
+                            if (!Number.isFinite(v)) return val;
+                            if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(0)} mi`;
+                            if (Math.abs(v) >= 1_000) return `R$ ${(v / 1_000).toFixed(0)} mil`;
+                            return `R$ ${v}`;
+                        }
                     }
-                },
-                x: { offset: true, grid: { display: false } }
+                }
             }
         }
     });
+},
 
-    return;
-}
-
-const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-
-
-        const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        
-        const arrOrcado = new Array(12).fill(0);
-        const arrRealizado = new Array(12).fill(0);
-
-        data.forEach(grupo => {
-            chaves.forEach((key, idx) => {
-                if(grupo.dados && grupo.dados[key]) {
-                    arrOrcado[idx] += Math.abs(grupo.dados[key].orcado || 0);
-                    arrRealizado[idx] += Math.abs(grupo.dados[key].realizado || 0);
-                }
-            });
-        });
-
-        
-
-let chartLabels = labels;
-let dataOrcado = arrOrcado;
-let dataRealizado = arrRealizado;
-if (selectedMonth) {
-    const idxSel = selectedMonth - 1;
-    chartLabels = [labels[idxSel]];
-    dataOrcado = [arrOrcado[idxSel]];
-    dataRealizado = [arrRealizado[idxSel]];
-}
-
-        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
-
-        const ctx = canvas.getContext('2d');
-        const gradientReal = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientReal.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
-        gradientReal.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
-
-        const gradientOrc = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientOrc.addColorStop(0, 'rgba(121, 182, 97, 0.46)');
-        gradientOrc.addColorStop(1, 'rgba(95, 145, 80, 0.53)');
-
-        app.orcamentoChart = new Chart(ctx, {
-            type: 'line', 
-            data: {
-                labels: chartLabels,
-                datasets: [
-                    {
-                        label: 'Orçado',
-                        data: dataOrcado,
-                        borderColor: '#189629ff', 
-                        backgroundColor: gradientOrc, 
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true, 
-                        order: 2,
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Realizado',
-                        data: dataRealizado,
-                        borderColor: '#2563eb', 
-                        backgroundColor: gradientReal, 
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true, 
-                        order: 1,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#fff'
-                    }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true } },
-                    tooltip: { enabled: false }, 
-                    datalabels: {
-                        display: function(context) { return window.innerWidth > 768; },
-                        align: 'top', anchor: 'end', offset: 8, clamp: true,       
-                        color: function(context) { return context.dataset.data[context.dataIndex] >= 0 ? '#059669' : '#dc2626'; },
-                        font: { weight: 'bold', size: 12 },
-                        formatter: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(value); }
-                    }
-                },
-                scales: {
-                    y: { beginAtZero: true, grace: '50%', grid: { borderDash: [5, 5], color: '#f3f4f6' }, ticks: { callback: v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(v) } },
-                    x: { offset: true, grid: { display: false } }
-                }
-            }
-        });
-    },
 
 
 
