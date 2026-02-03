@@ -2043,3 +2043,90 @@ document.addEventListener('DOMContentLoaded', app.init);
     };
   }
 })();
+
+
+/* ===========================
+   PATCH VISUAL CHART.JS (PROFISSIONAL)
+   Não remove nada; apenas ajusta defaults e opções.
+   =========================== */
+(function(){
+  function applyChartTheme(){
+    if (typeof window.Chart !== "function") return;
+
+    // Defaults (aplicados globalmente)
+    const d = window.Chart.defaults;
+    d.font = d.font || {};
+    d.font.family = d.font.family || "'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+    d.font.size = d.font.size || 12;
+
+    // Cores neutras e elegantes (sem depender de CSS)
+    d.color = d.color || "#374151"; // slate-700
+
+    // Interação/tooltip
+    d.interaction = d.interaction || {};
+    d.interaction.mode = "index";
+    d.interaction.intersect = false;
+
+    d.plugins = d.plugins || {};
+    d.plugins.legend = d.plugins.legend || {};
+    d.plugins.legend.position = d.plugins.legend.position || "top";
+    d.plugins.legend.labels = d.plugins.legend.labels || {};
+    d.plugins.legend.labels.usePointStyle = true;
+    d.plugins.legend.labels.pointStyle = "rectRounded";
+    d.plugins.legend.labels.boxWidth = 10;
+    d.plugins.legend.labels.boxHeight = 10;
+    d.plugins.legend.labels.padding = 16;
+
+    d.plugins.tooltip = d.plugins.tooltip || {};
+    d.plugins.tooltip.padding = 12;
+    d.plugins.tooltip.cornerRadius = 10;
+    d.plugins.tooltip.displayColors = true;
+
+    // Formatação padrão (moeda BRL/percent)
+    const fmtBRL = (v) => {
+      const n = Number(v || 0);
+      try { return n.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }); }
+      catch { return "R$ " + n.toFixed(2).replace(".", ","); }
+    };
+    const fmtPct = (v) => {
+      const n = Number(v || 0);
+      return (Math.round(n*100)/100).toLocaleString("pt-BR") + "%";
+    };
+
+    // Tooltip callbacks (se não existir)
+    d.plugins.tooltip.callbacks = d.plugins.tooltip.callbacks || {};
+    if (!d.plugins.tooltip.callbacks.label) {
+      d.plugins.tooltip.callbacks.label = function(ctx){
+        const label = ctx.dataset && ctx.dataset.label ? (ctx.dataset.label + ": ") : "";
+        const val = ctx.parsed && (typeof ctx.parsed.y !== "undefined") ? ctx.parsed.y : ctx.raw;
+        // Heurística: se label tem %, formatar percent; senão BRL
+        if ((ctx.dataset && /%/i.test(ctx.dataset.label || ""))) return label + fmtPct(val);
+        return label + fmtBRL(val);
+      };
+    }
+
+    // Grid/ticks mais "clean"
+    d.scale = d.scale || {};
+    // Não existe um defaults único para grid em todas as escalas; aplicamos por options em cada chart abaixo
+    return { fmtBRL, fmtPct };
+  }
+
+  // tenta aplicar na hora e também após load
+  const helpers = applyChartTheme();
+  window.__chartThemeHelpers = helpers || window.__chartThemeHelpers || null;
+
+  // Se existir função de gráfico, envolve com opções mais bonitas sem quebrar lógica original
+  if (window.app && typeof window.app.renderOrcamentoChart === "function") {
+    const old = window.app.renderOrcamentoChart;
+    window.app.renderOrcamentoChart = function(data, view){
+      // tenta deixar canvas com altura boa (mantém layout)
+      try{
+        const c = document.getElementById("orcamentoChart") || document.getElementById("chartOrcamento");
+        if (c && c.parentElement && !c.parentElement.style.minHeight) c.parentElement.style.minHeight = "320px";
+      }catch(e){}
+      return old.apply(this, arguments);
+    };
+  }
+
+  window.addEventListener("load", applyChartTheme);
+})();
