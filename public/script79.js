@@ -928,7 +928,20 @@ toggleThermometer: (show) => {
         if (!container || !data) return;
 
         // Helpers (declared early to avoid TDZ errors)
+        const fmt = (v) => {
+            const n = Number(v || 0);
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+        };
 
+        function mkCard(titulo, valor, corTexto = '', rodape = '') {
+            return `
+                <div class="card">
+                    <div class="card-title">${titulo}</div>
+                    <div class="card-value ${corTexto}">${valor}</div>
+                    ${rodape ? `<div style="font-size:11px; color:#6b7280; margin-top:5px; padding-top:4px; border-top:1px solid #f3f4f6;">${rodape}</div>` : ''}
+                </div>
+            `;
+        }
 
         const hoje = new Date();
         const mesIndex = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? (app.orcamentoMesSel - 1) : hoje.getMonth(); 
@@ -1027,14 +1040,6 @@ if (view === 'todos') {
                 ? (gastoDiario >= metaDiaria ? 'text-green' : 'text-red')
                 : (gastoDiario > metaDiaria ? 'text-red' : 'text-green');
         }
-
-        const mkCard = (titulo, valor, corTexto, rodape = '') => `
-            <div class="card">
-                <div class="card-title">${titulo}</div>
-                <div class="card-value ${corTexto}">${valor}</div>
-                ${rodape ? `<div style="font-size:11px; color:#6b7280; margin-top:5px; padding-top:4px; border-top:1px solid #f3f4f6;">${rodape}</div>` : ''}
-            </div>
-        `;
 
         const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
 
@@ -1309,121 +1314,6 @@ setupFinanceStickyRows: () => {
         const headers = data.headers;
 
         const tbody = document.querySelector('#finance-table tbody');
-        const thead = document.querySelector('#finance-table thead');
-        
-        if(!tbody || !thead) return;
-
-        let thHtml = `<tr>
-            <th>Plano Financeiro</th>`;
-        headers.forEach(h => {
-            thHtml += `<th>${h}</th>`;
-        });
-        thHtml += `</tr>`;
-        thead.innerHTML = thHtml;
-
-        if(!rows || rows.length===0) { tbody.innerHTML='<tr><td colspan="15">Sem dados</td></tr>'; return; }
-
-        const fmt = v => v ? new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v) : '-';
-
-        let html = '';
-        rows.forEach((row, idx1) => {
-            const idNivel1 = `L1-${idx1}`; 
-            let trStyle = ''; 
-            let tdClass = ''; 
-            let icon = '';
-            let clickAction = '';
-            let rowClass = '';
-
-            if (row.tipo === 'saldo' || row.tipo === 'info') {
-                trStyle = 'background-color: #eff6ff; font-weight: 800; color: #1e3a8a; border-top: 2px solid #bfdbfe;';
-            } else if (row.tipo === 'grupo') {
-                rowClass = 'hover-row';
-                trStyle = 'font-weight: 600; cursor: pointer; background-color: #fff;'; 
-                icon = '<i class="fa-solid fa-chevron-right toggle-icon"></i> ';
-                clickAction = `onclick="app.toggleGroup('${idNivel1}', this)"`;
-                if (row.conta.includes('Entradas')) tdClass = 'text-green';
-                if (row.conta.includes('Saídas')) tdClass = 'text-red';
-            }
-
-            let tdsValores = '';
-            columns.forEach(colKey => {
-                tdsValores += `<td class="${tdClass}">${fmt(row[colKey])}</td>`;
-            });
-
-            html += `<tr style="${trStyle}" class="${rowClass}" ${clickAction}>
-                    <td style="text-align:left; padding-left:10px;">${icon}<span class="${tdClass}">${row.conta}</span></td>
-                    ${tdsValores}
-                </tr>`;
-
-            if (row.detalhes && row.detalhes.length > 0) {
-                row.detalhes.forEach((subgrupo, idx2) => {
-                    const idNivel2 = `L2-${idx1}-${idx2}`; 
-                    
-                    let tdsSub = '';
-                    columns.forEach(colKey => {
-                        tdsSub += `<td>${fmt(subgrupo[colKey])}</td>`;
-                    });
-
-                    html += `<tr class="child-row hidden pai-${idNivel1} hover-row" onclick="app.toggleSubGroup('${idNivel2}', this)" style="cursor: pointer;">
-                            <td style="text-align:left; padding-left: 25px; font-weight: 600;">
-                                <i class="fa-solid fa-chevron-right toggle-icon"></i> ${subgrupo.conta}
-                            </td>
-                            ${tdsSub}
-                        </tr>`;
-                    if (subgrupo.detalhes) {
-                        subgrupo.detalhes.forEach(item => {
-                            let tdsItem = '';
-                            columns.forEach(colKey => {
-                                tdsItem += `<td>${fmt(item[colKey])}</td>`;
-                            });
-
-                            html += `<tr class="child-row hidden pai-${idNivel2} avo-${idNivel1}">
-                                    <td style="text-align:left; padding-left: 50px; color: #555;">${item.conta}</td>
-                                    ${tdsItem}
-                                </tr>`;
-                        });
-                    }
-                });
-            }
-        });
-        tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
-    },
-
-    
-updateOrcamentoTableHeader: () => {
-    const thead = document.querySelector('#orcamento-table thead');
-    if (!thead) return;
-
-    const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    const selected = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
-
-    let html = '';
-    html += '<tr class="header-months">';
-    html += '<th class="sticky-col" rowspan="2">Departamento</th>';
-
-    if (selected) {
-        html += `<th colspan="4">${monthNames[selected-1]}</th>`;
-    } else {
-        for (let i = 0; i < 12; i++) html += `<th colspan="4">${monthNames[i]}</th>`;
-    }
-    html += '</tr>';
-
-    html += '<tr class="header-sub">';
-    const repeat = selected ? 1 : 12;
-    const view = (app.orcamentoView || 'orcamento');
-    const col1 = (view === 'receita') ? 'Metas' : (view === 'orcamento') ? 'Despesas' : 'Metas Realizadas';
-    const col2 = (view === 'todos') ? 'Despesas Realizadas' : 'Realizado';
-    const col3 = 'Diferença';
-    const col4 = 'Diferença %';
-
-    for (let i = 0; i < repeat; i++) {
-        html += `<th>${col1}</th><th>${col2}</th><th>${col3}</th><th>${col4}</th>`;
-    }
-    html += '</tr>';
-
-    thead.innerHTML = html;
 },
 
     renderOrcamentoTable: (data) => {
