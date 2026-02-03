@@ -2192,7 +2192,7 @@ document.addEventListener('DOMContentLoaded', app.init);
           return; // não deixa o original renderizar KPIs extras
         }
 
-        // Para Receita/Orçamento: deixa o original fazer as contas, e só corrige textos/cores no DOM
+        // Para Receita/Orçamento: deixa o original fazer as contas, e só corrige textos/cores no DO
         _oldKPIs(data);
 
         if (!container) return;
