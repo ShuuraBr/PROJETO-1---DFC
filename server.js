@@ -653,7 +653,6 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
 
 
 
-
 app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
