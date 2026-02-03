@@ -1316,6 +1316,47 @@ setupFinanceStickyRows: () => {
         const tbody = document.querySelector('#finance-table tbody');
 },
 
+    updateOrcamentoTableHeader: () => {
+        const view = (app.orcamentoView || 'orcamento').toLowerCase();
+        const subRow = document.querySelector('#orcamento-table thead tr.header-sub');
+        if (!subRow) return;
+
+        const ths = Array.from(subRow.querySelectorAll('th'));
+        if (!ths.length) return;
+
+        let col0 = 'Orç.';
+        let col1 = 'Real.';
+        let col2 = 'Dif.';
+        let col3 = 'Dif.%';
+
+        if (view === 'receita') {
+            col0 = 'Metas';
+            col1 = 'Realizado';
+            col2 = 'Diferença';
+            col3 = 'Diferença %';
+        } else if (view === 'orcamento') {
+            col0 = 'Despesas';
+            col1 = 'Realizado';
+            col2 = 'Diferença';
+            col3 = 'Diferença %';
+        } else if (view === 'todos') {
+            col0 = 'Metas Realizadas';
+            col1 = 'Despesas Realizadas';
+            col2 = 'Diferença';
+            col3 = 'Diferença %';
+        }
+
+        // A linha "header-sub" repete 4 colunas para cada mês (12 meses => 48 th).
+        for (let i = 0; i < ths.length; i += 4) {
+            if (ths[i]) ths[i].textContent = col0;
+            if (ths[i + 1]) ths[i + 1].textContent = col1;
+            if (ths[i + 2]) ths[i + 2].textContent = col2;
+            if (ths[i + 3]) ths[i + 3].textContent = col3;
+        }
+    },
+
+
+
     renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
         if(!tbody) return;
