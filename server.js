@@ -15,6 +15,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const PLANOS_CAIXA = new Set(['1.001.001','1.001.008']);
 
+// Planos que entram como 'realizado' mesmo sem Baixa (regra global)
+const REALIZADO_EXCECOES = [
+    '1.001.001', // DINHEIRO
+    '1.001.008', // PIX
+    '7.001.001',
+    '3.002.001',
+    '2.010.006',
+    '2.011.009'
+];
+
+
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
 // Formato armazenado: scrypt$<salt-hex>$<hash-hex>
@@ -306,10 +317,11 @@ app.get('/api/orcamento', async (req, res) => {
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
               AND Tipo_2 IN ('Receita','Despesa')
               AND Codigo_plano IS NOT NULL
+              AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))
             ORDER BY Dt_mov
         `;
 
-        const [rowsReal] = await pool.query(sqlReal, [anoSel, anoSel - 1, anoSel + 1]);
+        const [rowsReal] = await pool.query(sqlReal, [anoSel, anoSel - 1, anoSel + 1, ...REALIZADO_EXCECOES]);
 
         const realReceita = new Map(); // key: plano-mes -> liquido
         const realDespesa = new Map(); // key: plano-mes -> liquido
@@ -644,7 +656,8 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ' AND (Baixa IS NOT NULL OR Codigo_plano IN ("1.001.001","1.001.008","7.001.001","3.002.001","2.010.006","2.011.009"))';
+            query += ` AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))`;
+            params.push(...REALIZADO_EXCECOES);
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
         }

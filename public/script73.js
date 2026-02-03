@@ -1052,25 +1052,34 @@ const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','
         const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
 
 
-// --- VISÃO TODOS: apenas linhas de Realizado (Receitas) e Realizado (Despesas) ---
+// --- VISÃO TODOS: somente realizado (Receitas x Despesas) ---
+// IMPORTANTE: aqui o gráfico DEVE respeitar os filtros do front (Departamento/Mês).
+// Por isso, calculamos as séries a partir do "data" já filtrado (e não da meta.series global).
 if (v === 'todos') {
-    const meta = app.dadosOrcamentoMeta || null;
-    const serieReceita = meta && meta.series && meta.series.receita && meta.series.receita.realizado;
-    const serieDespesa = meta && meta.series && meta.series.despesa && meta.series.despesa.realizado;
+    const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
-    // evita decimais e valores não-finítos no gráfico
     const toSafeNumber = (x) => {
         const n = Number(x || 0);
         return Number.isFinite(n) ? n : 0;
     };
 
-    const dataReceita = (Array.isArray(serieReceita) && serieReceita.length === 12)
-        ? serieReceita.map(v => Math.abs(toSafeNumber(v)))
-        : new Array(12).fill(0);
+    const dataReceita = new Array(12).fill(0);
+    const dataDespesa = new Array(12).fill(0);
 
-    const dataDespesa = (Array.isArray(serieDespesa) && serieDespesa.length === 12)
-        ? serieDespesa.map(v => Math.abs(toSafeNumber(v)))
-        : new Array(12).fill(0);
+    // Em /api/orcamento (visão todos), cada item vem com sinal:
+    // - Receita: valores positivos
+    // - Despesa: valores negativos
+    // Então separamos por sinal somando o ABS em cada série.
+    (data || []).forEach(grupo => {
+        const detalhes = Array.isArray(grupo?.detalhes) ? grupo.detalhes : [];
+        detalhes.forEach(item => {
+            chaves.forEach((k, idx) => {
+                const vReal = toSafeNumber(item?.dados?.[k]?.realizado);
+                if (vReal >= 0) dataReceita[idx] += Math.abs(vReal);
+                else dataDespesa[idx] += Math.abs(vReal);
+            });
+        });
+    });
 
     let chartLabels = mesLabels;
     let dataReceitaPlot = dataReceita;
