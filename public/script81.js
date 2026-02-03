@@ -1104,6 +1104,8 @@ if (v === 'todos') {
 
     if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
+    const canvas = document.getElementById('orcamentoChart');
+    if (!canvas) { console.warn('orcamentoChart canvas not found'); return; }
     const ctx = canvas.getContext('2d');
 
     // Gradientes (mesmo padrão visual dos outros gráficos)
@@ -1217,7 +1219,9 @@ if (selectedMonth) {
 
         if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
 
-        const ctx = canvas.getContext('2d');
+        const canvas = document.getElementById('orcamentoChart');
+    if (!canvas) { console.warn('orcamentoChart canvas not found'); return; }
+    const ctx = canvas.getContext('2d');
         const gradientReal = ctx.createLinearGradient(0, 0, 0, 400);
         gradientReal.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
         gradientReal.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
