@@ -1044,8 +1044,8 @@ if (view === 'todos') {
         const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
 
         container.innerHTML = 
-            mkCard(`${(view === 'receita') ? 'Metas' : (view === 'orcamento') ? 'Orçamento' : 'Planejado'} ${labelMes}`, fmt(totalOrcado), 'col-orc') +
-            mkCard(`Realizado ${labelMes}`, fmt(totalRealizado), 'col-real') +
+            mkCard(`${(view === 'receita') ? 'Metas (Mês atual)' : (view === 'orcamento') ? 'Orçamento (Mês atual)' : 'Planejado (Mês atual)'} ${labelMes}`, fmt(totalOrcado), 'col-orc') +
+            mkCard(`Realizado (Mês atual) ${labelMes}`, fmt(totalRealizado), 'col-real') +
             mkCard(`Diferença`, fmt(Math.abs(diferencaValor)), corDif) +
             mkCard(`Diferença %`, fmtPerc(Math.abs(diferencaPerc)), corDif) +
             mkCard(`Dias Úteis (${anoAnalise || '-'})`, cardDias, 'text-dark', rodapeDias) +
