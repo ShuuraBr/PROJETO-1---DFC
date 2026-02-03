@@ -1385,6 +1385,8 @@ updateOrcamentoTableHeader: () => {
     const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const selected = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
 
+    const view = (app.orcamentoView || 'orcamento').toLowerCase();
+
     let html = '';
     html += '<tr class="header-months">';
     html += '<th class="sticky-col" rowspan="2">Departamento</th>';
@@ -1399,7 +1401,13 @@ updateOrcamentoTableHeader: () => {
     html += '<tr class="header-sub">';
     const repeat = selected ? 1 : 12;
     for (let i = 0; i < repeat; i++) {
-        html += '<th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>';
+        if (view === 'receita') {
+            html += '<th>Metas</th><th>Realizado</th><th>Diferença</th><th>Diferença %</th>';
+        } else if (view === 'orcamento') {
+            html += '<th>Despesas</th><th>Realizado</th><th>Diferença</th><th>Diferença %</th>';
+        } else {
+            html += '<th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>';
+        }
     }
     html += '</tr>';
 
@@ -2182,81 +2190,123 @@ document.addEventListener('DOMContentLoaded', app.init);
 
         if (!container) return;
 
-        // Ajusta os títulos dos cards existentes conforme view (sem alterar estrutura)
-        const titles = container.querySelectorAll(".kpi-title");
-        if (!titles || !titles.length) return;
+// ======= NOVAS NOMENCLATURAS + CORES DOS KPIs =======
+const titles = container.querySelectorAll(".kpi-title");
+const values = container.querySelectorAll(".kpi-value");
+if (!titles || !titles.length) return;
 
-        const normalize = (s) => (s || "").toLowerCase();
+const normalize = (s) => (s || "").toLowerCase();
 
-        if (view === "receita") {
-          titles.forEach((el) => {
-            const t = normalize(el.textContent);
-            if (t.includes("orçado") || t.includes("orcado") || t.includes("planejado")) el.textContent = "Metas (Mês atual)";
-            if (t.includes("real")) el.textContent = "Realizado (Mês atual)";
-            if (t.includes("diferen")) el.textContent = "Diferença";
-            if (t.includes("%")) el.textContent = "Diferença %";
-            if (t.includes("dias")) el.textContent = "Dias uteis";
-            if (t.includes("meta") && t.includes("di")) el.textContent = "Meta diaria";
-            if (t.includes("ganho") || t.includes("ganhos")) el.textContent = "Ganhos Diarios";
-            if (t.includes("proje")) el.textContent = "Projeção final";
-          });
+if (view === "receita") {
+  // ----- NOMENCLATURAS (RECEITA) -----
+  titles.forEach((el) => {
+    const t = normalize(el.textContent);
 
-          // Cores: Diferença abaixo da meta = vermelho; acima = verde
-          const values = container.querySelectorAll(".kpi-value");
-          values.forEach((vEl, idx) => {
-            const title = titles[idx] ? normalize(titles[idx].textContent) : "";
-            const raw = (vEl.textContent || "").replace(/\./g,"").replace(",",".").replace(/[^\d\-\+\.]/g,"");
-            const num = Number(raw);
-            if (!Number.isFinite(num)) return;
+    if (t.includes("orçado") || t.includes("orcado") || t.includes("planejado"))
+      el.textContent = "Metas (Mês atual)";
 
-            if (title === "diferença" || title === "diferença %") {
-              vEl.classList.remove("text-green","text-red");
-              vEl.classList.add(num < 0 ? "text-red" : "text-green");
-            }
-            if (title === "ganhos diarios") {
-              vEl.classList.remove("text-green","text-red");
-              // Regra: acima da meta diária verde, senão vermelho
-              // Como não temos os dois valores pareados aqui, respeitamos o que o original já pinta se existir,
-              // mas garantimos pelo sinal como fallback.
-              vEl.classList.add(num >= 0 ? "text-green" : "text-red");
-            }
-          });
-        }
+    if (t.includes("real"))
+      el.textContent = "Realizado (Mês atual)";
 
-        if (view === "orcamento") {
-          titles.forEach((el) => {
-            const t = normalize(el.textContent);
-            if (t.includes("metas") || t.includes("planejado") || t.includes("orçado") || t.includes("orcado")) el.textContent = "Orçamento (Mês atual)";
-            if (t.includes("real")) el.textContent = "Realizado (Mês atual)";
-            if (t.includes("diferen")) el.textContent = "Diferença";
-            if (t.includes("%")) el.textContent = "Diferença %";
-            if (t.includes("dias")) el.textContent = "Dias uteis";
-            if (t.includes("meta") && t.includes("di")) el.textContent = "Meta diaria";
-            if (t.includes("gasto") || t.includes("gastos")) el.textContent = "Gastos Diarios";
-            if (t.includes("proje")) el.textContent = "Projeção final";
-          });
+    if (t.includes("diferen"))
+      el.textContent = "Diferença";
 
-          // Cores: Diferença abaixo (economia) = verde; acima (estouro) = vermelho
-          const values = container.querySelectorAll(".kpi-value");
-          values.forEach((vEl, idx) => {
-            const title = titles[idx] ? normalize(titles[idx].textContent) : "";
-            const raw = (vEl.textContent || "").replace(/\./g,"").replace(",",".").replace(/[^\d\-\+\.]/g,"");
-            const num = Number(raw);
-            if (!Number.isFinite(num)) return;
+    if (t.includes("%"))
+      el.textContent = "Diferença %";
 
-            if (title === "diferença" || title === "diferença %") {
-              vEl.classList.remove("text-green","text-red");
-              // Se num < 0 significa Realizado > Orçamento (estouro) OU o contrário dependendo do original.
-              // Como o original usa orçado - realizado, num negativo = estourou => vermelho.
-              vEl.classList.add(num < 0 ? "text-red" : "text-green");
-            }
-            if (title === "gastos diarios") {
-              vEl.classList.remove("text-green","text-red");
-              // fallback por sinal
-              vEl.classList.add(num < 0 ? "text-red" : "text-green");
-            }
-          });
-        }
+    if (t.includes("dias"))
+      el.textContent = "Dias úteis";
+
+    if (t.includes("meta") && t.includes("di"))
+      el.textContent = "Meta diária";
+
+    if (t.includes("ganho") || t.includes("ganhos"))
+      el.textContent = "Ganhos Diários";
+
+    if (t.includes("proje"))
+      el.textContent = "Projeção final";
+  });
+
+  // ----- CORES (RECEITA) -----
+  values.forEach((vEl, idx) => {
+    const title = titles[idx] ? normalize(titles[idx].textContent) : "";
+    const raw = (vEl.textContent || "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^\d\-\+\.]/g, "");
+    const num = Number(raw);
+
+    if (!Number.isFinite(num)) return;
+
+    // Diferença: abaixo = vermelho / acima = verde
+    if (title.includes("diferença")) {
+      vEl.classList.toggle("text-red", num < 0);
+      vEl.classList.toggle("text-green", num >= 0);
+    }
+
+    // Ganhos Diários: acima da meta = verde / abaixo = vermelho
+    if (title.includes("ganhos")) {
+      vEl.classList.toggle("text-green", num > 0);
+      vEl.classList.toggle("text-red", num <= 0);
+    }
+  });
+}
+
+if (view === "orcamento") {
+  // ----- NOMENCLATURAS (ORÇAMENTO) -----
+  titles.forEach((el) => {
+    const t = normalize(el.textContent);
+
+    if (t.includes("orçado") || t.includes("orcado") || t.includes("planejado") || t.includes("metas"))
+      el.textContent = "Orçamento (Mês atual)";
+
+    if (t.includes("real"))
+      el.textContent = "Realizado (Mês atual)";
+
+    if (t.includes("diferen"))
+      el.textContent = "Diferença";
+
+    if (t.includes("%"))
+      el.textContent = "Diferença %";
+
+    if (t.includes("dias"))
+      el.textContent = "Dias úteis";
+
+    if (t.includes("meta") && t.includes("di"))
+      el.textContent = "Meta diária";
+
+    if (t.includes("gasto") || t.includes("gastos"))
+      el.textContent = "Gastos Diários";
+
+    if (t.includes("proje"))
+      el.textContent = "Projeção final";
+  });
+
+  // ----- CORES (ORÇAMENTO) -----
+  values.forEach((vEl, idx) => {
+    const title = titles[idx] ? normalize(titles[idx].textContent) : "";
+    const raw = (vEl.textContent || "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^\d\-\+\.]/g, "");
+    const num = Number(raw);
+
+    if (!Number.isFinite(num)) return;
+
+    // Diferença: abaixo = verde / acima = vermelho
+    if (title.includes("diferença")) {
+      vEl.classList.toggle("text-green", num < 0);
+      vEl.classList.toggle("text-red", num >= 0);
+    }
+
+    // Gastos Diários: acima da meta = vermelho / abaixo = verde
+    if (title.includes("gastos")) {
+      vEl.classList.toggle("text-red", num > 0);
+      vEl.classList.toggle("text-green", num <= 0);
+    }
+  });
+}
+
       } catch (e) {
         // Se o patch falhar por algum motivo, usa o original para não quebrar
         try { return _oldKPIs(data); } catch {}
