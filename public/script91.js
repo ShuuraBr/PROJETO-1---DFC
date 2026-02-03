@@ -931,7 +931,7 @@ toggleThermometer: (show) => {
         const view = (app.orcamentoView || 'orcamento').toLowerCase();
         const labelPlanejado = (view === 'receita') ? 'Metas' : (view === 'todos') ? 'Planejado' : 'Orçado';
 
-// KPIs específicos para "Todos" (5 KPIs): 2 receitas, 2 despesas, 1 diferença (Receita - Despesa)
+// KPIs específicos para "Todos" (5 KPIs): 2 Receitas, 2 Despesas, 1 Diferença (Metas Realizadas - Despesas Realizadas)
 if (view === 'todos') {
     const meta = app.dadosOrcamentoMeta && app.dadosOrcamentoMeta.series ? app.dadosOrcamentoMeta.series : null;
     const safe = (v) => {
@@ -939,23 +939,28 @@ if (view === 'todos') {
         return Number.isFinite(n) ? n : 0;
     };
 
-    const receitaMetas = meta && meta.receita ? Math.abs(safe(meta.receita.planejado[mesIndex])) : 0;
-    const receitaReal = meta && meta.receita ? Math.abs(safe(meta.receita.realizado[mesIndex])) : 0;
+    const metasMes = meta && meta.receita ? Math.abs(safe(meta.receita.planejado[mesIndex])) : 0;
+    const metasRealizadasMes = meta && meta.receita ? Math.abs(safe(meta.receita.realizado[mesIndex])) : 0;
 
-    const despOrcado = meta && meta.despesa ? Math.abs(safe(meta.despesa.planejado[mesIndex])) : 0;
-    const despReal = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
+    const despesasMes = meta && meta.despesa ? Math.abs(safe(meta.despesa.planejado[mesIndex])) : 0;
+    const despesasRealizadasMes = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
 
-    const desempenho = receitaReal - despReal; // positivo = favorável
-    const corDesempenho = desempenho >= 0 ? 'text-green' : 'text-red';
+    const diferenca = metasRealizadasMes - despesasRealizadasMes;
+    const corDif = diferenca < 0 ? 'text-red' : (diferenca > 0 ? 'text-green' : '');
 
-    const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
+    const mkCardLocal = (titulo, valor, corTexto) => `
+        <div class="card">
+            <div class="card-title">${titulo}</div>
+            <div class="card-value ${corTexto || ''}">${valor}</div>
+        </div>`;
 
     container.innerHTML =
-        mkCard(`Metas (Receitas) ${labelMes}`, fmt(receitaMetas), 'col-orc') +
-        mkCard(`Metas Realizadas (Receitas) ${labelMes}`, fmt(receitaReal), 'col-real') +
-        mkCard(`Orçado (Despesas) ${labelMes}`, fmt(despOrcado), 'col-orc') +
-        mkCard(`Despesa Realizada ${labelMes}`, fmt(despReal), 'col-real') +
-        mkCard(`Diferença (Receita - Despesa)`, fmt(Math.abs(desempenho)), corDesempenho);
+        mkCardLocal('Metas (Mês atual)', fmt(metasMes), 'col-orc') +
+        mkCardLocal('Metas Realizadas (Mês atual)', fmt(metasRealizadasMes), 'col-real') +
+        mkCardLocal('Despesas (Mês atual)', fmt(despesasMes), 'col-orc') +
+        mkCardLocal('Despesas Realizadas (Mês atual)', fmt(despesasRealizadasMes), 'col-real') +
+        mkCardLocal('Diferença (Metas Realizadas - Despesas Realizadas)', fmt(diferenca), corDif);
+
     return;
 }
 
@@ -1382,10 +1387,9 @@ updateOrcamentoTableHeader: () => {
     const thead = document.querySelector('#orcamento-table thead');
     if (!thead) return;
 
+    const view = (app.orcamentoView || 'orcamento').toLowerCase();
     const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     const selected = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
-
-    const view = (app.orcamentoView || 'orcamento').toLowerCase();
 
     let html = '';
     html += '<tr class="header-months">';
@@ -1400,19 +1404,23 @@ updateOrcamentoTableHeader: () => {
 
     html += '<tr class="header-sub">';
     const repeat = selected ? 1 : 12;
+
     for (let i = 0; i < repeat; i++) {
         if (view === 'receita') {
             html += '<th>Metas</th><th>Realizado</th><th>Diferença</th><th>Diferença %</th>';
         } else if (view === 'orcamento') {
             html += '<th>Despesas</th><th>Realizado</th><th>Diferença</th><th>Diferença %</th>';
+        } else if (view === 'todos') {
+            html += '<th>Metas Realizadas</th><th>Despesas Realizadas</th><th>Diferença</th><th>Diferença %</th>';
         } else {
             html += '<th>Orç.</th><th>Real.</th><th>Dif.</th><th>Dif.%</th>';
         }
     }
-    html += '</tr>';
 
+    html += '</tr>';
     thead.innerHTML = html;
 },
+
 
     renderOrcamentoTable: (data) => {
         const tbody = document.querySelector('#orcamento-table tbody');
@@ -1427,16 +1435,55 @@ const fmt = v => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maxi
 
 const viewAtual = (app.orcamentoView || 'orcamento').toLowerCase();
 const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
+        const fmtAbs = (v) => fmt(Math.abs(v || 0));
+        const fmtSigned = (v) => fmt(v || 0);
         const fmtPerc = v => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(v) + '%';
         const mesesAll = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
         const meses = selectedMonth ? [mesesAll[selectedMonth-1]] : mesesAll;
+
+        // Helpers para visão "Todos": separar Receitas (>=0) e Despesas (<0) a partir do REALIZADO
+        const getTodosValues = (row, mesKey) => {
+            let receita = 0;
+            let despesa = 0;
+
+            // Grupo: soma pelos detalhes
+            if (row && Array.isArray(row.detalhes) && row.detalhes.length) {
+                row.detalhes.forEach(it => {
+                    const v = (it && it.dados && it.dados[mesKey]) ? Number(it.dados[mesKey].realizado || 0) : 0;
+                    if (v >= 0) receita += v;
+                    else despesa += Math.abs(v);
+                });
+            } else {
+                // Item: classifica pelo sinal
+                const v = (row && row.dados && row.dados[mesKey]) ? Number(row.dados[mesKey].realizado || 0) : 0;
+                if (v >= 0) receita = v;
+                else despesa = Math.abs(v);
+            }
+
+            const dif = receita - despesa;
+            const difPerc = receita !== 0 ? ((dif / receita) * 100) : 0;
+            const cls = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+
+            return { receita, despesa, dif, difPerc, cls };
+        };
 
         let html = '';
         data.forEach((grupo, idx) => {
             const idGrupo = `orc-g-${idx}`;
             let colsHtmlGrupo = '';
             meses.forEach(m => {
+                if (viewAtual === 'todos') {
+                    const tv = getTodosValues(grupo, m);
+                    colsHtmlGrupo += `
+                        <td class="col-real">${fmtAbs(tv.receita)}</td>
+                        <td class="col-real">${fmtAbs(tv.despesa)}</td>
+                        <td class="col-dif ${tv.cls}">${fmtSigned(tv.dif)}</td>
+                        <td class="col-perc ${tv.cls}">${fmtPerc(tv.difPerc)}</td>
+                    `;
+                    return;
+                }
+
                 const vals = (grupo.dados && grupo.dados[m]) ? grupo.dados[m] : { orcado: 0, realizado: 0, diferenca: 0 };
                 const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
                 const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
@@ -1444,17 +1491,18 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-green' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-red' : '');
+                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
                 } else {
-                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 }
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
-                
+
                 colsHtmlGrupo += `
-                    <td class="col-orc" style="font-weight:bold;">${fmtV(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td>
+                    <td class="col-orc" style="font-weight:bold;">${fmtV(orc)}</td>
                     <td class="col-real" style="font-weight:bold;">${fmtV(real)}</td>
                     <td class="col-dif ${clsDif}" style="font-weight:bold;">${fmt(Math.abs(dif))}</td>
-                    <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+                    <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>
+                `;
             });
 
             html += `<tr class="hover-row" onclick="app.toggleGroup('${idGrupo}', this)" style="cursor: pointer; background-color: #f8fafc;">
@@ -1466,20 +1514,36 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 grupo.detalhes.forEach(item => {
                     let colsHtmlItem = '';
                     meses.forEach(m => {
+                        if (viewAtual === 'todos') {
+                            const tv = getTodosValues(item, m);
+                            colsHtmlItem += `
+                                <td class="col-real">${fmtAbs(tv.receita)}</td>
+                                <td class="col-real">${fmtAbs(tv.despesa)}</td>
+                                <td class="col-dif ${tv.cls}">${fmtSigned(tv.dif)}</td>
+                                <td class="col-perc ${tv.cls}">${fmtPerc(tv.difPerc)}</td>
+                            `;
+                            return;
+                        }
+
                         const vals = (item.dados && item.dados[m]) ? item.dados[m] : { orcado: 0, realizado: 0, diferenca: 0 };
                         const orc = (vals && vals.orcado !== undefined) ? vals.orcado : 0;
                         const real = (vals && vals.realizado !== undefined) ? vals.realizado : 0;
                         const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
                         const view = (app.orcamentoView || 'orcamento').toLowerCase();
-                let clsDif;
-                if (view === 'receita') {
-                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-green' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-red' : '');
-                } else {
-                    clsDif = ((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) < 0 ? 'text-red' : (((vals && vals.diferenca !== undefined) ? vals.diferenca : 0) > 0 ? 'text-green' : '');
-                }
+                        let clsDif;
+                        if (view === 'receita') {
+                            clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                        } else {
+                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
+                        }
                         let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
-                        
-                        colsHtmlItem += `<td class="col-orc" style="background-color:#fff;">${fmtV(((vals && vals.orcado !== undefined) ? vals.orcado : 0))}</td><td class="col-real" style="background-color:#f9fafb;">${fmtV(real)}</td><td class="col-dif ${clsDif}">${fmt(Math.abs(((vals && vals.diferenca !== undefined) ? vals.diferenca : 0)))}</td><td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>`;
+
+                        colsHtmlItem += `
+                            <td class="col-orc" style="background-color:#fff;">${fmtV(orc)}</td>
+                            <td class="col-real" style="background-color:#f9fafb;">${fmtV(real)}</td>
+                            <td class="col-dif ${clsDif}">${fmt(Math.abs(dif))}</td>
+                            <td class="col-perc ${clsDif}">${fmtPerc(Math.abs(difPerc))}</td>
+                        `;
                     });
                     html += `<tr class="child-row hidden pai-${idGrupo}">
                             <td class="sticky-col" style="padding-left: 30px !important; color: #4b5563;">${item.conta}</td>
