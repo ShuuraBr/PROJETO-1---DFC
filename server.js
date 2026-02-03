@@ -299,12 +299,11 @@ app.get('/api/orcamento', async (req, res) => {
         const planosReceitaDb = await getPlanosPorTipo2('Receita');
         const planosDespesaDb = await getPlanosPorTipo2('Despesa');
 
+        // Critério de tipo do plano baseado APENAS em Tipo_2 (como definido no DFC).
+        // Observação: se um mesmo plano aparece como Receita e como Despesa, ele poderá existir em ambos os conjuntos.
         const inferTipoPlano = (plano) => {
             const p = String(plano || '');
-            const prefix = p.split('.')[0]; // "1" ou "2" geralmente
-            const isReceita = planosReceitaDb.has(p) || prefix === '1';
-            const isDespesa = planosDespesaDb.has(p) || prefix === '2';
-            return { isReceita, isDespesa };
+            return { isReceita: planosReceitaDb.has(p), isDespesa: planosDespesaDb.has(p) };
         };
 
         // --- 3) Realizado: soma líquida por Natureza (entrada + / saída -), depois apresenta como ABS (neutro) ---
@@ -354,15 +353,27 @@ app.get('/api/orcamento', async (req, res) => {
             const key = `${plano}-${mesAlvo}`;
             const tipo2 = (r.Tipo_2 || '').toString();
 
-            // Decide tipo priorizando Tipo_2; se vier vazio, usa inferência (tipo2 no DFC ou prefixo do plano)
-            let { isReceita, isDespesa } = inferTipoPlano(plano);
-            if (tipo2 === 'Receita') { isReceita = true; isDespesa = false; }
-            if (tipo2 === 'Despesa') { isDespesa = true; isReceita = false; }
+            // Separação por Tipo_2 conforme regra:
+            // - visão "receita"  -> somente Tipo_2 = 'Receita'
+            // - visão "orcamento"-> somente Tipo_2 = 'Despesa'
+            // - visão "todos"    -> ambos (quando houver Tipo_2)
+            if (view === 'receita' && tipo2 !== 'Receita') return;
+            if (view === 'orcamento' && tipo2 !== 'Despesa') return;
 
-            if (isReceita) {
+            if (tipo2 === 'Receita') {
                 realReceita.set(key, (realReceita.get(key) || 0) + liquido);
-            } else if (isDespesa) {
+                return;
+            }
+            if (tipo2 === 'Despesa') {
                 realDespesa.set(key, (realDespesa.get(key) || 0) + liquido);
+                return;
+            }
+
+            // Caso raro: Tipo_2 vazio (ex.: lançamento antigo). Para "todos", usa fallback por prefixo para não zerar gráfico.
+            if (view === 'todos') {
+                const prefix = plano.split('.')[0];
+                if (prefix === '1') realReceita.set(key, (realReceita.get(key) || 0) + liquido);
+                else if (prefix === '2') realDespesa.set(key, (realDespesa.get(key) || 0) + liquido);
             }
         });
 
