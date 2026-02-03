@@ -1056,232 +1056,106 @@ if (view === 'todos') {
 
         
 
-const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
-const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-        const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
 
 
-// --- VISÃO TODOS: somente realizado (Receitas x Despesas) ---
-// IMPORTANTE: aqui o gráfico DEVE respeitar os filtros do front (Departamento/Mês).
-// Por isso, calculamos as séries a partir do "data" já filtrado (e não da meta.series global).
-if (v === 'todos') {
-    const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+        // KPIs renderizados acima. O gráfico da aba Orçamento é renderizado em app.renderOrcamentoChart().
+        return;
+},
 
-    const toSafeNumber = (x) => {
-        const n = Number(x || 0);
-        return Number.isFinite(n) ? n : 0;
-    };
 
-    const dataReceita = new Array(12).fill(0);
-    const dataDespesa = new Array(12).fill(0);
+// Renderiza o gráfico da aba Orçamento conforme filtros/visão selecionados
+renderOrcamentoChart: (data, view = 'orcamento') => {
+    const canvas = document.getElementById('orcamentoChart');
+    if (!canvas) return;
 
-    // Em /api/orcamento (visão todos), cada item vem com sinal:
-    // - Receita: valores positivos
-    // - Despesa: valores negativos
-    // Então separamos por sinal somando o ABS em cada série.
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Destrói gráfico anterior
+    if (app.orcamentoChart) {
+        try { app.orcamentoChart.destroy(); } catch(e) {}
+        app.orcamentoChart = null;
+    }
+
+    // Chart.js precisa existir
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js não carregado (renderOrcamentoChart)');
+        return;
+    }
+
+    const mesLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const monthKeys = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+    // Agrega séries a partir do dataset já filtrado (respeita departamento/filtros)
+    const serieA = new Array(12).fill(0);
+    const serieB = new Array(12).fill(0);
+
     (data || []).forEach(grupo => {
-        const detalhes = Array.isArray(grupo?.detalhes) ? grupo.detalhes : [];
-        detalhes.forEach(item => {
-            chaves.forEach((k, idx) => {
-                const vReal = toSafeNumber(item?.dados?.[k]?.realizado);
-                if (vReal >= 0) dataReceita[idx] += Math.abs(vReal);
-                else dataDespesa[idx] += Math.abs(vReal);
+        (grupo.detalhes || []).forEach(item => {
+            monthKeys.forEach((k, idx) => {
+                const orc = Number(item?.dados?.[k]?.orcado || 0);
+                const real = Number(item?.dados?.[k]?.realizado || 0);
+
+                if ((view || '').toLowerCase() === 'todos') {
+                    // Somente realizado: separa por sinal (receita positivo, despesa negativo)
+                    if (real >= 0) serieA[idx] += Math.abs(real);   // receitas realizadas
+                    else serieB[idx] += Math.abs(real);            // despesas realizadas (módulo)
+                } else {
+                    // Receita/Orçamento: compara Orçado x Realizado
+                    serieA[idx] += Math.abs(orc);
+                    serieB[idx] += Math.abs(real);
+                }
             });
         });
     });
 
-    let chartLabels = mesLabels;
-    let dataReceitaPlot = dataReceita;
-    let dataDespesaPlot = dataDespesa;
-
-    if (selectedMonth) {
-        const idxSel = selectedMonth - 1;
-        chartLabels = [mesLabels[idxSel]];
-        dataReceitaPlot = [dataReceita[idxSel]];
-        dataDespesaPlot = [dataDespesa[idxSel]];
-    }
-
-    if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
-
-    const canvas = document.getElementById('orcamentoChart');
-    if (!canvas) { console.warn('orcamentoChart canvas not found'); return; }
-    const ctx = canvas.getContext('2d');
-
-    // Gradientes (mesmo padrão visual dos outros gráficos)
-    const gradReceita = ctx.createLinearGradient(0, 0, 0, 400);
-    gradReceita.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
-    gradReceita.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
-
-    const gradDespesa = ctx.createLinearGradient(0, 0, 0, 400);
-    gradDespesa.addColorStop(0, 'rgba(239, 68, 68, 0.30)');
-    gradDespesa.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+    const v = (view || 'orcamento').toLowerCase();
+    const labelA = (v === 'receita') ? 'Metas' : (v === 'orcamento') ? 'Despesas (Orçado)' : (v === 'todos') ? 'Metas Realizadas' : 'Orçado';
+    const labelB = (v === 'receita') ? 'Realizado' : (v === 'orcamento') ? 'Realizado' : (v === 'todos') ? 'Despesas Realizadas' : 'Realizado';
 
     app.orcamentoChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: chartLabels,
+            labels: mesLabels,
             datasets: [
                 {
-                    label: 'Realizado (Receitas)',
-                    data: dataReceitaPlot,
-                    borderColor: '#2563eb',
-                    backgroundColor: gradReceita,
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#fff',
-                    pointBorderWidth: 2
+                    label: labelA,
+                    data: serieA,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    fill: false
                 },
                 {
-                    label: 'Realizado (Despesas)',
-                    data: dataDespesaPlot,
-                    borderColor: '#ef4444',
-                    backgroundColor: gradDespesa,
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#fff',
-                    pointBorderWidth: 2
+                    label: labelB,
+                    data: serieB,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    fill: false
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
-            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top', labels: { usePointStyle: true } },
-                tooltip: { enabled: false },
-                datalabels: {
-                    display: function(context) { return window.innerWidth > 768; },
-                    align: 'top',
-                    anchor: 'end',
-                    offset: 8,
-                    clamp: true,
-                    color: '#111827',
-                    font: { weight: 'bold', size: 12 },
-                    formatter: function(value) {
-                        const v = Number(value || 0);
-                        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v);
-                    }
-                }
+                legend: { display: true }
             },
             scales: {
                 y: {
-                    beginAtZero: true,
-                    grace: '50%',
-                    grid: { borderDash: [5, 5], color: '#f3f4f6' },
                     ticks: {
-                        callback: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(v)
+                        callback: (value) => {
+                            try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value); }
+                            catch(e) { return value; }
+                        }
                     }
-                },
-                x: { offset: true, grid: { display: false } }
+                }
             }
         }
     });
+},
 
-    return;
-}
-
-const labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-
-
-        const chaves = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-        
-        const arrOrcado = new Array(12).fill(0);
-        const arrRealizado = new Array(12).fill(0);
-
-        data.forEach(grupo => {
-            chaves.forEach((key, idx) => {
-                if(grupo.dados && grupo.dados[key]) {
-                    arrOrcado[idx] += Math.abs(grupo.dados[key].orcado || 0);
-                    arrRealizado[idx] += Math.abs(grupo.dados[key].realizado || 0);
-                }
-            });
-        });
-
-        
-
-let chartLabels = labels;
-let dataOrcado = arrOrcado;
-let dataRealizado = arrRealizado;
-if (selectedMonth) {
-    const idxSel = selectedMonth - 1;
-    chartLabels = [labels[idxSel]];
-    dataOrcado = [arrOrcado[idxSel]];
-    dataRealizado = [arrRealizado[idxSel]];
-}
-
-        if (typeof ChartDataLabels !== 'undefined') { try { Chart.register(ChartDataLabels); } catch(e){} }
-
-        const canvas = document.getElementById('orcamentoChart');
-    if (!canvas) { console.warn('orcamentoChart canvas not found'); return; }
-    const ctx = canvas.getContext('2d');
-        const gradientReal = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientReal.addColorStop(0, 'rgba(37, 99, 235, 0.4)');
-        gradientReal.addColorStop(1, 'rgba(37, 99, 235, 0.05)');
-
-        const gradientOrc = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientOrc.addColorStop(0, 'rgba(121, 182, 97, 0.46)');
-        gradientOrc.addColorStop(1, 'rgba(95, 145, 80, 0.53)');
-
-        app.orcamentoChart = new Chart(ctx, {
-            type: 'line', 
-            data: {
-                labels: chartLabels,
-                datasets: [
-                    {
-                        label: 'Orçado',
-                        data: dataOrcado,
-                        borderColor: '#189629ff', 
-                        backgroundColor: gradientOrc, 
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true, 
-                        order: 2,
-                        pointRadius: 3
-                    },
-                    {
-                        label: 'Realizado',
-                        data: dataRealizado,
-                        borderColor: '#2563eb', 
-                        backgroundColor: gradientReal, 
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true, 
-                        order: 1,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#fff'
-                    }
-                ]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                layout: { padding: { top: 30, bottom: 10, left: 20, right: 30 } },
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true } },
-                    tooltip: { enabled: false }, 
-                    datalabels: {
-                        display: function(context) { return window.innerWidth > 768; },
-                        align: 'top', anchor: 'end', offset: 8, clamp: true,       
-                        color: function(context) { return context.dataset.data[context.dataIndex] >= 0 ? '#059669' : '#dc2626'; },
-                        font: { weight: 'bold', size: 12 },
-                        formatter: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(value); }
-                    }
-                },
-                scales: {
-                    y: { beginAtZero: true, grace: '50%', grid: { borderDash: [5, 5], color: '#f3f4f6' }, ticks: { callback: v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: "compact" }).format(v) } },
-                    x: { offset: true, grid: { display: false } }
-                }
-            }
-        });
-    },
 
 
 
@@ -2091,4 +1965,81 @@ document.addEventListener('DOMContentLoaded', app.init);
     const sel = document.getElementById('orcamento-view');
     if(sel) sel.addEventListener('change', atualizarCabecalhosTabela);
   });
+})();
+
+/* PATCH ADICIONADO - CORREÇÕES DEFENSIVAS */
+(function () {
+  if (typeof window.app !== "object" || window.app === null) window.app = {};
+  if (typeof window.fmt !== "function") {
+    window.fmt = function fmt(value) {
+      const n = Number(value || 0);
+      try { return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
+      catch { return "R$ " + n.toFixed(2).replace(".", ","); }
+    };
+  }
+  if (typeof window.mkCard !== "function") {
+    window.mkCard = function mkCard({ title, value, sub, colorClass }) {
+      const safeTitle = title ?? "";
+      const safeValue = value ?? "";
+      const safeSub = sub ?? "";
+      const cls = colorClass ? ` ${colorClass}` : "";
+      return `
+        <div class="kpi-card${cls}">
+          <div class="kpi-title">${safeTitle}</div>
+          <div class="kpi-value">${safeValue}</div>
+          ${safeSub ? `<div class="kpi-sub">${safeSub}</div>` : ""}
+        </div>
+      `;
+    };
+  }
+  if (typeof window.canvas === "undefined" || window.canvas === null) {
+    window.canvas = document.getElementById("orcamentoChart") || document.getElementById("chartOrcamento") || document.querySelector("canvas");
+  }
+  if (typeof window.vals === "undefined") window.vals = null;
+  if (typeof window.app.updateOrcamentoTableHeader !== "function") {
+    window.app.updateOrcamentoTableHeader = function updateOrcamentoTableHeader() {
+      const view = (window.app.orcamentoView || "orcamento").toLowerCase();
+      const thOrc = document.querySelector('[data-col="orc"]') || document.querySelector('.th-orc');
+      const thReal = document.querySelector('[data-col="real"]') || document.querySelector('.th-real');
+      const thDif = document.querySelector('[data-col="dif"]') || document.querySelector('.th-dif');
+      const thDifP = document.querySelector('[data-col="difp"]') || document.querySelector('.th-difp');
+      const setText = (el, text) => { if (el) el.textContent = text; };
+      if (view === "receita") {
+        setText(thOrc, "Metas"); setText(thReal, "Realizado"); setText(thDif, "Diferença"); setText(thDifP, "Diferença %");
+      } else if (view === "todos") {
+        setText(thOrc, "Metas Realizadas"); setText(thReal, "Despesas Realizadas"); setText(thDif, "Diferença"); setText(thDifP, "Diferença %");
+      } else {
+        setText(thOrc, "Despesas"); setText(thReal, "Realizado"); setText(thDif, "Diferença"); setText(thDifP, "Diferença %");
+      }
+    };
+  }
+  if (typeof window.app.renderOrcamentoChart !== "function") {
+    window.app.renderOrcamentoChart = function renderOrcamentoChart(data) {
+      try {
+        const c = document.getElementById("orcamentoChart") || document.getElementById("chartOrcamento") || window.canvas;
+        if (!c) return;
+        if (window.app.orcamentoChart && typeof window.app.orcamentoChart.update === "function") {
+          window.app.orcamentoChart.update(); return;
+        }
+        if (typeof window.Chart === "function") {
+          const ctx = c.getContext("2d");
+          const labels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+          const ds1 = new Array(12).fill(0);
+          const ds2 = new Array(12).fill(0);
+          window.app.orcamentoChart = new Chart(ctx, {
+            type: "bar",
+            data: { labels, datasets: [ { label: "Orçado/Meta", data: ds1 }, { label: "Realizado", data: ds2 } ] },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+        }
+      } catch (e) { console.warn("renderOrcamentoChart patch error:", e); }
+    };
+  }
+  const _oldAplicar = window.app.aplicarFiltrosOrcamento;
+  if (typeof _oldAplicar === "function") {
+    window.app.aplicarFiltrosOrcamento = function () {
+      try { window.app.updateOrcamentoTableHeader(); } catch {}
+      return _oldAplicar.apply(this, arguments);
+    };
+  }
 })();
