@@ -74,9 +74,14 @@ function renderFinanceiroDashboard(payload) {
 }
 
 async function fetchFinanceiroDashboard(ano) {
-    const url = `/api/financeiro?ano=${encodeURIComponent(ano)}`;
+    const url = `/api/financeiro-dashboard?ano=${encodeURIComponent(ano)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Erro ao buscar Financeiro (${res.status})`);
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('application/json')) {
+        const txt = await res.text();
+        throw new Error(`Resposta não-JSON do servidor em ${url}: ${txt.slice(0,120)}`);
+    }
     return await res.json();
 }
 // ARQUIVO: public/script.js
