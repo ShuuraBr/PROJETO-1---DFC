@@ -634,6 +634,8 @@ updateOrcamentoUIForView: (view) => {
     const v = (view || app.orcamentoView || 'orcamento').toLowerCase();
     const title = document.getElementById('orcamento-title');
     const subtitle = document.getElementById('orcamento-subtitle');
+
+    // Título/Subtítulo
     if (title) {
         if (v === 'receita') title.textContent = 'Metas vs Realizado';
         else if (v === 'todos') title.textContent = 'Receitas vs Despesas';
@@ -642,27 +644,34 @@ updateOrcamentoUIForView: (view) => {
     if (subtitle) {
         if (v === 'receita') subtitle.textContent = 'Visão de receitas (metas e realizado).';
         else if (v === 'todos') subtitle.textContent = 'Comparativo de receitas e despesas (realizado).';
-        else subtitle.textContent = 'Visão de despesas (orçado e realizado).';
+        else subtitle.textContent = 'Visão de despesas (orçamento e realizado).';
     }
-    // Atualiza cabeçalhos da tabela (Planejado/Metas/Orçado)
-    const thPlanejado = document.querySelector('#orcamento-table thead th.th-planejado');
-    if (thPlanejado) {
-        if (v === 'receita') thPlanejado.textContent = 'Metas';
-        else if (v === 'todos') thPlanejado.textContent = 'Planejado';
-        else thPlanejado.textContent = 'Orçado';
+
+    // Cabeçalhos da tabela (linha "header-sub") — 4 colunas por mês
+    // Receita: Metas | Realizado | Diferença | Diferença %
+    // Orçamento: Despesas | Realizado | Diferença | Diferença %
+    const headerSubs = document.querySelectorAll('#orcamento-table thead tr.header-sub th');
+    if (headerSubs && headerSubs.length) {
+        let col1 = 'Orç.'; // default (Todos / legado)
+        if (v === 'receita') col1 = 'Metas';
+        else if (v === 'orcamento') col1 = 'Despesas';
+
+        headerSubs.forEach((th, i) => {
+            const mod = i % 4;
+            if (mod === 0) th.textContent = col1;
+            else if (mod === 1) th.textContent = 'Realizado';
+            else if (mod === 2) th.textContent = 'Diferença';
+            else th.textContent = 'Diferença %';
+        });
     }
-    const thReal = document.querySelector('#orcamento-table thead th.th-realizado');
-    if (thReal) thReal.textContent = 'Realizado';
 
-
-// Sublinhado do título conforme tipo de visão
-if (title) {
-    title.classList.remove('view-receita', 'view-orcamento', 'view-todos');
-    if (v === 'receita') title.classList.add('view-receita');
-    else if (v === 'todos') title.classList.add('view-todos');
-    else title.classList.add('view-orcamento');
-}
-
+    // Sublinhado do título conforme tipo de visão
+    if (title) {
+        title.classList.remove('view-receita', 'view-orcamento', 'view-todos');
+        if (v === 'receita') title.classList.add('view-receita');
+        else if (v === 'todos') title.classList.add('view-todos');
+        else title.classList.add('view-orcamento');
+    }
 },
 
 toggleThermometer: (show) => {
@@ -1008,7 +1017,9 @@ if (view === 'todos') {
             cardMeta = fmt(metaDiaria);
             cardGasto = fmt(gastoDiario);
             cardProj = fmt(projecaoTotal);
-            corGasto = (gastoDiario > metaDiaria) ? 'text-red' : 'text-green';
+            corGasto = (view === 'receita')
+                ? (gastoDiario >= metaDiaria ? 'text-green' : 'text-red')
+                : (gastoDiario > metaDiaria ? 'text-red' : 'text-green');
         }
 
         const mkCard = (titulo, valor, corTexto, rodape = '') => `
@@ -1022,15 +1033,15 @@ if (view === 'todos') {
         const labelMes = anoAnalise ? `(${nomeMes})` : '(Geral)';
 
         container.innerHTML = 
-            mkCard(`${labelPlanejado} ${labelMes}`, fmt(totalOrcado), 'col-orc') +
+            mkCard(`${(view === 'receita') ? 'Metas' : (view === 'orcamento') ? 'Orçamento' : 'Planejado'} ${labelMes}`, fmt(totalOrcado), 'col-orc') +
             mkCard(`Realizado ${labelMes}`, fmt(totalRealizado), 'col-real') +
-            mkCard(`Diferença R$`, fmt(Math.abs(diferencaValor)), corDif) +
+            mkCard(`Diferença`, fmt(Math.abs(diferencaValor)), corDif) +
             mkCard(`Diferença %`, fmtPerc(Math.abs(diferencaPerc)), corDif) +
             mkCard(`Dias Úteis (${anoAnalise || '-'})`, cardDias, 'text-dark', rodapeDias) +
-            mkCard(`Meta Diária`, cardMeta, 'col-orc', 'Teto de gasto') +
-            mkCard(`Gasto Diário`, cardGasto, corGasto, 'Média realizada') +
+            mkCard(`Meta Diária`, cardMeta, 'col-orc') +
+            mkCard(`${(view === 'receita') ? 'Ganhos Diários' : 'Gastos Diários'}`, cardGasto, corGasto, 'Média do período') +
             mkCard(`Projeção Final`, cardProj, 'text-primary', 'Tendência');
-    },
+},
 
     renderOrcamentoChart: (data, view) => {
         const canvas = document.getElementById('orcamentoChart');

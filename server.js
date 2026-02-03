@@ -624,7 +624,13 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
     const boletos = sumBuckets(recRows);
     const saidas02 = sumBuckets(pagRows);
 
-    const childReceber = { conta: '1.001.006 - BOLETOS', ...boletos, detalhes: [] };
+    const childReceber = { 
+  conta: '1.001.006 - BOLETOS',
+  '1.001.004 - CARTÕES (DÉBITO E CRÉDITO)': 0, // Added colon and value
+  '1.001.001 - DINHEIRO': 0,                   // Added colon and value
+  ...boletos, 
+  detalhes: [] 
+};
     const childPagar   = { conta: '02- Saídas Operacionais', ...saidas02, detalhes: [] };
 
     const parentFromChildren = (children) => {
