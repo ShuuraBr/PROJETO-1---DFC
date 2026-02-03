@@ -926,6 +926,8 @@ toggleThermometer: (show) => {
         const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         const nomeMes = nomesMeses[mesIndex];
         const keyMes = chavesMeses[mesIndex];
+        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
+        const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
 
 
         const view = (app.orcamentoView || 'orcamento').toLowerCase();
@@ -982,8 +984,6 @@ if (view === 'todos') {
             diferencaPerc = -100; 
         }
 
-        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
-        const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
         const corDif = (view === 'receita')
             ? (diferencaValor <= 0 ? 'text-green' : 'text-red')
             : (diferencaValor >= 0 ? 'text-green' : 'text-red');
