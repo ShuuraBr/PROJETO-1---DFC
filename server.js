@@ -720,6 +720,36 @@ app.get('/api/dashboard', async (req, res) => {
                 .trim();
         };
 
+
+        // Ordenação por código (ex: "01.002 - Nome"): compara partes numéricas do código antes do texto
+        const _codeParts = (conta) => {
+            const s = String(conta || '').trim();
+            const code = s.includes(' - ') ? s.split(' - ')[0].trim() : '';
+            if (!code) return [];
+            return code.split('.')
+                .map(p => parseInt(p, 10))
+                .filter(n => Number.isFinite(n));
+        };
+
+        const _cmpContaByCodigo = (a, b) => {
+            const pa = _codeParts(a && a.conta);
+            const pb = _codeParts(b && b.conta);
+
+            // itens sem código ficam por último
+            if (!pa.length && pb.length) return 1;
+            if (pa.length && !pb.length) return -1;
+
+            const len = Math.max(pa.length, pb.length);
+            for (let i = 0; i < len; i++) {
+                const va = pa[i] ?? -1;
+                const vb = pb[i] ?? -1;
+                if (va !== vb) return va - vb;
+            }
+
+            // fallback: ordenação natural
+            return String((a && a.conta) || '').localeCompare(String((b && b.conta) || ''), undefined, { numeric: true, sensitivity: 'base' });
+        };
+
         // Mapeamento robusto (chaves normalizadas). Isso evita sumir o "04- Ativo Imobilizado"
         // quando o banco vier como "04-Ativo Imobilizado", "04 - Ativo Imobilizado", etc.
         const configCategorias = {
@@ -775,18 +805,20 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
                     const grupo = grupos[tituloGrupo];
                     
-                    const nome2 = row.Nome_2 ? row.Nome_2.trim() : 'Outros';
+                    const codigo2 = row.Codigo_2 ? String(row.Codigo_2).trim() : '';
+                    const nome2 = row.Nome_2 ? String(row.Nome_2).trim() : 'Outros';
+                    const subKey = (codigo2 ? `${codigo2} - ${nome2}` : nome2);
                     const cod = row.Codigo_plano || '';
                     const nom = row.Nome || '';
                     const itemChave = `${cod} - ${nom}`;
 
                     grupo.total[chaveColuna] += valorParaTabela;
 
-                    if (!grupo.subgruposMap[nome2]) grupo.subgruposMap[nome2] = { conta: nome2, ...zerarColunas(), itensMap: {} };
-                    grupo.subgruposMap[nome2][chaveColuna] += valorParaTabela;
+                    if (!grupo.subgruposMap[subKey]) grupo.subgruposMap[subKey] = { conta: subKey, codigo2: codigo2 || null, nome2: nome2 || null, ...zerarColunas(), itensMap: {} };
+                    grupo.subgruposMap[subKey][chaveColuna] += valorParaTabela;
                     
-                    if (!grupo.subgruposMap[nome2].itensMap[itemChave]) grupo.subgruposMap[nome2].itensMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
-                    grupo.subgruposMap[nome2].itensMap[itemChave][chaveColuna] += valorParaTabela;
+                    if (!grupo.subgruposMap[subKey].itensMap[itemChave]) grupo.subgruposMap[subKey].itensMap[itemChave] = { conta: itemChave, ...zerarColunas(), tipo: 'item' };
+                    grupo.subgruposMap[subKey].itensMap[itemChave][chaveColuna] += valorParaTabela;
 
                     if (tituloGrupo.includes('01') || tituloGrupo.includes('02')) {
                         FluxoOperacional[chaveColuna] += valorParaTabela;
@@ -894,7 +926,7 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }]
                     arrayItens.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
                     return { conta: sub.conta, ...sub, tipo: 'subgrupo', detalhes: arrayItens };
                 });
-                arraySubgrupos.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
+                arraySubgrupos.sort(_cmpContaByCodigo);
                 tabelaRows.push({ conta: g.titulo, ...g.total, tipo: 'grupo', detalhes: arraySubgrupos });
             }
         });
