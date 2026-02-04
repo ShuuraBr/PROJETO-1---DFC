@@ -949,7 +949,7 @@ if (view === 'todos') {
     const despesasRealizadasMes = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
 
     const diferenca = metasRealizadasMes - despesasRealizadasMes;
-    const corDif = diferenca < 0 ? 'text-red' : (diferenca > 0 ? 'text-green' : '');
+    const corDif = diferenca < 0 ? 'text-green' : (diferenca > 0 ? 'text-red' : '');
 
     const mkCardLocal = (titulo, valor, corTexto) => `
         <div class="card">
@@ -1406,7 +1406,7 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
 
             const dif = receita - despesa;
             const difPerc = receita !== 0 ? ((dif / receita) * 100) : 0;
-            const cls = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+            const cls = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
 
             return { receita, despesa, dif, difPerc, cls };
         };
@@ -1434,9 +1434,9 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 } else {
-                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 }
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
@@ -1475,9 +1475,9 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                         const view = (app.orcamentoView || 'orcamento').toLowerCase();
                         let clsDif;
                         if (view === 'receita') {
-                            clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                         } else {
-                            clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                         }
                         let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
@@ -2180,7 +2180,7 @@ document.addEventListener('DOMContentLoaded', app.init);
           const despesasRealizadasMes = meta && meta.despesa ? Math.abs(safe(meta.despesa.realizado[mesIndex])) : 0;
 
           const diferenca = metasRealizadasMes - despesasRealizadasMes; // aqui é o que você pediu
-          const corDif = diferenca < 0 ? "text-red" : "text-green";
+          const corDif = diferenca < 0 ? "text-green" : "text-red";
 
           container.innerHTML =
             mkCardSafe(`Metas (Mês atual) ${labelMes}`, fmt(metasMes), "col-orc") +
@@ -2247,8 +2247,8 @@ if (view === "receita") {
 
     // Diferença: abaixo = vermelho / acima = verde
     if (title.includes("diferença")) {
-      vEl.classList.toggle("text-red", num < 0);
-      vEl.classList.toggle("text-green", num >= 0);
+      vEl.classList.toggle("text-green", num < 0);
+      vEl.classList.toggle("text-red", num >= 0);
     }
 
     // Ganhos Diários: acima da meta = verde / abaixo = vermelho
