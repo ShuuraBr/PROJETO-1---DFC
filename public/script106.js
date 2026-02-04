@@ -1556,8 +1556,13 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
             const statusParam = statusSelect ? statusSelect.value : 'todos';
             
             const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`);
-            const data = await res.json();
-            if(data.error) throw new Error(data.error);
+            let data = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+            if (!res.ok) {
+                const msg = (data && (data.detail || data.error)) ? (data.detail || data.error) : `Erro interno (${res.status})`;
+                throw new Error(msg);
+            }
+            if (data && data.error) throw new Error(data.detail || data.error);
             
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela);

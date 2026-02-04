@@ -659,7 +659,7 @@ app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Codigo_2, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
+        let query = 'SELECT Origem_DFC, Nome_2, Codigo_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
         const params = [];
 
         // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
@@ -775,7 +775,11 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
                     const grupo = grupos[tituloGrupo];
                     
-                    const nome2 = row.Nome_2 ? row.Nome_2.trim() : 'Outros';
+                    const nome2Raw = row.Nome_2 ? String(row.Nome_2).trim() : 'Outros';
+                    const codigo2Raw = row.Codigo_2 ? String(row.Codigo_2).trim() : '';
+                    const codigo2 = codigo2Raw.replace(/^0+/, '');
+                    // Regra: se o nível 2 não tiver numeração na frente, concatena Codigo_2 - Nome_2
+                    const nome2 = (/^\d/.test(nome2Raw) || !codigo2) ? nome2Raw : `${codigo2} - ${nome2Raw}`;
                     const cod = row.Codigo_plano || '';
                     const nom = row.Nome || '';
                     const itemChave = `${cod} - ${nom}`;
@@ -894,11 +898,7 @@ let tabelaRows = [{ conta: 'Saldo Inicial', ...saldoInicialCols, tipo: 'info' }]
                     arrayItens.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
                     return { conta: sub.conta, ...sub, tipo: 'subgrupo', detalhes: arrayItens };
                 });
-                arraySubgrupos.sort((a, b) => {
-                        const ca = String(a.conta || '').split(' - ')[0];
-                        const cb = String(b.conta || '').split(' - ')[0];
-                        return ca.localeCompare(cb, undefined, { numeric: true, sensitivity: 'base' });
-                    });
+                arraySubgrupos.sort((a, b) => a.conta.localeCompare(b.conta, undefined, { numeric: true }));
                 tabelaRows.push({ conta: g.titulo, ...g.total, tipo: 'grupo', detalhes: arraySubgrupos });
             }
         });
@@ -943,7 +943,7 @@ tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Erro interno", detail: (err?.message || String(err)) });
+        res.status(500).json({ error: "Erro interno" });
     }
 });
 
