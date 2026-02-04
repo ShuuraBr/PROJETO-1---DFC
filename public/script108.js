@@ -1,3 +1,63 @@
+/* ============================================================================
+   DFC bootstrap helpers (stabilize + safe refactor)
+   - Não altera regra/SQL/cálculo: apenas utilitários, cache e guardrails.
+   ============================================================================ */
+
+// Fallback seguro para formatar moeda (evita ReferenceError em formatCurrency)
+const formatCurrency = (v) => (window.Utils && Utils.fmtBRL)
+  ? Utils.fmtBRL(v)
+  : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0));
+
+// cssEscape nem sempre existe (alguns navegadores / webviews)
+const cssEscape = (s) => {
+  const str = String(s ?? '');
+  if (window.CSS && typeof window.cssEscape === 'function') return window.cssEscape(str);
+  // fallback simples (suficiente p/ seletor [data-parent="..."])
+  return str.replace(/["\\]/g, '\\$&');
+};
+
+// Debounce simples para reduzir loops no input de busca
+const debounce = (fn, wait = 200) => {
+  let t = null;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+};
+
+// Fetch wrapper: timeout + erro padronizado
+const apiFetchJson = async (url, opts = {}) => {
+  const ctrl = new AbortController();
+  const timeoutMs = Number(opts.timeoutMs || 20000);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    const contentType = res.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const data = isJson ? await res.json() : await res.text();
+    if (!res.ok) {
+      const msg = (data && data.message) ? data.message : (typeof data === 'string' ? data : `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
+    return data;
+  } finally {
+    clearTimeout(t);
+  }
+};
+
+// Cache simples de promises para evitar duplicação de requests (anos/deps/orçamento)
+const ApiCache = (() => {
+  const store = new Map(); // key -> { ts, ttl, promise }
+  const get = (key) => {
+    const it = store.get(key);
+    if (!it) return null;
+    if (Date.now() - it.ts > it.ttl) { store.delete(key); return null; }
+    return it.promise;
+  };
+  const set = (key, promise, ttl = 60_000) => store.set(key, { ts: Date.now(), ttl, promise });
+  const clearPrefix = (prefix) => { for (const k of store.keys()) if (k.startsWith(prefix)) store.delete(k); };
+  return { get, set, clearPrefix };
+})();
 
 function renderFinanceiroDashboard(payload) {
     const tbody = document.querySelector('#financeiro-table tbody');
@@ -66,7 +126,7 @@ function renderFinanceiroDashboard(payload) {
                 tr.dataset.open = open ? '0' : '1';
                 icon.textContent = open ? '▸' : '▾';
 
-                const childs = tbody.querySelectorAll(`tr.child-row[data-parent="${CSS.escape(tr.dataset.key)}"]`);
+                const childs = tbody.querySelectorAll(`tr.child-row[data-parent="${cssEscape(tr.dataset.key)}"]`);
                 childs.forEach(r => r.style.display = open ? 'none' : '');
             });
         }
@@ -75,9 +135,7 @@ function renderFinanceiroDashboard(payload) {
 
 async function fetchFinanceiroDashboard(ano) {
     const url = `/api/financeiro?ano=${encodeURIComponent(ano)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Erro ao buscar Financeiro (${res.status})`);
-    return await res.json();
+    return await apiFetchJson(url);
 }
 // ARQUIVO: public/script.js
 
@@ -106,6 +164,7 @@ const app = {
         const usuarioSalvo = sessionStorage.getItem('dfc_user');
         // Ativa botões de mostrar/ocultar senha
         app.bindPasswordToggles();
+        app.__debouncedSearch = debounce(app.searchDashboardTable, 180);
         
         app.carregarAnosDisponiveis();
 
@@ -148,7 +207,7 @@ const app = {
                     if (val.length > 0) clearBtn.classList.remove('hidden');
                     else clearBtn.classList.add('hidden');
                 }
-                app.searchDashboardTable(val);
+                app.__debouncedSearch(val);
             });
         }
 
@@ -317,12 +376,15 @@ if (filtroMesOrc) {
         let anos = [2025]; 
         
         try {
-            const res = await fetch('/api/anos');
-            if (res.ok) {
-                const dados = await res.json();
-                if (Array.isArray(dados) && dados.length > 0) {
-                    anos = dados.map(d => parseInt(d.Ano || d));
-                }
+            const key = 'GET:/api/anos';
+            let promise = ApiCache.get(key);
+            if (!promise) {
+                promise = apiFetchJson('/api/anos');
+                ApiCache.set(key, promise, 10 * 60_000);
+            }
+            const dados = await promise;
+            if (Array.isArray(dados) && dados.length > 0) {
+                anos = dados.map(d => parseInt(d.Ano || d));
             }
         } catch (error) {
             console.log("API de anos offline, usando padrão.");
@@ -687,13 +749,13 @@ toggleThermometer: (show) => {
             const email = app.user.Email;
             const anoParam = app.yearOrcamento; 
             
-                        const res = await fetch(`/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}&dept=${encodeURIComponent((document.getElementById('filtro-dep-orcamento')?.value)||'')}`);
-                        if (!res.ok) {
-                            const txt = await res.text();
-                            throw new Error(`HTTP ${res.status} - ${txt}`);
-                        }
-                        const data = await res.json();
-                        // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
+                        const dept = (document.getElementById('filtro-dep-orcamento')?.value) || '';
+                        const url = `/api/orcamento?email=${encodeURIComponent(email)}&ano=${anoParam}&visao=${encodeURIComponent(app.orcamentoView || 'orcamento')}&dept=${encodeURIComponent(dept)}`;
+                        const key = `GET:${url}`;
+                        let promise = ApiCache.get(key);
+                        if (!promise) { promise = apiFetchJson(url); ApiCache.set(key, promise, 20_000); }
+                        const data = await promise;
+// ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
                         if (__reqId !== app.__orcReqId) return;
                         if (data && data.error) throw new Error(data.error);
 
@@ -1506,9 +1568,11 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
 
     loadDepartamentos: async () => {
         try {
-            const res = await fetch('/api/departamentos');
-            const deps = await res.json();
-            const select = document.getElementById('cad-departamento');
+            const key = 'GET:/api/departamentos';
+            let promise = ApiCache.get(key);
+            if (!promise) { promise = apiFetchJson('/api/departamentos'); ApiCache.set(key, promise, 10 * 60_000); }
+            const deps = await promise;
+const select = document.getElementById('cad-departamento');
             if(select) {
                 select.innerHTML = '<option value="">Selecione...</option>';
                 deps.forEach(d => { select.innerHTML += `<option value="${d.Id_dep}">${d.Nome_dep}</option>`; });
@@ -1555,9 +1619,12 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
             const statusSelect = document.getElementById('dashboard-status-view');
             const statusParam = statusSelect ? statusSelect.value : 'todos';
             
-            const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`);
-            const data = await res.json();
-            if(data.error) throw new Error(data.error);
+            const url = `/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`;
+            const key = `GET:${url}`;
+            let promise = ApiCache.get(key);
+            if (!promise) { promise = apiFetchJson(url); ApiCache.set(key, promise, 15_000); }
+            const data = await promise;
+if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela);
