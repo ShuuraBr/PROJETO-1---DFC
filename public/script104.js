@@ -1434,9 +1434,9 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 } else {
-                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 }
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
@@ -2253,8 +2253,8 @@ if (view === "receita") {
 
     // Ganhos Diários: acima da meta = verde / abaixo = vermelho
     if (title.includes("ganhos")) {
-      vEl.classList.toggle("text-green", num > 0);
-      vEl.classList.toggle("text-red", num <= 0);
+      vEl.classList.toggle("text-red", num > 0);
+      vEl.classList.toggle("text-green", num <= 0);
     }
   });
 }
@@ -2308,8 +2308,8 @@ if (view === "orcamento") {
 
     // Gastos Diários: acima da meta = vermelho / abaixo = verde
     if (title.includes("gastos")) {
-      vEl.classList.toggle("text-red", num > 0);
-      vEl.classList.toggle("text-green", num <= 0);
+      vEl.classList.toggle("text-green", num > 0);
+      vEl.classList.toggle("text-red", num <= 0);
     }
   });
 }
