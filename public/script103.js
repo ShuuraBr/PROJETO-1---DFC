@@ -1434,9 +1434,9 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
-                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
+                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
                 } else {
-                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
+                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
                 }
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
