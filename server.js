@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 const app = express();
+const DEBUG_LOG = process.env.DEBUG_LOG === '1';
 
 // Configurações do Express
 app.use(cors());
@@ -25,6 +26,9 @@ const REALIZADO_EXCECOES = [
   '2.011.009',
   '2.010.013'
 ];
+
+const REALIZADO_EXCECOES_PLACEHOLDERS = REALIZADO_EXCECOES.map(() => '?').join(', ');
+
 
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
@@ -58,8 +62,11 @@ const verifyPasswordScrypt = (plain, stored) => {
 };
 
 
+const FERIADOS_CACHE = new Map();
+
 // --- LOGICA DE FERIADOS E DIAS ÚTEIS (NOVA) ---
 const getFeriados = (ano) => {
+    if (FERIADOS_CACHE.has(ano)) return FERIADOS_CACHE.get(ano);
     const fixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
     const moveis = {
         2024: ['02-13', '03-29', '05-30'],
@@ -68,7 +75,9 @@ const getFeriados = (ano) => {
         2027: ['02-09', '03-26', '05-27'],
         2028: ['02-29', '04-14', '06-15']
     };
-    return fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
+    const list = fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
+    FERIADOS_CACHE.set(ano, list);
+    return list;
 };
 
 const getProximoDiaUtil = (dataInput) => {
@@ -111,7 +120,7 @@ const transporter = nodemailer.createTransport({
 
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
+    if (DEBUG_LOG) console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
 
     try {
         const query = `
@@ -190,7 +199,7 @@ app.post('/api/validar-token', async (req, res) => {
         } else {
             res.status(401).json({ success: false, message: 'Token inválido/expirado.' });
         }
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
 });
 
 // =========================================================================
@@ -209,7 +218,7 @@ app.post('/api/usuarios', async (req, res) => {
             [nome, email, hashPasswordScrypt(SENHA_PADRAO), hashPasswordScrypt(SENHA_PADRAO), departamentoId, role, nivel]
         );
         res.json({ success: true, message: 'Criado com sucesso' });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
 });
 
 app.post('/api/definir-senha', async (req, res) => {
@@ -217,7 +226,7 @@ app.post('/api/definir-senha', async (req, res) => {
     try {
         await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [hashPasswordScrypt(novaSenha), email]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
+    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
 });
 
 app.get('/api/departamentos', async (req, res) => {
@@ -315,7 +324,7 @@ app.get('/api/orcamento', async (req, res) => {
             FROM dfc_analitica
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
               AND Codigo_plano IS NOT NULL
-              AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))
+              AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES_PLACEHOLDERS}))
             ORDER BY Dt_mov
         `;
 
@@ -676,7 +685,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ` AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))`;
+            query += ` AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES_PLACEHOLDERS}))`;
             params.push(...REALIZADO_EXCECOES);
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';

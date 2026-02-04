@@ -101,6 +101,7 @@ function renderFinanceiroDashboard(payload) {
 
         // children rows (hidden by default)
         if (hasChildren) {
+            const __childRows = [];
             row.children.forEach((child) => {
                 const ctr = document.createElement('tr');
                 ctr.classList.add('child-row', 'hover-row');
@@ -118,7 +119,9 @@ function renderFinanceiroDashboard(payload) {
                     ctr.appendChild(ctd);
                 }
                 tbody.appendChild(ctr);
+                __childRows.push(ctr);
             });
+            tr.__childRows = __childRows;
 
             // toggle click
             tr.addEventListener('click', () => {
@@ -126,8 +129,8 @@ function renderFinanceiroDashboard(payload) {
                 tr.dataset.open = open ? '0' : '1';
                 icon.textContent = open ? '▸' : '▾';
 
-                const childs = tbody.querySelectorAll(`tr.child-row[data-parent="${cssEscape(tr.dataset.key)}"]`);
-                childs.forEach(r => r.style.display = open ? 'none' : '');
+                const childs = tr.__childRows || [];
+                for (const r of childs) r.style.display = open ? 'none' : '';
             });
         }
     });
@@ -309,7 +312,7 @@ if (filtroMesOrc) {
         const tbody = document.querySelector('#finance-table tbody');
         if (!tbody) return;
 
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const rows = (app.__dashIndex && app.__dashIndex.rows) ? app.__dashIndex.rows : Array.from(tbody.querySelectorAll('tr'));
         
         rows.forEach(row => {
             row.classList.remove('highlight-row');
@@ -322,6 +325,23 @@ if (filtroMesOrc) {
             }
         });
     },
+buildDashboardSearchIndex: () => {
+    const tbody = document.querySelector('#finance-table tbody');
+    if (!tbody) { app.__dashIndex = null; return; }
+
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const parentRowById = new Map();
+
+    // rows de grupo (nível 1) têm onclick="app.toggleGroup('L1-x', this)"
+    for (const r of rows) {
+        const on = r.getAttribute('onclick');
+        if (!on) continue;
+        const m = on.match(/toggleGroup\('([^']+)'/);
+        if (m && m[1]) parentRowById.set(m[1], r);
+    }
+
+    app.__dashIndex = { rows, parentRowById };
+},
 
     searchDashboardTable: (term) => {
         const tbody = document.querySelector('#finance-table tbody');
@@ -333,14 +353,16 @@ if (filtroMesOrc) {
             return;
         }
 
-        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const rows = (app.__dashIndex && app.__dashIndex.rows) ? app.__dashIndex.rows : Array.from(tbody.querySelectorAll('tr'));
         rows.forEach(r => r.classList.remove('highlight-row'));
 
         let encontrouAlgo = false;
 
         const abrirPai = (classePai) => {
             const idAlvo = classePai.replace('pai-', '');
-            const rowPai = rows.find(r => r.getAttribute('onclick') && r.getAttribute('onclick').includes(`'${idAlvo}'`));
+            const rowPai = (app.__dashIndex && app.__dashIndex.parentRowById)
+                ? app.__dashIndex.parentRowById.get(idAlvo)
+                : rows.find(r => r.getAttribute('onclick') && r.getAttribute('onclick').includes(`'${idAlvo}'`));
             
             if (rowPai) {
                 const icon = rowPai.querySelector('.toggle-icon');
@@ -438,12 +460,11 @@ if (filtroMesOrc) {
 
                 el.value = anoAlvo;
 
-                const newEl = el.cloneNode(true);
-                el.parentNode.replaceChild(newEl, el);
+                // evita duplicação de listeners sem recriar o elemento
+                el.onchange = null;
+                el.value = anoAlvo;
 
-                newEl.value = anoAlvo;
-
-                newEl.addEventListener('change', (e) => {
+                el.addEventListener('change', (e) => {
                     const valor = parseInt(e.target.value);
                     
                     if (obj.context === 'dashboard') {
@@ -488,9 +509,6 @@ if (filtroMesOrc) {
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
-            
-                        const grupos = Array.isArray(data) ? data : (data.grupos || []);
-            app.dadosOrcamentoMeta = Array.isArray(data) ? null : (data.meta || null);
 if (data.success && data.require2fa) {
                 app.emailTemp = data.email;
                 document.getElementById('loginForm').classList.add('hidden');
@@ -595,6 +613,9 @@ if (data.success && data.require2fa) {
         if (s1 !== s2) { msg.innerText = "As senhas não coincidem!"; return; }
 
         app.setLoading(true);
+        // evita render duplicado por chamadas concorrentes (dashboard)
+        app.__dashReqId = (app.__dashReqId || 0) + 1;
+        const __reqId = app.__dashReqId;
         try {
             const res = await fetch('/api/definir-senha', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -1383,8 +1404,10 @@ setupFinanceStickyRows: () => {
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
+        // index para busca rápida na tabela (evita varrer DOM repetidamente)
+        app.buildDashboardSearchIndex();
+        // Aplica sticky nas linhas de saldo após renderizar
+        requestAnimationFrame(() => app.setupFinanceStickyRows());
     },
 
     
@@ -1562,8 +1585,10 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
             }
         });
         tbody.innerHTML = html;
-            // Aplica sticky nas linhas de saldo após renderizar
-        setTimeout(() => app.setupFinanceStickyRows(), 0);
+        // index para busca rápida na tabela (evita varrer DOM repetidamente)
+        app.buildDashboardSearchIndex();
+        // Aplica sticky nas linhas de saldo após renderizar
+        requestAnimationFrame(() => app.setupFinanceStickyRows());
     },
 
     loadDepartamentos: async () => {
@@ -1612,6 +1637,9 @@ const select = document.getElementById('cad-departamento');
 
     fetchData: async () => {
         app.setLoading(true);
+        // evita render duplicado por chamadas concorrentes (dashboard)
+        app.__dashReqId = (app.__dashReqId || 0) + 1;
+        const __reqId = app.__dashReqId;
         try {
             const anoParam = app.yearDashboard; 
             const viewParam = app.viewType || 'mensal';
@@ -1624,7 +1652,9 @@ const select = document.getElementById('cad-departamento');
             let promise = ApiCache.get(key);
             if (!promise) { promise = apiFetchJson(url); ApiCache.set(key, promise, 15_000); }
             const data = await promise;
-if(data.error) throw new Error(data.error);
+            // ignora respostas antigas (caso tenha mais de uma requisição em paralelo)
+            if (__reqId !== app.__dashReqId) return;
+            if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela);
@@ -1638,7 +1668,7 @@ if(data.error) throw new Error(data.error);
  
             
             if (typeof app.fetchFinanceiroData === 'function') { await app.fetchFinanceiroData(); }
-setTimeout(() => app.renderChart(data.grafico), 50);
+requestAnimationFrame(() => app.renderChart(data.grafico));
         } catch (err) { console.error(err); } 
         finally { app.setLoading(false); }
     },
