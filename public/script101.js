@@ -986,8 +986,8 @@ if (view === 'todos') {
         }
 
         const corDif = (view === 'receita')
-            ? (diferencaValor <= 0 ? 'text-red' : 'text-green')
-            : (diferencaValor >= 0 ? 'text-green' : 'text-red');
+            ? (diferencaValor <= 0 ? 'text-green' : 'text-red')
+            : (diferencaValor >= 0 ? 'text-red' : 'text-green');
 
         let cardDias = '---';
         let cardMeta = '---';
