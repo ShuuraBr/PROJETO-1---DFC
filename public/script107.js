@@ -814,7 +814,7 @@ toggleThermometer: (show) => {
             }
         });
 
-        const fmtMoney = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+        const fmtMoney = (v) => Utils.fmtBRL(v, {min:0,max:0});
 
         if(titleGoal) titleGoal.innerText = `FinanCheck: ${fmtMoney(totalOrcado)}`;
 
@@ -927,8 +927,8 @@ toggleThermometer: (show) => {
         const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         const nomeMes = nomesMeses[mesIndex];
         const keyMes = chavesMeses[mesIndex];
-        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
-        const fmtPerc = v => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(v) + '%';
+        const fmt = v => Utils.fmtBRL(v);
+        const fmtPerc = v => Utils.fmtPerc(v, 1);
 
 
         const view = (app.orcamentoView || 'orcamento').toLowerCase();
@@ -1076,7 +1076,7 @@ if (view === 'todos') {
             const txt = (mil % 1 === 0) ? String(Math.round(mil)) : mil.toFixed(1).replace('.', ',');
             return `R$ ${txt} mil`;
         }
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+        return Utils.fmtBRL(v);
     };
 
     const meta = app.dadosOrcamentoMeta || null;
@@ -1257,7 +1257,7 @@ setupFinanceStickyRows: () => {
 
         if(!rows || rows.length===0) { tbody.innerHTML='<tr><td colspan="15">Sem dados</td></tr>'; return; }
 
-        const fmt = v => v ? new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v) : '-';
+        const fmt = v => v ? Utils.fmtBRL(v) : '-';
 
         let html = '';
         rows.forEach((row, idx1) => {
@@ -1380,7 +1380,7 @@ const viewAtual = (app.orcamentoView || 'orcamento').toLowerCase();
 const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
         const fmtAbs = (v) => fmt(Math.abs(v || 0));
         const fmtSigned = (v) => fmt(v || 0);
-        const fmtPerc = v => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(v) + '%';
+        const fmtPerc = v => Utils.fmtPerc(v, 1);
         const mesesAll = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
         const selectedMonth = (app.orcamentoMesSel && app.orcamentoMesSel >= 1 && app.orcamentoMesSel <= 12) ? app.orcamentoMesSel : 0;
         const meses = selectedMonth ? [mesesAll[selectedMonth-1]] : mesesAll;
@@ -1556,13 +1556,8 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
             const statusParam = statusSelect ? statusSelect.value : 'todos';
             
             const res = await fetch(`/api/dashboard?ano=${anoParam}&view=${viewParam}&status=${statusParam}`);
-            let data = null;
-            try { data = await res.json(); } catch (e) { data = null; }
-            if (!res.ok) {
-                const msg = (data && (data.detail || data.error)) ? (data.detail || data.error) : `Erro interno (${res.status})`;
-                throw new Error(msg);
-            }
-            if (data && data.error) throw new Error(data.detail || data.error);
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
             
             app.renderKPIs(data.cards);
             app.renderTable(data.tabela);
@@ -1582,7 +1577,7 @@ setTimeout(() => app.renderChart(data.grafico), 50);
     },
 
     renderKPIs: (c) => {
-        const fmt = v => new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'}).format(v);
+        const fmt = v => Utils.fmtBRL(v);
         const ct = document.getElementById('kpi-container');
         if(!ct) return;
         const mk = (l, v, cl) => `<div class="card"><div class="card-title">${l}</div><div class="card-value ${cl}">${fmt(v)}</div></div>`;
@@ -1683,14 +1678,14 @@ setTimeout(() => app.renderChart(data.grafico), 50);
                         align: 'top', anchor: 'end', offset: 8, clamp: true,       
                         color: function(context) { return context.dataset.data[context.dataIndex] >= 0 ? '#059669' : '#dc2626'; },
                         font: { weight: 'bold', size: 12 },
-                        formatter: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); }
+                        formatter: function(value) { return Utils.fmtBRL(value); }
                     }
                 }, 
                 scales: {
                     x: { grid: { display: false }, offset: true }, 
                     y: { 
                         grid: { borderDash: [5,5] }, grace: '10%',
-                        ticks: { padding: 10, callback: function(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value); } }
+                        ticks: { padding: 10, callback: function(value) { return Utils.fmtBRL(value); } }
                     }
                 } 
             }
