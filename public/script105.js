@@ -1434,9 +1434,11 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                 const view = (app.orcamentoView || 'orcamento').toLowerCase();
                 let clsDif;
                 if (view === 'receita') {
+                    // RECEITA: acima da meta (dif < 0) = verde | abaixo (dif > 0) = vermelho
                     clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
                 } else {
-                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
+                    // ORÇAMENTO: acima das despesas (dif < 0) = vermelho | abaixo (dif > 0) = verde
+                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
                 }
                 let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
@@ -1474,11 +1476,13 @@ const fmtV = (v) => fmt(viewAtual === 'todos' ? Math.abs(v || 0) : (v || 0));
                         const dif = (vals && vals.diferenca !== undefined) ? vals.diferenca : 0;
                         const view = (app.orcamentoView || 'orcamento').toLowerCase();
                         let clsDif;
-                        if (view === 'receita') {
-                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
-                        } else {
-                            clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
-                        }
+                if (view === 'receita') {
+                    // RECEITA: acima da meta (dif < 0) = verde | abaixo (dif > 0) = vermelho
+                    clsDif = dif < 0 ? 'text-green' : (dif > 0 ? 'text-red' : '');
+                } else {
+                    // ORÇAMENTO: acima das despesas (dif < 0) = vermelho | abaixo (dif > 0) = verde
+                    clsDif = dif < 0 ? 'text-red' : (dif > 0 ? 'text-green' : '');
+                }
                         let difPerc = orc !== 0 ? ((dif / orc) * 100) : (real > 0 ? -100 : 0);
 
                         colsHtmlItem += `
