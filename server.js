@@ -659,7 +659,7 @@ app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
+        let query = 'SELECT Origem_DFC, Codigo_2, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
         const params = [];
 
         // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
@@ -805,8 +805,9 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
                     const grupo = grupos[tituloGrupo];
                     
-                    const codigo2 = row.Codigo_2 ? String(row.Codigo_2).trim() : '';
-                    const nome2 = row.Nome_2 ? String(row.Nome_2).trim() : 'Outros';
+                    const codigo2Raw = row.Codigo_2 ? String(row.Codigo_2).trim() : '';
+                    const codigo2 = codigo2Raw.replace(/^0+/, '');
+const nome2 = row.Nome_2 ? String(row.Nome_2).trim() : 'Outros';
                     const subKey = (codigo2 ? `${codigo2} - ${nome2}` : nome2);
                     const cod = row.Codigo_plano || '';
                     const nom = row.Nome || '';
