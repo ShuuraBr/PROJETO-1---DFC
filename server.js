@@ -935,7 +935,7 @@ colunasKeys.forEach(col => {
   graficoData.push(FluxoOperacional[col]);
 });
 
-tabelaRows.push({ conta: 'Fluxo Caixa Livre', ...representatividadeCols, tipo: 'saldo' });
+tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
         const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
 
         res.json({
@@ -944,7 +944,7 @@ tabelaRows.push({ conta: 'Fluxo Caixa Livre', ...representatividadeCols, tipo: '
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: (FluxoGlobal[colunasKeys[colunasKeys.length - 1]] || 0)
+                saldoFinal: (linhaSaldoFinal[colunasKeys[colunasKeys.length - 1]] || 0)
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }
