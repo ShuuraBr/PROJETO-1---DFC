@@ -571,58 +571,142 @@ app.get('/api/financeiro-dashboard', async (req, res) => {
       return acc;
     };
 
+    // Queries (busca por registros e aplica postergação para próximo dia útil
+    // quando a data cair no ÚLTIMO dia do mês e for feriado/final de semana).
+    // Importante: para mensal/trimestral, buscamos (ano-1, ano, ano+1) para capturar
+    // "transbordo" (ex.: 31/12 -> 02/01).
+    const normalizeDate = (dt) => {
+      if (!dt) return null;
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return null;
+      // evita shift por timezone quando vier sem hora
+      if (typeof dt === 'string' && !dt.includes('T')) return new Date(dt + 'T12:00:00');
+      return d;
+    };
+
+    const isDiaUtil = (d) => {
+      if (!(d instanceof Date) || isNaN(d.getTime())) return false;
+      const diaSemana = d.getDay(); // 0 dom, 6 sáb
+      if (diaSemana === 0 || diaSemana === 6) return false;
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, '0');
+      const dia = String(d.getDate()).padStart(2, '0');
+      const dataFormatada = `${ano}-${mes}-${dia}`;
+      const feriados = getFeriados(ano);
+      return !feriados.includes(dataFormatada);
+    };
+
+    const aplicaPostergacaoFimDeMes = (dtMov, mesOriginal, anoOriginal) => {
+      const d0 = normalizeDate(dtMov);
+      if (!d0) return { mes: Number(mesOriginal || 0), ano: Number(anoOriginal || 0) };
+
+      const ano0 = d0.getFullYear();
+      const mes0 = d0.getMonth(); // 0-11
+      const dia0 = d0.getDate();
+      const ultimoDia = new Date(ano0, mes0 + 1, 0).getDate();
+
+      // Só aplica no "fim do mês" e quando NÃO é dia útil
+      if (dia0 === ultimoDia && !isDiaUtil(d0)) {
+        const d1 = getProximoDiaUtil(d0);
+        if (d1 instanceof Date && !isNaN(d1.getTime())) {
+          return { mes: d1.getMonth() + 1, ano: d1.getFullYear() };
+        }
+      }
+      return { mes: Number(mesOriginal || (mes0 + 1)), ano: Number(anoOriginal || ano0) };
+    };
+
+    const aggregate = (rows, { filterAno, forAnnualColumns } = {}) => {
+      // Retorna array no formato [{ Ano, Mes, valor }]
+      const acc = new Map(); // key: ano-mes -> sum
+      const years = new Set();
+
+      (rows || []).forEach(r => {
+        const mes = Number(r.Mes);
+        const ano = Number(r.Ano);
+        const { mes: mesAlvo, ano: anoAlvo } = aplicaPostergacaoFimDeMes(r.Dt_mov, mes, ano);
+
+        // Para view != anual: só contabiliza no ano selecionado após ajuste
+        if (filterAno && anoAlvo !== filterAno) return;
+
+        const key = `${anoAlvo}-${mesAlvo}`;
+        acc.set(key, (acc.get(key) || 0) + Number(r.Valor_mov || 0));
+        years.add(String(anoAlvo));
+      });
+
+      const out = [];
+      for (const [key, valor] of acc.entries()) {
+        const [a, m] = key.split('-').map(Number);
+        out.push({ Ano: a, Mes: m, valor });
+      }
+      out.sort((a, b) => (a.Ano - b.Ano) || (a.Mes - b.Mes));
+
+      return { rows: out, years: Array.from(years).sort() };
+    };
+
     // Queries
     let recRows = [];
     let pagRows = [];
+    let recRaw = [];
+    let pagRaw = [];
 
     if (view === 'anual') {
+      // anual: traz todos os anos e aplica postergação por Dt_mov antes de agrupar
       const [r1] = await pool.query(
-        `SELECT Ano, Mes, SUM(Valor_mov) AS valor
+        `SELECT Ano, Mes, Dt_mov, Valor_mov
          FROM dfc_analitica
          WHERE Baixa IS NULL
            AND Financeiro IS NOT NULL
-           AND Codigo_plano = '1.001.006'
-         GROUP BY Ano, Mes
-         ORDER BY Ano, Mes`
+           AND Codigo_plano = '1.001.006'`
       );
       const [r2] = await pool.query(
-        `SELECT Ano, Mes, SUM(Valor_mov) AS valor
+        `SELECT Ano, Mes, Dt_mov, Valor_mov
          FROM dfc_analitica
          WHERE Baixa IS NULL
            AND Financeiro IS NOT NULL
-           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
-         GROUP BY Ano, Mes
-         ORDER BY Ano, Mes`
+           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')`
       );
-      recRows = r1;
-      pagRows = r2;
-    } else {
-      const [r1] = await pool.query(
-        `SELECT Mes, Ano, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Ano = ?
-           AND Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND Codigo_plano = '1.001.006'
-         GROUP BY Ano, Mes
-         ORDER BY Mes`,
-        [anoSel]
-      );
-      const [r2] = await pool.query(
-        `SELECT Mes, Ano, SUM(Valor_mov) AS valor
-         FROM dfc_analitica
-         WHERE Ano = ?
-           AND Baixa IS NULL
-           AND Financeiro IS NOT NULL
-           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')
-         GROUP BY Ano, Mes
-         ORDER BY Mes`,
-        [anoSel]
-      );
-      recRows = r1;
-      pagRows = r2;
-    }
+      recRaw = r1;
+      pagRaw = r2;
 
+      const aggRec = aggregate(recRaw, { forAnnualColumns: true });
+      const aggPag = aggregate(pagRaw, { forAnnualColumns: true });
+
+      // Colunas/headers por ano com base no resultado pós-ajuste
+      const years = Array.from(new Set([...(aggRec.years || []), ...(aggPag.years || [])])).sort();
+      columns = years;
+      headers = years;
+
+      recRows = aggRec.rows;
+      pagRows = aggPag.rows;
+    } else {
+      // mensal/trimestral: busca ano-1, ano, ano+1 para capturar "transbordo" e depois filtra pelo ano selecionado
+      const anos = [anoSel - 1, anoSel, anoSel + 1];
+
+      const [r1] = await pool.query(
+        `SELECT Ano, Mes, Dt_mov, Valor_mov
+         FROM dfc_analitica
+         WHERE Ano IN (?,?,?)
+           AND Baixa IS NULL
+           AND Financeiro IS NOT NULL
+           AND Codigo_plano = '1.001.006'`,
+        anos
+      );
+      const [r2] = await pool.query(
+        `SELECT Ano, Mes, Dt_mov, Valor_mov
+         FROM dfc_analitica
+         WHERE Ano IN (?,?,?)
+           AND Baixa IS NULL
+           AND Financeiro IS NOT NULL
+           AND (LOWER(TRIM(Origem_DFC)) LIKE '02%' AND LOWER(TRIM(Origem_DFC)) LIKE '%sa%oper%')`,
+        anos
+      );
+
+      const aggRec = aggregate(r1, { filterAno: anoSel });
+      const aggPag = aggregate(r2, { filterAno: anoSel });
+
+      recRows = aggRec.rows;
+      pagRows = aggPag.rows;
+    }
     const boletos = sumBuckets(recRows);
     const saidas02 = sumBuckets(pagRows);
 
