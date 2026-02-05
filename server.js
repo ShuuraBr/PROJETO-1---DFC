@@ -7,7 +7,6 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
 const app = express();
-const DEBUG_LOG = process.env.DEBUG_LOG === '1';
 
 // Configurações do Express
 app.use(cors());
@@ -26,9 +25,6 @@ const REALIZADO_EXCECOES = [
   '2.011.009',
   '2.010.013'
 ];
-
-const REALIZADO_EXCECOES_PLACEHOLDERS = REALIZADO_EXCECOES.map(() => '?').join(', ');
-
 
 const SENHA_PADRAO = 'Obj@2026';
 // --- HASH DE SENHA (scrypt) ---
@@ -62,11 +58,8 @@ const verifyPasswordScrypt = (plain, stored) => {
 };
 
 
-const FERIADOS_CACHE = new Map();
-
 // --- LOGICA DE FERIADOS E DIAS ÚTEIS (NOVA) ---
 const getFeriados = (ano) => {
-    if (FERIADOS_CACHE.has(ano)) return FERIADOS_CACHE.get(ano);
     const fixos = ['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'];
     const moveis = {
         2024: ['02-13', '03-29', '05-30'],
@@ -75,9 +68,7 @@ const getFeriados = (ano) => {
         2027: ['02-09', '03-26', '05-27'],
         2028: ['02-29', '04-14', '06-15']
     };
-    const list = fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
-    FERIADOS_CACHE.set(ano, list);
-    return list;
+    return fixos.map(f => `${ano}-${f}`).concat(moveis[ano] || []);
 };
 
 const getProximoDiaUtil = (dataInput) => {
@@ -120,7 +111,7 @@ const transporter = nodemailer.createTransport({
 
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    if (DEBUG_LOG) console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
+    console.log(`[LOGIN 1/2] Tentativa para: ${email}`);
 
     try {
         const query = `
@@ -199,7 +190,7 @@ app.post('/api/validar-token', async (req, res) => {
         } else {
             res.status(401).json({ success: false, message: 'Token inválido/expirado.' });
         }
-    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 // =========================================================================
@@ -218,7 +209,7 @@ app.post('/api/usuarios', async (req, res) => {
             [nome, email, hashPasswordScrypt(SENHA_PADRAO), hashPasswordScrypt(SENHA_PADRAO), departamentoId, role, nivel]
         );
         res.json({ success: true, message: 'Criado com sucesso' });
-    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 app.post('/api/definir-senha', async (req, res) => {
@@ -226,7 +217,7 @@ app.post('/api/definir-senha', async (req, res) => {
     try {
         await pool.query('UPDATE usuarios SET Senha = ?, Senha_prov = NULL WHERE Email = ?', [hashPasswordScrypt(novaSenha), email]);
         res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false, detail: e?.message || String(e) }); }
+    } catch (e) { res.status(500).json({ success: false }); }
 });
 
 app.get('/api/departamentos', async (req, res) => {
@@ -324,7 +315,7 @@ app.get('/api/orcamento', async (req, res) => {
             FROM dfc_analitica
             WHERE (Ano = ? OR Ano = ? OR Ano = ?)
               AND Codigo_plano IS NOT NULL
-              AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES_PLACEHOLDERS}))
+              AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))
             ORDER BY Dt_mov
         `;
 
@@ -668,7 +659,7 @@ app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
+        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
         const params = [];
 
         // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
@@ -685,7 +676,7 @@ app.get('/api/dashboard', async (req, res) => {
         //   Exceção (Entradas Operacionais): considerar também 1.001.001 (DINHEIRO) e 1.001.008 (PIX) mesmo sem Baixa.
         // - Em Aberto: Baixa IS NULL
         if (status === 'realizado') {
-            query += ` AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES_PLACEHOLDERS}))`;
+            query += ` AND (Baixa IS NOT NULL OR Codigo_plano IN (${REALIZADO_EXCECOES.map(() => '?').join(', ')}))`;
             params.push(...REALIZADO_EXCECOES);
         } else if (status === 'aberto') {
             query += ' AND Baixa IS NULL';
@@ -784,11 +775,7 @@ app.get('/api/dashboard', async (req, res) => {
                     if (!grupos[tituloGrupo]) grupos[tituloGrupo] = { titulo: tituloGrupo, total: zerarColunas(), subgruposMap: {} };
                     const grupo = grupos[tituloGrupo];
                     
-                    const nome2Raw = row.Nome_2 ? String(row.Nome_2).trim() : 'Outros';
-                    const codigo2Raw = row.Codigo_2 ? String(row.Codigo_2).trim() : '';
-                    const codigo2 = codigo2Raw.replace(/^0+/, '');
-                    // Regra: se o nível 2 não tiver numeração na frente, concatena Codigo_2 - Nome_2
-                    const nome2 = (/^\d/.test(nome2Raw) || !codigo2) ? nome2Raw : `${codigo2} - ${nome2Raw}`;
+                    const nome2 = row.Nome_2 ? row.Nome_2.trim() : 'Outros';
                     const cod = row.Codigo_plano || '';
                     const nom = row.Nome || '';
                     const itemChave = `${cod} - ${nom}`;
@@ -937,6 +924,10 @@ colunasKeys.forEach(col => {
 
 tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
         const totalSuperavitDeficit = Object.values(FluxoOperacional).reduce((a, b) => a + b, 0);
+        const totalFCL = colunasKeys.reduce((acc, key) => {
+            const v = Number(FluxoGlobal[key] ?? 0);
+            return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
 
         res.json({
             cards: {
@@ -944,7 +935,7 @@ tabelaRows.push({ conta: 'Saldo Final', ...linhaSaldoFinal, tipo: 'saldo' });
                 entrada: totalEntradasOperacionais, 
                 saida: totalSaidasOperacionais,
                 deficitSuperavit: totalSuperavitDeficit,
-                saldoFinal: (linhaSaldoFinal[colunasKeys[colunasKeys.length - 1]] || 0)
+                saldoFinal: totalFCL
             },
             grafico: { labels: colunasLabels, data: graficoData },
             tabela: { rows: tabelaRows, columns: colunasKeys, headers: colunasLabels }

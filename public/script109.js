@@ -1683,7 +1683,7 @@ requestAnimationFrame(() => app.renderChart(data.grafico));
                        mk('Entradas',c.entrada,'text-green') + 
                        mk('Saídas',c.saida,'text-red') + 
                        mk(labelResultado, c.deficitSuperavit, c.deficitSuperavit>=0?'text-green':'text-red') + 
-                       mk('Saldo Final',c.saldoFinal,'bold');
+                       mk('Fluxo Caixa Livre - FCL',c.saldoFinal,'bold');
     },
 
     toggleGroup: (idPai, el) => {
