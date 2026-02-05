@@ -743,7 +743,7 @@ app.get('/api/dashboard', async (req, res) => {
     try {
         const { ano, view, status } = req.query; 
         
-        let query = 'SELECT Origem_DFC, Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1';
+        let query = `SELECT Origem_DFC, CONCAT_WS(' - ', NULLIF(TRIM(Codigo_2),''), TRIM(Nome_2)) AS Nome_2, Codigo_plano, Nome, Mes, Ano, Valor_mov, Natureza, Dt_mov, Baixa FROM dfc_analitica WHERE 1=1`;
         const params = [];
 
         // Buscamos um ano antes para capturar boletos de 31/12 que pulam para 01/01
