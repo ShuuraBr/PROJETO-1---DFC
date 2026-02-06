@@ -938,7 +938,7 @@ toggleThermometer: (show) => {
         if(bulbEl) bulbEl.style.backgroundColor = cor;
         
         if(lblPercent) lblPercent.innerText = `${porcentagem.toFixed(0)}%`;
-        if(lblValue) lblValue.innerText = fmtMoney(projecaoTotal);
+        if(lblValue) lblValue.innerText = fmtMoney(totalRealizado);
 
         const alturaBulboOffset = 45; 
         const alturaTubo = 220; 
