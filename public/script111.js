@@ -917,7 +917,7 @@ toggleThermometer: (show) => {
             fillEl.style.backgroundColor = '#e5e7eb';
             if(bulbEl) bulbEl.style.backgroundColor = '#e5e7eb';
             if(lblPercent) lblPercent.innerText = "0%";
-            if(lblValue) lblValue.innerText = fmtMoney(projecaoTotal);
+            if(lblValue) lblValue.innerText = fmtMoney(totalRealizado);
             if(tooltipLeft) tooltipLeft.style.bottom = '45px';
             if(tooltipRight) tooltipRight.style.bottom = '45px';
             return;
