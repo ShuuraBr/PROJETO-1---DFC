@@ -923,7 +923,7 @@ toggleThermometer: (show) => {
             return;
         }
 
-        let porcentagem = (projecaoTotal / totalOrcado) * 100;
+        let porcentagem = (totalRealizado / totalOrcado) * 100;
         let alturaVisual = porcentagem > 100 ? 100 : porcentagem;
         if (alturaVisual < 0) alturaVisual = 0;
 
