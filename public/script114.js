@@ -2458,3 +2458,27 @@ if (view === "orcamento") {
   }
 
 })();
+
+
+// --- KPI: GASTO DIÁRIO -> GANHOS (regra solicitada pelo usuário) ---
+function atualizarKPI_Gastos(valorRealizado, metaDiaria) {
+  const titulo = document.getElementById("kpi-title");
+  const valor = document.getElementById("kpi-valor");
+
+  if (titulo) titulo.innerText = "Ganhos Diários";
+
+  if (valor) {
+    valor.innerText = new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    }).format(valorRealizado);
+
+    if (valorRealizado < metaDiaria) {
+      valor.classList.remove("kpi-verde");
+      valor.classList.add("kpi-vermelho");
+    } else {
+      valor.classList.remove("kpi-vermelho");
+      valor.classList.add("kpi-verde");
+    }
+  }
+}

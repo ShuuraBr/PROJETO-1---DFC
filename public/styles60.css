@@ -1271,3 +1271,8 @@ table {
 #orcamento-title.view-receita { border-bottom: 4px solid #16a34a; padding-bottom: 6px; display: inline-block; }
 #orcamento-title.view-orcamento { border-bottom: 4px solid #ef4444; padding-bottom: 6px; display: inline-block; }
 #orcamento-title.view-todos { border-bottom: 4px solid transparent; padding-bottom: 6px; display: inline-block; }
+
+
+/* KPI GANHOS - cores */
+.kpi-verde { color: #10b981 !important; }
+.kpi-vermelho { color: #ef4444 !important; }
