@@ -1097,7 +1097,7 @@ if (view === 'todos') {
             cardMeta = fmt(metaDiaria);
             cardGasto = fmt(gastoDiario);
             cardProj = fmt(projecaoTotal);
-            corGasto = (gastoDiario > metaDiaria) ? 'text-red' : 'text-green';
+            corGasto = (gastoDiario < metaDiaria) ? 'text-red' : 'text-green';
         }
 
         const mkCard = (titulo, valor, corTexto, rodape = '') => `
@@ -1116,8 +1116,8 @@ if (view === 'todos') {
             mkCard(`Diferença R$`, fmt(Math.abs(diferencaValor)), corDif) +
             mkCard(`Diferença %`, fmtPerc(Math.abs(diferencaPerc)), corDif) +
             mkCard(`Dias Úteis (${anoAnalise || '-'})`, cardDias, 'text-dark', rodapeDias) +
-            mkCard(`Meta Diária`, cardMeta, 'col-orc', 'Teto de gasto') +
-            mkCard(`Gasto Diário`, cardGasto, corGasto, 'Média realizada') +
+            mkCard(`Meta Diária`, cardMeta, 'col-orc') +
+            mkCard(`Ganhos Diarios`, cardGasto, corGasto, 'Média realizada') +
             mkCard(`Projeção Final`, cardProj, 'text-primary', 'Tendência');
     },
 
@@ -2458,27 +2458,3 @@ if (view === "orcamento") {
   }
 
 })();
-
-
-// --- KPI: GASTO DIÁRIO -> GANHOS (regra solicitada pelo usuário) ---
-function atualizarKPI_Gastos(valorRealizado, metaDiaria) {
-  const titulo = document.getElementById("kpi-title");
-  const valor = document.getElementById("kpi-valor");
-
-  if (titulo) titulo.innerText = "Ganhos Diários";
-
-  if (valor) {
-    valor.innerText = new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    }).format(valorRealizado);
-
-    if (valorRealizado < metaDiaria) {
-      valor.classList.remove("kpi-verde");
-      valor.classList.add("kpi-vermelho");
-    } else {
-      valor.classList.remove("kpi-vermelho");
-      valor.classList.add("kpi-verde");
-    }
-  }
-}
